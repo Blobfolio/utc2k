@@ -102,7 +102,7 @@ impl Borrow<str> for FmtUtc2k {
 
 impl Default for FmtUtc2k {
 	#[inline]
-	fn default() -> Self { Self(Self::MIN) }
+	fn default() -> Self { Self::min() }
 }
 
 impl Deref for FmtUtc2k {
@@ -157,6 +157,20 @@ impl FmtUtc2k {
 	///
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
+
+	#[inline]
+	#[must_use]
+	/// # Maximum Value.
+	///
+	/// This is equivalent to `2099-12-31 23:59:59`.
+	pub const fn max() -> Self { Self(Self::MAX) }
+
+	#[inline]
+	#[must_use]
+	/// # Minimum Value.
+	///
+	/// This is equivalent to `2000-01-01 00:00:00`.
+	pub const fn min() -> Self { Self(Self::MIN) }
 
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Set Date/Time.
@@ -355,16 +369,7 @@ pub struct Utc2k {
 
 impl Default for Utc2k {
 	#[inline]
-	fn default() -> Self {
-		Self {
-			y: 0,
-			m: 1,
-			d: 1,
-			hh: 0,
-			mm: 0,
-			ss: 0,
-		}
-	}
+	fn default() -> Self { Self::min() }
 }
 
 impl fmt::Display for Utc2k {
@@ -391,10 +396,8 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
 	fn from(src: u32) -> Self {
-		if src < Self::MIN_UNIXTIME { return Self::default(); }
-		else if src > Self::MAX_UNIXTIME {
-			return Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
-		}
+		if src < Self::MIN_UNIXTIME { return Self::min(); }
+		else if src > Self::MAX_UNIXTIME { return Self::max(); }
 
 		let (div, rem) = div_mod(src, 86_400);
 		let d = div + 719_468;
@@ -451,6 +454,20 @@ impl Utc2k {
 
 /// ## Instantiation.
 impl Utc2k {
+	#[inline]
+	#[must_use]
+	/// # Maximum Value.
+	///
+	/// This is equivalent to `2099-12-31 23:59:59`.
+	pub const fn max() -> Self { Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 } }
+
+	#[inline]
+	#[must_use]
+	/// # Minimum Value.
+	///
+	/// This is equivalent to `2000-01-01 00:00:00`.
+	pub const fn min() -> Self { Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 } }
+
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	#[must_use]
 	/// # New (From Parts).
