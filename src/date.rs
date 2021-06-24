@@ -1,0 +1,969 @@
+/*!
+# UTC2K
+*/
+
+use crate::{
+	DAY_IN_SECONDS,
+	HOUR_IN_SECONDS,
+	MINUTE_IN_SECONDS,
+	unixtime,
+	Utc2kError,
+};
+use std::{
+	borrow::Borrow,
+	convert::TryFrom,
+	fmt,
+	ops::Deref,
+};
+
+
+
+/// # Double-Digit ASCII.
+const DD: &[u8; 200] = b"\
+	0001020304050607080910111213141516171819\
+	2021222324252627282930313233343536373839\
+	4041424344454647484950515253545556575859\
+	6061626364656667686970717273747576777879\
+	8081828384858687888990919293949596979899";
+
+
+
+/// # Helper: `TryFrom` Unixtime For Non-u32 Formats.
+macro_rules! try_from_unixtime {
+	($($ty:ty),+) => ($(
+		impl TryFrom<$ty> for Utc2k {
+			type Error = Utc2kError;
+			fn try_from(src: $ty) -> Result<Self, Self::Error> {
+				u32::try_from(src)
+					.map(Self::from)
+					.map_err(|_| Utc2kError::Invalid)
+			}
+		}
+
+		impl TryFrom<$ty> for FmtUtc2k {
+			type Error = Utc2kError;
+			#[inline]
+			fn try_from(src: $ty) -> Result<Self, Self::Error> {
+				Utc2k::try_from(src).map(Self::from)
+			}
+		}
+	)+);
+}
+
+
+
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+/// # Formatted UTC2K.
+///
+/// This is the formatted companion to [`Utc2k`]. You can use it to obtain a
+/// string version of the date, print it, etc.
+///
+/// While this acts essentially as a glorified `String`, it is sized exactly
+/// and therefore requires less memory to represent. It also implements `Copy`.
+///
+/// It follows the simple Unix date format of `YYYY-MM-DD HH:MM:SS`.
+///
+/// Speaking of, you can obtain an `&str` using `Deref`, `AsRef<str>`,
+/// `Borrow<str>`, or [`FmtUtc2k::as_str`].
+///
+/// If you only want the date or time half, call [`FmtUtc2k::date`] or
+/// [`FmtUtc2k::time`] respectively.
+///
+/// ## Examples
+///
+/// Generally it makes more sense to initialize a [`Utc2k`] first, but you can
+/// skip straight to a `FmtUtc2k` instead:
+///
+/// ```
+/// use utc2k::{FmtUtc2k, Utc2k};
+///
+/// // Start with the current date/time.
+/// let date = FmtUtc2k::now();
+///
+/// // Source from a specific timestamp.
+/// let date = FmtUtc2k::from(946_684_800_u32);
+/// assert_eq!(date.as_str(), "2000-01-01 00:00:00");
+///
+/// // Source from a `Utc2k`.
+/// let utc_date = Utc2k::from(946_684_800_u32);
+/// assert_eq!(FmtUtc2k::from(utc_date), utc_date.formatted());
+/// ```
+pub struct FmtUtc2k([u8; 19]);
+
+impl AsRef<str> for FmtUtc2k {
+	#[inline]
+	fn as_ref(&self) -> &str { self.as_str() }
+}
+
+impl Borrow<str> for FmtUtc2k {
+	#[inline]
+	fn borrow(&self) -> &str { self.as_str() }
+}
+
+impl Default for FmtUtc2k {
+	#[inline]
+	fn default() -> Self { Self(Self::MIN) }
+}
+
+impl Deref for FmtUtc2k {
+	type Target = str;
+	#[inline]
+	fn deref(&self) -> &Self::Target { self.as_str() }
+}
+
+impl fmt::Display for FmtUtc2k {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(self.as_str())
+	}
+}
+
+impl From<u32> for FmtUtc2k {
+	#[inline]
+	fn from(src: u32) -> Self { Self::from(Utc2k::from(src)) }
+}
+
+impl From<Utc2k> for FmtUtc2k {
+	fn from(src: Utc2k) -> Self {
+		let mut out = Self::default();
+		out.set_datetime(src);
+		out
+	}
+}
+
+impl TryFrom<&str> for FmtUtc2k {
+	type Error = Utc2kError;
+
+	#[inline]
+	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		Utc2k::try_from(src).map(Self::from)
+	}
+}
+
+/// ## Constants.
+impl FmtUtc2k {
+	/// # Minimum Date/Time.
+	pub const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
+
+	/// # Maximum Date/Time.
+	pub const MAX: [u8; 19] = *b"2099-12-13 23:59:59";
+}
+
+/// ## Instantiation/Reuse.
+impl FmtUtc2k {
+	#[inline]
+	#[must_use]
+	/// # Now.
+	///
+	/// This returns an instance using the current unixtime as the seed.
+	pub fn now() -> Self { Self::from(Utc2k::now()) }
+
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	/// # Set Date/Time.
+	///
+	/// This can be used to recycle an existing buffer.
+	///
+	/// As with all other part-based operations, overflows and underflows will
+	/// be adjusted automatically, with minimum and maximum dates capped to
+	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let mut fmt = FmtUtc2k::default();
+	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
+	///
+	/// fmt.set_datetime(Utc2k::from(Utc2k::MAX_UNIXTIME));
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// ```
+	pub fn set_datetime(&mut self, src: Utc2k) {
+		let (y, m, d, hh, mm, ss) = src.parts();
+		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
+	}
+
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	/// # Set Parts.
+	///
+	/// This can be used to recycle an existing buffer.
+	///
+	/// As with all other part-based operations, overflows and underflows will
+	/// be adjusted automatically, with minimum and maximum dates capped to
+	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let mut fmt = FmtUtc2k::default();
+	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
+	///
+	/// fmt.set_parts(2010, 10, 31, 12, 33, 59);
+	/// assert_eq!(fmt.as_str(), "2010-10-31 12:33:59");
+	///
+	/// // And if you do something weird with the dates...
+	/// fmt.set_parts(2010, 10, 32, 12, 33, 59);
+	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
+	/// ```
+	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m, d, hh, mm, ss);
+		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
+	}
+
+	/// # Set Parts (Unchecked).
+	///
+	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
+	/// been applied by the time this method is called.
+	///
+	/// From here, it's just straight ASCII-writing.
+	fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+		use std::ptr::copy_nonoverlapping;
+
+		let src_ptr = DD.as_ptr();
+		let buf_ptr = self.0.as_mut_ptr();
+
+		unsafe {
+			copy_nonoverlapping(src_ptr.add((y << 1) as usize), buf_ptr.add(2), 2);
+			copy_nonoverlapping(src_ptr.add((m << 1) as usize), buf_ptr.add(5), 2);
+			copy_nonoverlapping(src_ptr.add((d << 1) as usize), buf_ptr.add(8), 2);
+			copy_nonoverlapping(src_ptr.add((hh << 1) as usize), buf_ptr.add(11), 2);
+			copy_nonoverlapping(src_ptr.add((mm << 1) as usize), buf_ptr.add(14), 2);
+			copy_nonoverlapping(src_ptr.add((ss << 1) as usize), buf_ptr.add(17), 2);
+		}
+	}
+
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[inline]
+	/// # Set Unixtime.
+	///
+	/// This can be used to recycle an existing buffer.
+	///
+	/// As with all other part-based operations, overflows and underflows will
+	/// be adjusted automatically, with minimum and maximum dates capped to
+	/// [`Utc2k::MIN_UNIXTIME`] and [`Utc2k::MAX_UNIXTIME`] respectively.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let mut fmt = FmtUtc2k::from(Utc2k::MIN_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
+	///
+	/// fmt.set_timestamp(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// ```
+	pub fn set_timestamp(&mut self, src: u32) { self.set_datetime(Utc2k::from(src)); }
+}
+
+/// ## Getters.
+impl FmtUtc2k {
+	#[inline]
+	#[must_use]
+	/// # As Str.
+	pub fn as_str(&self) -> &str {
+		unsafe { std::str::from_utf8_unchecked(&self.0) }
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Just the Date Bits.
+	///
+	/// This returns the date as a string slice in `YYYY-MM-DD` format.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// assert_eq!(fmt.date(), "2099-12-31");
+	/// ```
+	pub fn date(&self) -> &str {
+		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Just the Time Bits.
+	///
+	/// This returns the time as a string slice in `HH:MM:SS` format.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// assert_eq!(fmt.time(), "23:59:59");
+	/// ```
+	pub fn time(&self) -> &str {
+		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
+	}
+}
+
+
+
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+/// # UTC2K.
+///
+/// This is a lightweight date/time object for UTC date ranges within the
+/// current century (e.g. `2000-01-01 00:00:00` to `2099-12-31 23:59:59`).
+///
+/// Values outside this range are saturated to fit, unless using
+/// [`Utc2k::checked_from_unixtime`].
+///
+/// To instantiate from a UTC unix timestamp, use `From<u32>`. To try to parse
+/// from a `YYYY-MM-DD HH:MM:SS` string, use `TryFrom<&str>`.
+///
+/// To manually construct from individual parts, you can just call [`Utc2k::new`].
+///
+/// A `Utc2k` object can be turned back into its constituent parts via
+/// [`Utc2k::parts`], or the individual methods like [`Utc2k::year`], [`Utc2k::month`],
+/// etc.
+///
+/// It can be converted into a unix timestamp with [`Utc2k::unixtime`].
+///
+/// ## Examples
+///
+/// ```
+/// use utc2k::Utc2k;
+/// use std::convert::TryFrom;
+///
+/// let date = Utc2k::default(); // 2000-01-01 00:00:00
+/// let date = Utc2k::now(); // The current time.
+/// let date = Utc2k::from(4_102_444_799_u32); // 2099-12-31 23:59:59
+///
+/// // String parsing is fallible, but flexible. So long as the numbers we
+/// // need are in the right place, it will be fine.
+/// assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
+/// assert!(Utc2k::try_from("2099-12-31T23:59:59.0000").is_ok()); // Also fine.
+/// assert!(Utc2k::try_from("January 1, 2010").is_err()); // Nope!
+/// ```
+pub struct Utc2k {
+	y: u8,
+	m: u8,
+	d: u8,
+	hh: u8,
+	mm: u8,
+	ss: u8,
+}
+
+impl Default for Utc2k {
+	#[inline]
+	fn default() -> Self {
+		Self {
+			y: 0,
+			m: 1,
+			d: 1,
+			hh: 0,
+			mm: 0,
+			ss: 0,
+		}
+	}
+}
+
+impl fmt::Display for Utc2k {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let buf = FmtUtc2k::from(*self);
+		f.write_str(buf.as_str())
+	}
+}
+
+impl From<u32> for Utc2k {
+	#[allow(clippy::integer_division)]
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	/// # From Timestamp.
+	///
+	/// Note, this will saturate to [`Utc2k::MIN_UNIXTIME`] and
+	/// [`Utc2k::MAX_UNIXTIME`] if the timestamp is out of range.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::from(0).to_string(), "2000-01-01 00:00:00");
+	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
+	/// ```
+	fn from(src: u32) -> Self {
+		if src < Self::MIN_UNIXTIME { return Self::default(); }
+		else if src > Self::MAX_UNIXTIME {
+			return Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
+		}
+
+		let (div, rem) = div_mod(src, 86_400);
+		let d = div + 719_468;
+		let y = (d - (d + 2 + 3 * d / 146_097) / 1_461 + (d - d / 146_097) / 36_524 - (d + 1) / 146_097) / 365;
+		let y_rem = d - (365 * y + y / 4 - y / 100 + y / 400);
+		let m = (y_rem - (y_rem + 20) / 50) / 30;
+		let day = y_rem - (30 * m + 3 * (m + 4) / 5 - 2) + 1;
+		let m_cont = 12 * y + m + 2;
+		let year = m_cont / 12;
+		let month = m_cont % 12 + 1;
+		let (hour, h_rem) = div_mod(rem, 3_600);
+		let (minute, second) = div_mod(h_rem, 60);
+
+		Self {
+			y: (year - 2000) as u8,
+			m: month as u8,
+			d: day as u8,
+			hh: hour as u8,
+			mm: minute as u8,
+			ss: second as u8,
+		}
+	}
+}
+
+try_from_unixtime!(i32, u64, i64, usize, isize);
+
+impl TryFrom<&str> for Utc2k {
+	type Error = Utc2kError;
+
+	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		// It has to be at least 19 characters long.
+		if src.len() >= 19 && src.is_ascii() {
+			Ok(Self::new(
+				src[..4].parse::<u16>().map_err(|_| Utc2kError::Invalid)?,
+				src[5..7].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+				src[8..10].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+				src[11..13].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+				src[14..16].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+				src[17..19].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+			))
+		}
+		else { Err(Utc2kError::Invalid) }
+	}
+}
+
+/// ## Constants.
+impl Utc2k {
+	/// # Minimum Timestamp.
+	pub const MIN_UNIXTIME: u32 = 946_684_800;
+
+	/// # Maximum Timestamp.
+	pub const MAX_UNIXTIME: u32 = 4_102_444_799;
+}
+
+/// ## Instantiation.
+impl Utc2k {
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[must_use]
+	/// # New (From Parts).
+	///
+	/// This will create a new instance from individual year, month, etc.,
+	/// parts.
+	///
+	/// Overflowing units will be carried over where appropriate, so for
+	/// example, 13 months becomes 1 year and 1 month.
+	///
+	/// Dates prior to 2000 or after 2099 will be saturated to fit.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
+	/// ```
+	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
+		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m, d, hh, mm, ss);
+		Self {
+			y: (y - 2000) as u8,
+			m, d, hh, mm, ss
+		}
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Now.
+	///
+	/// Create a new instance representing the current UTC time.
+	pub fn now() -> Self { Self::from(unixtime()) }
+
+	/// # From Unixtime (Checked).
+	///
+	/// This can be used instead of the usual `From<u32>` if you'd like to
+	/// trigger an error when the timestamp is out of range (rather than just
+	/// saturating it).
+	///
+	/// ## Errors
+	///
+	/// An error will be returned if the timestamp is less than [`Utc2k::MIN_UNIXTIME`]
+	/// or greater than [`Utc2k::MAX_UNIXTIME`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // Too old.
+	/// assert!(Utc2k::checked_from_unixtime(0).is_err());
+	///
+	/// // Too new.
+	/// assert!(Utc2k::checked_from_unixtime(u32::MAX).is_err());
+	///
+	/// // This fits.
+	/// assert!(Utc2k::checked_from_unixtime(Utc2k::MIN_UNIXTIME).is_ok());
+	/// ```
+	pub fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
+		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
+		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
+		else { Ok(Self::from(src)) }
+	}
+}
+
+/// ## Getters.
+impl Utc2k {
+	#[must_use]
+	/// # Parts.
+	///
+	/// Return the year, month, etc., parts.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
+	/// assert_eq!(date.parts(), (2010, 5, 5, 16, 30, 1));
+	/// ```
+	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
+		(
+			self.y as u16 + 2000,
+			self.m,
+			self.d,
+			self.hh,
+			self.mm,
+			self.ss,
+		)
+	}
+
+	#[must_use]
+	/// # Unix Timestamp.
+	///
+	/// Return the unix timestamp for this object.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::default(); // 2000-01-01 00:00:00
+	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
+	/// ```
+	pub fn unixtime(self) -> u32 {
+		// Convert the year to its full four-digit form.
+		let y: u16 = self.year();
+
+		// Seconds from this month.
+		let mut time = u32::from(self.ss) +
+			MINUTE_IN_SECONDS * u32::from(self.mm) +
+			HOUR_IN_SECONDS * u32::from(self.hh) +
+			DAY_IN_SECONDS * (u32::from(self.d) - 1);
+
+		// Seconds from all the years before this year.
+		time += year_size(y);
+
+		// Seconds from the months prior to this month.
+		time += month_size(self.m);
+
+		// Add an extra leap day?
+		if self.m > 2 && leap_year(y) {
+			time += DAY_IN_SECONDS;
+		}
+
+		time
+	}
+
+	#[must_use]
+	/// # Year.
+	///
+	/// This returns the year value.
+	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
+
+	#[must_use]
+	/// # Month.
+	///
+	/// This returns the month value.
+	pub const fn month(self) -> u8 { self.m }
+
+	#[must_use]
+	/// # Day.
+	///
+	/// This returns the day value.
+	pub const fn day(self) -> u8 { self.d }
+
+	#[must_use]
+	/// # Hour.
+	///
+	/// This returns the hour value.
+	pub const fn hour(self) -> u8 { self.hh }
+
+	#[must_use]
+	/// # Minute.
+	///
+	/// This returns the minute value.
+	pub const fn minute(self) -> u8 { self.mm }
+
+	#[must_use]
+	/// # Second.
+	///
+	/// This returns the second value.
+	pub const fn second(self) -> u8 { self.ss }
+
+	#[inline]
+	#[must_use]
+	/// # Formatted.
+	///
+	/// This returns a [`FmtUtc2k`] and is equivalent to calling
+	/// `FmtUtc2k::from(self)`.
+	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
+}
+
+
+
+#[allow(clippy::integer_division)] // It's OK.
+#[inline]
+#[must_use]
+/// # Carry Over Parts.
+///
+/// This makes sure years, months, etc., are in range. In cases where there are
+/// 13 months, say, that becomes 1 year and 1 month.
+///
+/// Dates outside the century will be capped accordingly.
+const fn carry_over_parts(y: u16, m: u8, mut d: u8, mut hh: u8, mut mm: u8, mut ss: u8) -> (u16, u8, u8, u8, u8, u8) {
+	// Seconds to minutes.
+	while ss > 59 {
+		mm += ss / 60;
+		ss %= 60;
+	}
+	// Minutes to hours.
+	while mm > 59 {
+		hh += mm / 60;
+		mm %= 60;
+	}
+	// Hours to days.
+	while hh > 23 {
+		d += hh / 24;
+		hh %= 24;
+	}
+
+	// Fix the date bits, which is little trickier.
+	let (y, m, d) = carry_over_date_parts(y, m, d);
+
+	// Did we overflow?
+	if y > 2099 { (2099, 12, 31, 23, 59, 59) }
+	else if y < 2000 { (2000, 1, 1, 0, 0, 0) }
+	else { (y, m, d, hh, mm, ss) }
+}
+
+#[allow(clippy::integer_division)] // It's OK.
+/// # Carry Over Date Parts.
+///
+/// This recurses in cases where days overflow as each new month brings a new
+/// maximum number of days.
+const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u8) -> (u16, u8, u8) {
+	// There has to be a month.
+	if m == 0 { m = 1; }
+	else {
+		// Months to Years.
+		while m > 12 {
+			y += m as u16 / 12;
+			m %= 12;
+		}
+	}
+
+	// There has to be a day.
+	if d == 0 { d = 1; }
+	else {
+		// Days to Months.
+		let size = month_days(y, m);
+		if d > size {
+			m += 1;
+			d -= size;
+
+			// Recurse.
+			return carry_over_date_parts(y, m, d);
+		}
+	}
+
+	(y, m, d)
+}
+
+#[allow(clippy::integer_division)]
+#[inline]
+/// # Combined Division and Mod.
+const fn div_mod(left: u32, right: u32) -> (u32, u32) { (left / right, left % right) }
+
+#[inline]
+#[must_use]
+/// # Is Leap Year?
+///
+/// This is pre-computed for years in our centuries, otherwise it falls back to
+/// a simple calculation.
+const fn leap_year(y: u16) -> bool {
+	if y >= 2000 {
+		matches!(y, 2000 | 2004 | 2008 | 2012 | 2016 | 2020 | 2024 | 2028 | 2032 | 2036 | 2040 | 2044 | 2048 | 2052 | 2056 | 2060 | 2064 | 2068 | 2072 | 2076 | 2080 | 2084 | 2088 | 2092 | 2096)
+	}
+	else {
+		(y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+	}
+}
+
+#[must_use]
+/// # Days in Month.
+///
+/// This returns the number of days in a given year/month. (Year is included to
+/// make this leap-aware.)
+const fn month_days(y: u16, m: u8) -> u8 {
+	match m {
+		1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+		4 |6 |9 | 11 => 30,
+		2 =>
+			if leap_year(y) { 29 }
+			else { 28 },
+		_ => 0,
+	}
+}
+
+#[must_use]
+/// # Month Size.
+///
+/// This returns the number of seconds from the start of the year up to the
+/// given month.
+///
+/// Note: this does not consider February leap days.
+const fn month_size(m: u8) -> u32 {
+	match m {
+		2 => 2_678_400,
+		3 => 5_097_600,
+		4 => 7_776_000,
+		5 => 10_368_000,
+		6 => 13_046_400,
+		7 => 15_638_400,
+		8 => 18_316_800,
+		9 => 20_995_200,
+		10 => 23_587_200,
+		11 => 26_265_600,
+		12 => 28_857_600,
+		_ => 0,
+	}
+}
+
+#[allow(clippy::too_many_lines)] // We have a century to cover!
+#[must_use]
+/// # Year Size.
+///
+/// This returns the number of seconds from 1970 up to a given year. Since
+/// we're focusing on a single century, this can be presented as a pre-computed
+/// table for fast lookups.
+const fn year_size(y: u16) -> u32 {
+	match y {
+		2000 => 946_684_800,
+		2001 => 978_307_200,
+		2002 => 1_009_843_200,
+		2003 => 1_041_379_200,
+		2004 => 1_072_915_200,
+		2005 => 1_104_537_600,
+		2006 => 1_136_073_600,
+		2007 => 1_167_609_600,
+		2008 => 1_199_145_600,
+		2009 => 1_230_768_000,
+		2010 => 1_262_304_000,
+		2011 => 1_293_840_000,
+		2012 => 1_325_376_000,
+		2013 => 1_356_998_400,
+		2014 => 1_388_534_400,
+		2015 => 1_420_070_400,
+		2016 => 1_451_606_400,
+		2017 => 1_483_228_800,
+		2018 => 1_514_764_800,
+		2019 => 1_546_300_800,
+		2020 => 1_577_836_800,
+		2021 => 1_609_459_200,
+		2022 => 1_640_995_200,
+		2023 => 1_672_531_200,
+		2024 => 1_704_067_200,
+		2025 => 1_735_689_600,
+		2026 => 1_767_225_600,
+		2027 => 1_798_761_600,
+		2028 => 1_830_297_600,
+		2029 => 1_861_920_000,
+		2030 => 1_893_456_000,
+		2031 => 1_924_992_000,
+		2032 => 1_956_528_000,
+		2033 => 1_988_150_400,
+		2034 => 2_019_686_400,
+		2035 => 2_051_222_400,
+		2036 => 2_082_758_400,
+		2037 => 2_114_380_800,
+		2038 => 2_145_916_800,
+		2039 => 2_177_452_800,
+		2040 => 2_208_988_800,
+		2041 => 2_240_611_200,
+		2042 => 2_272_147_200,
+		2043 => 2_303_683_200,
+		2044 => 2_335_219_200,
+		2045 => 2_366_841_600,
+		2046 => 2_398_377_600,
+		2047 => 2_429_913_600,
+		2048 => 2_461_449_600,
+		2049 => 2_493_072_000,
+		2050 => 2_524_608_000,
+		2051 => 2_556_144_000,
+		2052 => 2_587_680_000,
+		2053 => 2_619_302_400,
+		2054 => 2_650_838_400,
+		2055 => 2_682_374_400,
+		2056 => 2_713_910_400,
+		2057 => 2_745_532_800,
+		2058 => 2_777_068_800,
+		2059 => 2_808_604_800,
+		2060 => 2_840_140_800,
+		2061 => 2_871_763_200,
+		2062 => 2_903_299_200,
+		2063 => 2_934_835_200,
+		2064 => 2_966_371_200,
+		2065 => 2_997_993_600,
+		2066 => 3_029_529_600,
+		2067 => 3_061_065_600,
+		2068 => 3_092_601_600,
+		2069 => 3_124_224_000,
+		2070 => 3_155_760_000,
+		2071 => 3_187_296_000,
+		2072 => 3_218_832_000,
+		2073 => 3_250_454_400,
+		2074 => 3_281_990_400,
+		2075 => 3_313_526_400,
+		2076 => 3_345_062_400,
+		2077 => 3_376_684_800,
+		2078 => 3_408_220_800,
+		2079 => 3_439_756_800,
+		2080 => 3_471_292_800,
+		2081 => 3_502_915_200,
+		2082 => 3_534_451_200,
+		2083 => 3_565_987_200,
+		2084 => 3_597_523_200,
+		2085 => 3_629_145_600,
+		2086 => 3_660_681_600,
+		2087 => 3_692_217_600,
+		2088 => 3_723_753_600,
+		2089 => 3_755_376_000,
+		2090 => 3_786_912_000,
+		2091 => 3_818_448_000,
+		2092 => 3_849_984_000,
+		2093 => 3_881_606_400,
+		2094 => 3_913_142_400,
+		2095 => 3_944_678_400,
+		2096 => 3_976_214_400,
+		2097 => 4_007_836_800,
+		2098 => 4_039_372_800,
+		2099 => 4_070_908_800,
+		_ => 0,
+	}
+}
+
+
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use brunch as _;
+	use chrono::{
+		Datelike,
+		Timelike,
+		TimeZone,
+		Utc,
+	};
+
+	#[test]
+	#[ignore]
+	/// # Test Full Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	///
+	/// This compares our objects against `chrono` to ensure conversions line
+	/// up as expected for the supported unixtime range.
+	///
+	/// Chrono's string formatting is ridiculously slow; if you run this test
+	/// it will take a while to complete.
+	fn unixtime_range() {
+		let mut buf = FmtUtc2k::default();
+		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
+			let u = Utc2k::from(i);
+			let c = Utc.timestamp(i as i64, 0);
+			buf.set_datetime(u);
+
+			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
+			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
+			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", i);
+			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
+			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
+			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
+
+			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
+		}
+	}
+
+	#[test]
+	/// # Test Limited Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	///
+	/// This covers about 1% of the `ignore`d full-range test, providing decent
+	/// coverage and a reasonable runtime.
+	fn limited_unixtime_range() {
+		let mut buf = FmtUtc2k::default();
+		for i in (Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).step_by(97) {
+			let u = Utc2k::from(i);
+			let c = Utc.timestamp(i as i64, 0);
+			buf.set_datetime(u);
+
+			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
+			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
+			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", i);
+			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
+			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
+			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
+
+			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
+		}
+	}
+
+	#[test]
+	/// # Test Carry-Over.
+	///
+	/// This helps ensure we're doing the math correctly.
+	fn carries() {
+		// Overage of one everywhere.
+		assert_eq!(
+			carry_over_parts(2000, 13, 32, 24, 60, 60),
+			(2001, 2, 2, 1, 1, 0)
+		);
+
+		// Large month/day overages.
+		assert_eq!(
+			carry_over_parts(2000, 25, 99, 1, 1, 1),
+			(2002, 4, 9, 1, 1, 1)
+		);
+
+		// Large time overflows.
+		assert_eq!(
+			carry_over_parts(2000, 1, 1, 99, 99, 99),
+			(2000, 1, 5, 4, 40, 39)
+		);
+
+		// Saturating low.
+		assert_eq!(
+			carry_over_parts(1970, 25, 99, 1, 1, 1),
+			(2000, 1, 1, 0, 0, 0)
+		);
+
+		// Saturating high.
+		assert_eq!(
+			carry_over_parts(2099, 25, 99, 1, 1, 1),
+			(2099, 12, 31, 23, 59, 59)
+		);
+	}
+}
