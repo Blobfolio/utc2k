@@ -392,7 +392,6 @@ impl fmt::Display for Utc2k {
 
 impl From<u32> for Utc2k {
 	#[allow(clippy::integer_division)]
-	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # From Timestamp.
 	///
 	/// Note, this will saturate to [`Utc2k::MIN_UNIXTIME`] and
@@ -410,26 +409,11 @@ impl From<u32> for Utc2k {
 		if src < Self::MIN_UNIXTIME { return Self::min(); }
 		else if src > Self::MAX_UNIXTIME { return Self::max(); }
 
-		let (div, rem) = div_mod(src, 86_400);
-		let d = div + 719_468;
-		let y = (d - (d + 2 + 3 * d / 146_097) / 1_461 + (d - d / 146_097) / 36_524 - (d + 1) / 146_097) / 365;
-		let y_rem = d - (365 * y + y / 4 - y / 100 + y / 400);
-		let m = (y_rem - (y_rem + 20) / 50) / 30;
-		let day = y_rem - (30 * m + 3 * (m + 4) / 5 - 2) + 1;
-		let m_cont = 12 * y + m + 2;
-		let year = m_cont / 12;
-		let month = m_cont % 12 + 1;
-		let (hour, h_rem) = div_mod(rem, 3_600);
-		let (minute, second) = div_mod(h_rem, 60);
+		// Tease out the date parts with a lot of terrible math.
+		let (y, m, d) = parse_date_seconds(src / DAY_IN_SECONDS);
+		let (hh, mm, ss) = parse_time_seconds(src % DAY_IN_SECONDS);
 
-		Self {
-			y: (year - 2000) as u8,
-			m: month as u8,
-			d: day as u8,
-			hh: hour as u8,
-			mm: minute as u8,
-			ss: second as u8,
-		}
+		Self { y, m, d, hh, mm, ss }
 	}
 }
 
@@ -748,11 +732,6 @@ const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u8) -> (u16, u8, u8
 	(y, m, d)
 }
 
-#[allow(clippy::integer_division)]
-#[inline]
-/// # Combined Division and Mod.
-const fn div_mod(left: u32, right: u32) -> (u32, u32) { (left / right, left % right) }
-
 #[inline]
 #[must_use]
 /// # Is Leap Year?
@@ -796,6 +775,48 @@ const fn month_size(m: u8) -> u32 {
 		12 => 28_857_600,
 		_ => 0,
 	}
+}
+
+#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::integer_division)]
+/// # Parse Date From Seconds.
+///
+/// This is pre-divided into an even number of days, so will produce the parts.
+const fn parse_date_seconds(mut src: u32) -> (u8, u8, u8) {
+	src += 719_468;
+	let y = (src - (src + 2 + 3 * src / 146_097) / 1_461 + (src - src / 146_097) / 36_524 - (src + 1) / 146_097) / 365;
+	src -= 365 * y + y / 4 - y / 100 + y / 400;
+	let m = (src - (src + 20) / 50) / 30;
+	let m_cont = 12 * y + m + 2;
+	(
+		(m_cont / 12 - 2000) as u8,
+		(m_cont % 12 + 1) as u8,
+		(src - (30 * m + 3 * (m + 4) / 5 - 2) + 1) as u8
+	)
+}
+
+#[allow(clippy::cast_possible_truncation)] // It fits.
+/// # Parse Time From Seconds.
+///
+/// Days have been eliminated already, so this will produce the parts.
+const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
+	let hh =
+		if src >= HOUR_IN_SECONDS {
+			let hh = ((src * 0x91A3) >> 27) as u8;
+			src -= hh as u32 * HOUR_IN_SECONDS;
+			hh
+		}
+		else { 0 };
+
+	let mm =
+		if src >= MINUTE_IN_SECONDS {
+			let mm = ((src * 0x889) >> 17) as u8;
+			src -= mm as u32 * MINUTE_IN_SECONDS;
+			mm
+		}
+		else { 0 };
+
+	(hh, mm, src as u8)
 }
 
 #[allow(clippy::too_many_lines)] // We have a century to cover!
