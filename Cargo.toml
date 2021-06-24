@@ -7,6 +7,7 @@ description = "A fast and lean UTC date/time library concerned only with happeni
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/utc2k"
 readme = "README.md"
+keywords = [ "time", "date", "utc", "unixtime", "printing" ]
 exclude = [
 	".github",
 	".gitignore",
