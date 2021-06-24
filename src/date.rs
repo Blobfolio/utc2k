@@ -11,6 +11,7 @@ use crate::{
 };
 use std::{
 	borrow::Borrow,
+	cmp::Ordering,
 	convert::TryFrom,
 	fmt,
 	ops::Deref,
@@ -129,6 +130,16 @@ impl From<Utc2k> for FmtUtc2k {
 		out.set_datetime(src);
 		out
 	}
+}
+
+impl Ord for FmtUtc2k {
+	#[inline]
+	fn cmp(&self, other: &Self) -> Ordering { self.0.cmp(&other.0) }
+}
+
+impl PartialOrd for FmtUtc2k {
+	#[inline]
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 impl TryFrom<&str> for FmtUtc2k {
@@ -420,6 +431,33 @@ impl From<u32> for Utc2k {
 			ss: second as u8,
 		}
 	}
+}
+
+impl Ord for Utc2k {
+	fn cmp(&self, other: &Self) -> Ordering {
+		// Work our way down until there's a difference!
+		match self.y.cmp(&other.y) {
+			Ordering::Equal => match self.m.cmp(&other.m) {
+				Ordering::Equal => match self.d.cmp(&other.d) {
+					Ordering::Equal => match self.hh.cmp(&other.hh) {
+						Ordering::Equal => match self.mm.cmp(&other.mm) {
+							Ordering::Equal => self.ss.cmp(&other.ss),
+							x => x,
+						},
+						x => x,
+					},
+					x => x,
+				},
+				x => x,
+			},
+			x => x,
+		}
+	}
+}
+
+impl PartialOrd for Utc2k {
+	#[inline]
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 try_from_unixtime!(i32, u64, i64, usize, isize);
@@ -982,5 +1020,42 @@ mod tests {
 			carry_over_parts(2099, 25, 99, 1, 1, 1),
 			(2099, 12, 31, 23, 59, 59)
 		);
+	}
+
+	#[test]
+	/// # Test Ordering.
+	fn ordering() {
+		let expected = vec![
+			Utc2k::try_from("2000-01-01 00:00:00").unwrap(),
+			Utc2k::try_from("2010-05-31 01:02:03").unwrap(),
+			Utc2k::try_from("2010-05-31 02:02:03").unwrap(),
+			Utc2k::try_from("2020-10-10 10:10:10").unwrap(),
+			Utc2k::try_from("2020-10-10 10:11:10").unwrap(),
+			Utc2k::try_from("2020-10-10 10:11:11").unwrap(),
+		];
+
+		let mut shuffled = vec![
+			Utc2k::try_from("2010-05-31 01:02:03").unwrap(),
+			Utc2k::try_from("2020-10-10 10:11:11").unwrap(),
+			Utc2k::try_from("2010-05-31 02:02:03").unwrap(),
+			Utc2k::try_from("2000-01-01 00:00:00").unwrap(),
+			Utc2k::try_from("2020-10-10 10:11:10").unwrap(),
+			Utc2k::try_from("2020-10-10 10:10:10").unwrap(),
+		];
+
+		let f_expected: Vec<FmtUtc2k> = expected.iter().copied().map(FmtUtc2k::from).collect();
+		let mut f_shuffled: Vec<FmtUtc2k> = shuffled.iter().copied().map(FmtUtc2k::from).collect();
+
+		// Both sets should be not equal to start.
+		assert_ne!(expected, shuffled);
+		assert_ne!(f_expected, f_shuffled);
+
+		// Sort 'em.
+		shuffled.sort();
+		f_shuffled.sort();
+
+		// Now they should match.
+		assert_eq!(expected, shuffled);
+		assert_eq!(f_expected, f_shuffled);
 	}
 }
