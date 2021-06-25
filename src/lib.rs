@@ -153,10 +153,6 @@ pub fn unixtime() -> u32 {
 
 	SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map_or(
 		Utc2k::MIN_UNIXTIME,
-		|n| {
-			let n = n.as_secs();
-			if n < 4_102_444_799 { n as u32 }
-			else { Utc2k::MAX_UNIXTIME }
-		}
+		|n| n.as_secs().min(4_102_444_799) as u32
 	)
 }
