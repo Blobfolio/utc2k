@@ -630,6 +630,37 @@ impl Utc2k {
 	pub const fn month(self) -> u8 { self.m }
 
 	#[must_use]
+	/// # Month Name.
+	///
+	/// Return the name of the month, nice and pretty.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
+	/// assert_eq!(date.month_name(), "June");
+	/// ```
+	pub const fn month_name(self) -> &'static str {
+		match self.m {
+			1 => "January",
+			2 => "February",
+			3 => "March",
+			4 => "April",
+			5 => "May",
+			6 => "June",
+			7 => "July",
+			8 => "August",
+			9 => "September",
+			10 => "October",
+			11 => "November",
+			_ => "December",
+		}
+	}
+
+	#[must_use]
 	/// # Day.
 	///
 	/// This returns the day value.
