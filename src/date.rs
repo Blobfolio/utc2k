@@ -247,16 +247,16 @@ impl FmtUtc2k {
 	fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
 		use std::ptr::copy_nonoverlapping;
 
-		let src_ptr = DD.as_ptr();
-		let buf_ptr = self.0.as_mut_ptr();
+		let src = DD.as_ptr();
+		let dst = self.0.as_mut_ptr();
 
 		unsafe {
-			copy_nonoverlapping(src_ptr.add((y << 1) as usize), buf_ptr.add(2), 2);
-			copy_nonoverlapping(src_ptr.add((m << 1) as usize), buf_ptr.add(5), 2);
-			copy_nonoverlapping(src_ptr.add((d << 1) as usize), buf_ptr.add(8), 2);
-			copy_nonoverlapping(src_ptr.add((hh << 1) as usize), buf_ptr.add(11), 2);
-			copy_nonoverlapping(src_ptr.add((mm << 1) as usize), buf_ptr.add(14), 2);
-			copy_nonoverlapping(src_ptr.add((ss << 1) as usize), buf_ptr.add(17), 2);
+			copy_nonoverlapping(src.add((y << 1) as usize), dst.add(2), 2);
+			copy_nonoverlapping(src.add((m << 1) as usize), dst.add(5), 2);
+			copy_nonoverlapping(src.add((d << 1) as usize), dst.add(8), 2);
+			copy_nonoverlapping(src.add((hh << 1) as usize), dst.add(11), 2);
+			copy_nonoverlapping(src.add((mm << 1) as usize), dst.add(14), 2);
+			copy_nonoverlapping(src.add((ss << 1) as usize), dst.add(17), 2);
 		}
 	}
 
