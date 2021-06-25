@@ -133,6 +133,9 @@ pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 /// # Seconds Between 1970 and 2000.
 pub const OLD_SECONDS: u32 = 946_684_800;
 
+/// # Julian Day Epoch.
+pub const JULIAN_EPOCH: u32 = 2_440_588;
+
 
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
@@ -150,10 +153,6 @@ pub fn unixtime() -> u32 {
 
 	SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map_or(
 		Utc2k::MIN_UNIXTIME,
-		|n| {
-			let n = n.as_secs();
-			if n < 4_102_444_799 { n as u32 }
-			else { Utc2k::MAX_UNIXTIME }
-		}
+		|n| n.as_secs().min(4_102_444_799) as u32
 	)
 }
