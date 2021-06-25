@@ -158,7 +158,7 @@ impl FmtUtc2k {
 	pub const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
 
 	/// # Maximum Date/Time.
-	pub const MAX: [u8; 19] = *b"2099-12-13 23:59:59";
+	pub const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
 }
 
 /// ## Instantiation/Reuse.
