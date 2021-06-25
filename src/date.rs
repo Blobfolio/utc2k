@@ -5,6 +5,7 @@
 use crate::{
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
+	JULIAN_EPOCH,
 	MINUTE_IN_SECONDS,
 	unixtime,
 	Utc2kError,
@@ -603,11 +604,8 @@ impl Utc2k {
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
 	pub fn unixtime(self) -> u32 {
-		// Convert the year to its full four-digit form.
-		let y: u16 = self.year();
-
 		// Start with all the seconds prior to the year.
-		let (mut time, leap) = year_size(y);
+		let (mut time, leap) = year_size(self.year());
 
 		// Add up all the month seconds.
 		time += u32::from(self.ss) +
@@ -827,26 +825,44 @@ const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
+#[allow(clippy::many_single_char_names)]
 /// # Parse Date From Seconds.
 ///
-/// This is pre-divided into an even number of days, so will produce the parts.
-const fn parse_date_seconds(mut src: u32) -> (u8, u8, u8) {
-	src += 719_468;
-	let y = (src - (src + 2 + 3 * src / 146_097) / 1_461 + (src - src / 146_097) / 36_524 - (src + 1) / 146_097) / 365;
-	src -= 365 * y + y / 4 - y / 100 + y / 400;
-	let m = (src - (src + 20) / 50) / 30;
-	let m_cont = 12 * y + m + 2;
-	(
-		(m_cont / 12 - 2000) as u8,
-		(m_cont % 12 + 1) as u8,
-		(src - (30 * m + 3 * (m + 4) / 5 - 2) + 1) as u8
-	)
+/// This parses the date portion of a date/time timestamp using the same
+/// approach as [`time`](https://crates.io/crates/time), which is based on
+/// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
+///
+/// (Our version is a little simpler as we aren't worried about old times.)
+///
+/// It is not quite as fast as the Gregorian approach used by [`chrono`](https://crates.io/crates/chrono),
+/// but is significantly simpler.
+const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
+	z += JULIAN_EPOCH - 1_721_119;
+	let h = 100 * z - 25;
+	let mut a = h / 3_652_425;
+	a -= a / 4;
+	let mut year = (100 * a + h) / 36_525;
+	a += z - 365 * year - year / 4;
+	let mut month = (5 * a + 456) / 153;
+	let day = a - (153 * month - 457) / 5;
+
+	if month > 12 {
+		year += 1;
+		month -= 12;
+	}
+
+	((year - 2000) as u8, month as u8, day as u8)
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
 /// # Parse Time From Seconds.
 ///
-/// Days have been eliminated already, so this will produce the parts.
+/// This parses the time portion of a date/time timestamp. It works the same
+/// way a naive div/mod approach would, except it uses multiplication and bit
+/// shifts to avoid actually having to div/mod.
+///
+/// (This only works because time values stop at 23 or 59; rounding errors
+/// would creep in if the full u8 range was used.)
 const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 	let hh =
 		if src >= HOUR_IN_SECONDS {
