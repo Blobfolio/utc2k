@@ -175,6 +175,15 @@ impl FmtUtc2k {
 	/// # Maximum Value.
 	///
 	/// This is equivalent to `2099-12-31 23:59:59`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let date = FmtUtc2k::max();
+	/// assert_eq!(date.as_str(), "2099-12-31 23:59:59");
+	/// ```
 	pub const fn max() -> Self { Self(Self::MAX) }
 
 	#[inline]
@@ -182,6 +191,15 @@ impl FmtUtc2k {
 	/// # Minimum Value.
 	///
 	/// This is equivalent to `2000-01-01 00:00:00`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let date = FmtUtc2k::min();
+	/// assert_eq!(date.as_str(), "2000-01-01 00:00:00");
+	/// ```
 	pub const fn min() -> Self { Self(Self::MIN) }
 
 	#[allow(clippy::cast_possible_truncation)] // It fits.
@@ -289,6 +307,11 @@ impl FmtUtc2k {
 	#[inline]
 	#[must_use]
 	/// # As Str.
+	///
+	/// Return a string slice in `YYYY-MM-DD HH:MM:SS` format.
+	///
+	/// A string slice can also be obtained using [`FmtUtc2k::as_ref`] or
+	/// through dereferencing.
 	pub fn as_str(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
@@ -489,6 +512,15 @@ impl Utc2k {
 	/// # Maximum Value.
 	///
 	/// This is equivalent to `2099-12-31 23:59:59`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::max();
+	/// assert_eq!(date.to_string(), "2099-12-31 23:59:59");
+	/// ```
 	pub const fn max() -> Self { Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 } }
 
 	#[inline]
@@ -496,6 +528,15 @@ impl Utc2k {
 	/// # Minimum Value.
 	///
 	/// This is equivalent to `2000-01-01 00:00:00`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::min();
+	/// assert_eq!(date.to_string(), "2000-01-01 00:00:00");
+	/// ```
 	pub const fn min() -> Self { Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 } }
 
 	#[allow(clippy::cast_possible_truncation)] // It fits.
@@ -516,6 +557,7 @@ impl Utc2k {
 	/// use utc2k::Utc2k;
 	///
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
+	/// assert_eq!(date.to_string(), "2010-05-05 16:30:01");
 	/// ```
 	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
 		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m, d, hh, mm, ss);
@@ -566,6 +608,7 @@ impl Utc2k {
 
 /// ## Getters.
 impl Utc2k {
+	#[inline]
 	#[must_use]
 	/// # Parts.
 	///
@@ -667,12 +710,30 @@ impl Utc2k {
 	/// # Year.
 	///
 	/// This returns the year value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.year(), 2010);
+	/// ```
 	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
 
 	#[must_use]
 	/// # Month.
 	///
 	/// This returns the month value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.month(), 5);
+	/// ```
 	pub const fn month(self) -> u8 { self.m }
 
 	#[must_use]
@@ -710,24 +771,60 @@ impl Utc2k {
 	/// # Day.
 	///
 	/// This returns the day value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.day(), 15);
+	/// ```
 	pub const fn day(self) -> u8 { self.d }
 
 	#[must_use]
 	/// # Hour.
 	///
 	/// This returns the hour value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.hour(), 16);
+	/// ```
 	pub const fn hour(self) -> u8 { self.hh }
 
 	#[must_use]
 	/// # Minute.
 	///
 	/// This returns the minute value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.minute(), 30);
+	/// ```
 	pub const fn minute(self) -> u8 { self.mm }
 
 	#[must_use]
 	/// # Second.
 	///
 	/// This returns the second value.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.second(), 1);
+	/// ```
 	pub const fn second(self) -> u8 { self.ss }
 
 	#[inline]
@@ -736,6 +833,15 @@ impl Utc2k {
 	///
 	/// This returns a [`FmtUtc2k`] and is equivalent to calling
 	/// `FmtUtc2k::from(self)`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
+	/// ```
 	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
 }
 
