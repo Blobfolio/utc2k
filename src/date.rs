@@ -571,6 +571,9 @@ impl Utc2k {
 	///
 	/// Return the year, month, etc., parts.
 	///
+	/// Alternatively, if you only want the date bits, use [`Utc2k::ymd`], or
+	/// if you only want the time bits, use [`Utc2k::hms`].
+	///
 	/// ## Examples
 	///
 	/// ```
@@ -589,6 +592,44 @@ impl Utc2k {
 			self.ss,
 		)
 	}
+
+	#[inline]
+	#[must_use]
+	/// # Date Parts.
+	///
+	/// Return the year, month, and day.
+	///
+	/// If you want the time too, call [`Utc2k::parts`] instead.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
+	/// assert_eq!(date.ymd(), (2010, 5, 5));
+	/// ```
+	pub const fn ymd(self) -> (u16, u8, u8) {
+		(self.y as u16 + 2000, self.m, self.d)
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Time Parts.
+	///
+	/// Return the hours, minutes, and seconds.
+	///
+	/// If you want the date too, call [`Utc2k::parts`] instead.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
+	/// assert_eq!(date.hms(), (16, 30, 1));
+	/// ```
+	pub const fn hms(self) -> (u8, u8, u8) { (self.hh, self.mm, self.ss) }
 
 	#[must_use]
 	/// # Unix Timestamp.
