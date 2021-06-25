@@ -450,15 +450,22 @@ impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		// Work from bytes.
+		let bytes = src.as_bytes();
+
 		// It has to be at least 19 characters long.
-		if src.len() >= 19 && src.is_ascii() {
+		if bytes.len() >= 19 && bytes.is_ascii() {
 			Ok(Self::new(
-				src[..4].parse::<u16>().map_err(|_| Utc2kError::Invalid)?,
-				src[5..7].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
-				src[8..10].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
-				src[11..13].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
-				src[14..16].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
-				src[17..19].parse::<u8>().map_err(|_| Utc2kError::Invalid)?,
+				bytes[..4].iter()
+					.try_fold(0, |a, c|
+						if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+						else { Err(Utc2kError::Invalid) }
+					)?,
+				parse_u8_str(bytes[5], bytes[6])?,
+				parse_u8_str(bytes[8], bytes[9])?,
+				parse_u8_str(bytes[11], bytes[12])?,
+				parse_u8_str(bytes[14], bytes[15])?,
+				parse_u8_str(bytes[17], bytes[18])?,
 			))
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -806,6 +813,16 @@ const fn month_size(m: u8) -> u32 {
 		12 => 28_857_600,
 		_ => 0,
 	}
+}
+
+/// # Parse 4 Digits.
+///
+/// This parses a 4-digit numeric string slice into `u16`, or dies trying.
+const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
+	if one.is_ascii_digit() && two.is_ascii_digit() {
+		Ok((one & 0x0f) * 10 + (two & 0x0f))
+	}
+	else { Err(Utc2kError::Invalid) }
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
