@@ -783,6 +783,46 @@ impl Utc2k {
 	/// ```
 	pub const fn day(self) -> u8 { self.d }
 
+	#[allow(clippy::cast_lossless)]
+	#[must_use]
+	/// # Ordinal.
+	///
+	/// Return the day-of-year value. This will be between `1..=365` (or `1..=366`
+	/// for leap years).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
+	/// assert_eq!(date.ordinal(), 131);
+	///
+	/// let date = Utc2k::try_from("2021-01-15 00:00:00").unwrap();
+	/// assert_eq!(date.ordinal(), 15);
+	/// ```
+	pub const fn ordinal(self) -> u16 {
+		let days = self.d as u16 +
+			match self.m {
+				2 => 31,
+				3 => 59,
+				4 => 90,
+				5 => 120,
+				6 => 151,
+				7 => 181,
+				8 => 212,
+				9 => 243,
+				10 => 273,
+				11 => 304,
+				12 => 334,
+				_ => 0,
+			};
+
+		if self.m > 2 && self.leap_year() { days + 1 }
+		else { days }
+	}
+
 	#[inline]
 	#[must_use]
 	/// # Hour.
@@ -847,6 +887,27 @@ impl Utc2k {
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
 	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
+
+	#[must_use]
+	/// # Is Leap Year?
+	///
+	/// This returns `true` if this date is/was in a leap year.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
+	/// assert!(date.leap_year());
+	///
+	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
+	/// assert!(! date.leap_year());
+	/// ```
+	pub const fn leap_year(self) -> bool {
+		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
+	}
 }
 
 
@@ -1206,7 +1267,7 @@ mod tests {
 			buf.set_datetime(u);
 
 			// Make sure the timestamp comes back the same.
-			assert_eq!(i, u.unixtime());
+			assert_eq!(i, u.unixtime(), "Timestamp out does not match timestamp in!");
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
 			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
@@ -1214,6 +1275,7 @@ mod tests {
 			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
 			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
 			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
+			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", i);
 
 			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
 		}
@@ -1232,7 +1294,7 @@ mod tests {
 			buf.set_datetime(u);
 
 			// Make sure the timestamp comes back the same.
-			assert_eq!(i, u.unixtime());
+			assert_eq!(i, u.unixtime(), "Timestamp out does not match timestamp in!");
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
 			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
@@ -1240,6 +1302,7 @@ mod tests {
 			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
 			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
 			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
+			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", i);
 
 			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
 		}
