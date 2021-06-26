@@ -252,7 +252,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
 	/// ```
 	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m, d, hh, mm, ss);
+		let (y, m, d, hh, mm, ss) = carry_over_parts(y, u16::from(m), u16::from(d), u16::from(hh), u16::from(mm), u16::from(ss));
 		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
 	}
 
@@ -560,7 +560,7 @@ impl Utc2k {
 	/// assert_eq!(date.to_string(), "2010-05-05 16:30:01");
 	/// ```
 	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
-		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m, d, hh, mm, ss);
+		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16);
 		Self {
 			y: (y - 2000) as u8,
 			m, d, hh, mm, ss
@@ -689,15 +689,15 @@ impl Utc2k {
 		// Start with all the seconds prior to the year.
 		let (mut time, leap) = year_size(self.year());
 
-		// Add up all the month seconds.
+		// Add up all the seconds since the start of the year.
 		time += u32::from(self.ss) +
 			MINUTE_IN_SECONDS * u32::from(self.mm) +
 			HOUR_IN_SECONDS * u32::from(self.hh) +
 			DAY_IN_SECONDS * (u32::from(self.d) - 1) +
-			month_size(self.m);
+			month_seconds(self.m);
 
-		// Add an extra leap day?
-		if self.m > 2 && leap {
+		// Factor in an extra leap day?
+		if leap && self.m > 2 {
 			time += DAY_IN_SECONDS;
 		}
 
@@ -851,6 +851,7 @@ impl Utc2k {
 
 
 
+#[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)] // It's OK.
 #[inline]
 #[must_use]
@@ -860,21 +861,24 @@ impl Utc2k {
 /// 13 months, say, that becomes 1 year and 1 month.
 ///
 /// Dates outside the century will be capped accordingly.
-const fn carry_over_parts(y: u16, m: u8, mut d: u8, mut hh: u8, mut mm: u8, mut ss: u8) -> (u16, u8, u8, u8, u8, u8) {
+const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u16) -> (u16, u8, u8, u8, u8, u8) {
 	// Seconds to minutes.
-	while ss > 59 {
-		mm += ss / 60;
-		ss %= 60;
+	if ss > 59 {
+		let div = ss / 60;
+		mm += div;
+		ss -= div * 60;
 	}
 	// Minutes to hours.
-	while mm > 59 {
-		hh += mm / 60;
-		mm %= 60;
+	if mm > 59 {
+		let div = mm / 60;
+		hh += div;
+		mm -= div * 60;
 	}
 	// Hours to days.
-	while hh > 23 {
-		d += hh / 24;
-		hh %= 24;
+	if hh > 23 {
+		let div = hh / 24;
+		d += div;
+		hh -= div * 24;
 	}
 
 	// Fix the date bits, which is little trickier.
@@ -883,30 +887,30 @@ const fn carry_over_parts(y: u16, m: u8, mut d: u8, mut hh: u8, mut mm: u8, mut 
 	// Did we overflow?
 	if y > 2099 { (2099, 12, 31, 23, 59, 59) }
 	else if y < 2000 { (2000, 1, 1, 0, 0, 0) }
-	else { (y, m, d, hh, mm, ss) }
+	else { (y, m, d, hh as u8, mm as u8, ss as u8) }
 }
 
+#[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)] // It's OK.
 /// # Carry Over Date Parts.
 ///
 /// This recurses in cases where days overflow as each new month brings a new
 /// maximum number of days.
-const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u8) -> (u16, u8, u8) {
+const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, u8) {
 	// There has to be a month.
 	if m == 0 { m = 1; }
-	else {
-		// Months to Years.
-		while m > 12 {
-			y += m as u16 / 12;
-			m %= 12;
-		}
+	// Months to Years.
+	else if m > 12 {
+		let div = m / 12;
+		y += div;
+		m -= div * 12;
 	}
 
 	// There has to be a day.
 	if d == 0 { d = 1; }
 	else {
 		// Days to Months.
-		let size = month_days(y, m);
+		let size = month_days(y, m as u8) as u16;
 		if d > size {
 			m += 1;
 			d -= size;
@@ -916,7 +920,7 @@ const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u8) -> (u16, u8, u8
 		}
 	}
 
-	(y, m, d)
+	(y, m as u8, d as u8)
 }
 
 #[inline]
@@ -947,7 +951,7 @@ const fn month_days(y: u16, m: u8) -> u8 {
 /// given month.
 ///
 /// Note: this does not consider February leap days.
-const fn month_size(m: u8) -> u32 {
+const fn month_seconds(m: u8) -> u32 {
 	match m {
 		2 => 2_678_400,
 		3 => 5_097_600,
@@ -1038,11 +1042,11 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 #[must_use]
 /// # Year Size.
 ///
-/// This returns the number of seconds from 1970 up to a given year. Since
-/// we're focusing on a single century, this can be presented as a pre-computed
-/// table for fast lookups.
+/// This returns the number of seconds from 1970 up to a given year, and a
+/// bool indicating whether or not it is/was a leap year.
 ///
-/// The second value indicates whether or not this is a leap year.
+/// Because we're only looking at a single century, a simple pre-computed table
+/// lookup is faster than any realtime calculation.
 const fn year_size(y: u16) -> (u32, bool) {
 	match y {
 		2000 => (946_684_800, true),
@@ -1144,8 +1148,7 @@ const fn year_size(y: u16) -> (u32, bool) {
 		2096 => (3_976_214_400, true),
 		2097 => (4_007_836_800, false),
 		2098 => (4_039_372_800, false),
-		2099 => (4_070_908_800, false),
-		_ => (0, leap_year(y)),
+		_ => (4_070_908_800, false),
 	}
 }
 
