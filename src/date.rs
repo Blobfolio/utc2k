@@ -675,8 +675,8 @@ impl Utc2k {
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
-	/// assert_eq!(date.parts(), (2010, 5, 5, 16, 30, 1));
+	/// let date = Utc2k::new(2010, 5, 4, 16, 30, 1);
+	/// assert_eq!(date.parts(), (2010, 5, 4, 16, 30, 1));
 	/// ```
 	pub const fn parts(self) -> DateTimeParts {
 		(
