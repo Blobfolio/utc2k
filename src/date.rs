@@ -659,7 +659,7 @@ impl Utc2k {
 	}
 }
 
-/// ## Getters.
+/// ## Get Parts.
 impl Utc2k {
 	#[inline]
 	#[must_use]
@@ -725,38 +725,6 @@ impl Utc2k {
 	/// ```
 	pub const fn hms(self) -> (u8, u8, u8) { (self.hh, self.mm, self.ss) }
 
-	#[must_use]
-	/// # Unix Timestamp.
-	///
-	/// Return the unix timestamp for this object.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::default(); // 2000-01-01 00:00:00
-	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
-	/// ```
-	pub fn unixtime(self) -> u32 {
-		// Start with all the seconds prior to the year.
-		let (mut time, leap) = year_size(self.y);
-
-		// Add up all the seconds since the start of the year.
-		time += u32::from(self.ss) +
-			MINUTE_IN_SECONDS * u32::from(self.mm) +
-			HOUR_IN_SECONDS * u32::from(self.hh) +
-			DAY_IN_SECONDS * (u32::from(self.d) - 1) +
-			month_seconds(self.m);
-
-		// Factor in an extra leap day?
-		if leap && self.m > 2 {
-			time += DAY_IN_SECONDS;
-		}
-
-		time
-	}
-
 	#[inline]
 	#[must_use]
 	/// # Year.
@@ -772,27 +740,6 @@ impl Utc2k {
 	/// assert_eq!(date.year(), 2010);
 	/// ```
 	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
-
-	#[must_use]
-	/// # Is Leap Year?
-	///
-	/// This returns `true` if this date is/was in a leap year.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
-	///
-	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
-	/// assert!(date.leap_year());
-	///
-	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
-	/// assert!(! date.leap_year());
-	/// ```
-	pub const fn leap_year(self) -> bool {
-		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
-	}
 
 	#[inline]
 	#[must_use]
@@ -810,37 +757,6 @@ impl Utc2k {
 	/// ```
 	pub const fn month(self) -> u8 { self.m }
 
-	#[must_use]
-	/// # Month Name.
-	///
-	/// Return the name of the month, nice and pretty.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
-	///
-	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
-	/// assert_eq!(date.month_name(), "June");
-	/// ```
-	pub const fn month_name(self) -> &'static str {
-		match self.m {
-			1 => "January",
-			2 => "February",
-			3 => "March",
-			4 => "April",
-			5 => "May",
-			6 => "June",
-			7 => "July",
-			8 => "August",
-			9 => "September",
-			10 => "October",
-			11 => "November",
-			_ => "December",
-		}
-	}
-
 	#[inline]
 	#[must_use]
 	/// # Day.
@@ -856,46 +772,6 @@ impl Utc2k {
 	/// assert_eq!(date.day(), 15);
 	/// ```
 	pub const fn day(self) -> u8 { self.d }
-
-	#[allow(clippy::cast_lossless)]
-	#[must_use]
-	/// # Ordinal.
-	///
-	/// Return the day-of-year value. This will be between `1..=365` (or `1..=366`
-	/// for leap years).
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
-	///
-	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
-	/// assert_eq!(date.ordinal(), 131);
-	///
-	/// let date = Utc2k::try_from("2021-01-15 00:00:00").unwrap();
-	/// assert_eq!(date.ordinal(), 15);
-	/// ```
-	pub const fn ordinal(self) -> u16 {
-		let days = self.d as u16 +
-			match self.m {
-				2 => 31,
-				3 => 59,
-				4 => 90,
-				5 => 120,
-				6 => 151,
-				7 => 181,
-				8 => 212,
-				9 => 243,
-				10 => 273,
-				11 => 304,
-				12 => 334,
-				_ => 0,
-			};
-
-		if self.m > 2 && self.leap_year() { days + 1 }
-		else { days }
-	}
 
 	#[inline]
 	#[must_use]
@@ -944,7 +820,136 @@ impl Utc2k {
 	/// assert_eq!(date.second(), 1);
 	/// ```
 	pub const fn second(self) -> u8 { self.ss }
+}
 
+/// ## Other Getters.
+impl Utc2k {
+	#[must_use]
+	/// # Is Leap Year?
+	///
+	/// This returns `true` if this date is/was in a leap year.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
+	/// assert!(date.leap_year());
+	///
+	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
+	/// assert!(! date.leap_year());
+	/// ```
+	pub const fn leap_year(self) -> bool {
+		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
+	}
+
+	#[must_use]
+	/// # Month Name.
+	///
+	/// Return the name of the month, nice and pretty.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
+	/// assert_eq!(date.month_name(), "June");
+	/// ```
+	pub const fn month_name(self) -> &'static str {
+		match self.m {
+			1 => "January",
+			2 => "February",
+			3 => "March",
+			4 => "April",
+			5 => "May",
+			6 => "June",
+			7 => "July",
+			8 => "August",
+			9 => "September",
+			10 => "October",
+			11 => "November",
+			_ => "December",
+		}
+	}
+
+	#[allow(clippy::cast_lossless)]
+	#[must_use]
+	/// # Ordinal.
+	///
+	/// Return the day-of-year value. This will be between `1..=365` (or `1..=366`
+	/// for leap years).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
+	/// assert_eq!(date.ordinal(), 131);
+	///
+	/// let date = Utc2k::try_from("2021-01-15 00:00:00").unwrap();
+	/// assert_eq!(date.ordinal(), 15);
+	/// ```
+	pub const fn ordinal(self) -> u16 {
+		let days = self.d as u16 +
+			match self.m {
+				2 => 31,
+				3 => 59,
+				4 => 90,
+				5 => 120,
+				6 => 151,
+				7 => 181,
+				8 => 212,
+				9 => 243,
+				10 => 273,
+				11 => 304,
+				12 => 334,
+				_ => 0,
+			};
+
+		if self.m > 2 && self.leap_year() { days + 1 }
+		else { days }
+	}
+
+	#[allow(clippy::cast_lossless)]
+	#[inline]
+	#[must_use]
+	/// # Seconds From Midnight.
+	///
+	/// Return the number of seconds since midnight. In other words, this adds
+	/// up all of the time bits.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 11, 30, 0, 0, 0);
+	/// assert_eq!(date.seconds_from_midnight(), 0);
+	///
+	/// let date = Utc2k::new(2010, 11, 30, 0, 0, 30);
+	/// assert_eq!(date.seconds_from_midnight(), 30);
+	///
+	/// let date = Utc2k::new(2010, 11, 30, 0, 1, 30);
+	/// assert_eq!(date.seconds_from_midnight(), 90);
+	///
+	/// let date = Utc2k::new(2010, 11, 30, 12, 30, 10);
+	/// assert_eq!(date.seconds_from_midnight(), 45_010);
+	/// ```
+	pub const fn seconds_from_midnight(self) -> u32 {
+		self.ss as u32 +
+		self.mm as u32 * MINUTE_IN_SECONDS +
+		self.hh as u32 * HOUR_IN_SECONDS
+	}
+}
+
+/// ## Conversion.
+impl Utc2k {
 	#[inline]
 	#[must_use]
 	/// # Formatted.
@@ -961,6 +966,36 @@ impl Utc2k {
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
 	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
+
+	#[must_use]
+	/// # Unix Timestamp.
+	///
+	/// Return the unix timestamp for this object.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::default(); // 2000-01-01 00:00:00
+	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
+	/// ```
+	pub fn unixtime(self) -> u32 {
+		// Start with all the seconds prior to the year.
+		let (mut time, leap) = year_size(self.y);
+
+		// Add up all the seconds since the start of the year.
+		time += self.seconds_from_midnight() +
+			DAY_IN_SECONDS * u32::from(self.d - 1) +
+			month_seconds(self.m);
+
+		// Factor in an extra leap day?
+		if leap && self.m > 2 {
+			time += DAY_IN_SECONDS;
+		}
+
+		time
+	}
 }
 
 
