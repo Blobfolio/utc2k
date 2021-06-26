@@ -30,6 +30,11 @@ const DD: &[u8; 200] = b"\
 
 
 
+/// # All the Date/Time Parts.
+type DateTimeParts = (u16, u8, u8, u8, u8, u8);
+
+
+
 /// # Helper: `TryFrom` Unixtime For Non-u32 Formats.
 macro_rules! try_from_unixtime {
 	($($ty:ty),+) => ($(
@@ -674,7 +679,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.parts(), (2010, 5, 5, 16, 30, 1));
 	/// ```
-	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
+	pub const fn parts(self) -> DateTimeParts {
 		(
 			self.year(),
 			self.m,
@@ -968,7 +973,7 @@ impl Utc2k {
 /// are, it simply passes them back. If they aren't, it sends them to
 /// [`carry_over_parts`] so they can be adjusted.
 const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
--> (u16, u8, u8, u8, u8, u8) {
+-> DateTimeParts {
 	// Everything is in range!
 	if
 		1999 < y && y < 2100 &&
@@ -995,7 +1000,7 @@ const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
 ///
 /// Dates outside the century will be capped accordingly.
 const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u16)
--> (u16, u8, u8, u8, u8, u8) {
+-> DateTimeParts {
 	// Seconds to minutes.
 	if ss > 59 {
 		let div = ss / 60;
