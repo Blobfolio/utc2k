@@ -152,39 +152,13 @@ impl TryFrom<&str> for FmtUtc2k {
 	}
 }
 
-/// ## Constants.
+/// ## Min/Max.
 impl FmtUtc2k {
 	/// # Minimum Date/Time.
 	pub const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
 
 	/// # Maximum Date/Time.
 	pub const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
-}
-
-/// ## Instantiation/Reuse.
-impl FmtUtc2k {
-	#[inline]
-	#[must_use]
-	/// # Now.
-	///
-	/// This returns an instance using the current unixtime as the seed.
-	pub fn now() -> Self { Self::from(Utc2k::now()) }
-
-	#[inline]
-	#[must_use]
-	/// # Maximum Value.
-	///
-	/// This is equivalent to `2099-12-31 23:59:59`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::FmtUtc2k;
-	///
-	/// let date = FmtUtc2k::max();
-	/// assert_eq!(date.as_str(), "2099-12-31 23:59:59");
-	/// ```
-	pub const fn max() -> Self { Self(Self::MAX) }
 
 	#[inline]
 	#[must_use]
@@ -201,6 +175,32 @@ impl FmtUtc2k {
 	/// assert_eq!(date.as_str(), "2000-01-01 00:00:00");
 	/// ```
 	pub const fn min() -> Self { Self(Self::MIN) }
+
+	#[inline]
+	#[must_use]
+	/// # Maximum Value.
+	///
+	/// This is equivalent to `2099-12-31 23:59:59`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let date = FmtUtc2k::max();
+	/// assert_eq!(date.as_str(), "2099-12-31 23:59:59");
+	/// ```
+	pub const fn max() -> Self { Self(Self::MAX) }
+}
+
+/// ## Instantiation/Reuse.
+impl FmtUtc2k {
+	#[inline]
+	#[must_use]
+	/// # Now.
+	///
+	/// This returns an instance using the current unixtime as the seed.
+	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Set Date/Time.
@@ -545,32 +545,13 @@ impl TryFrom<&str> for Utc2k {
 	}
 }
 
-/// ## Constants.
+/// ## Min/Max.
 impl Utc2k {
 	/// # Minimum Timestamp.
 	pub const MIN_UNIXTIME: u32 = 946_684_800;
 
 	/// # Maximum Timestamp.
 	pub const MAX_UNIXTIME: u32 = 4_102_444_799;
-}
-
-/// ## Instantiation.
-impl Utc2k {
-	#[inline]
-	#[must_use]
-	/// # Maximum Value.
-	///
-	/// This is equivalent to `2099-12-31 23:59:59`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::max();
-	/// assert_eq!(date.to_string(), "2099-12-31 23:59:59");
-	/// ```
-	pub const fn max() -> Self { Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 } }
 
 	#[inline]
 	#[must_use]
@@ -588,6 +569,25 @@ impl Utc2k {
 	/// ```
 	pub const fn min() -> Self { Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 } }
 
+	#[inline]
+	#[must_use]
+	/// # Maximum Value.
+	///
+	/// This is equivalent to `2099-12-31 23:59:59`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::max();
+	/// assert_eq!(date.to_string(), "2099-12-31 23:59:59");
+	/// ```
+	pub const fn max() -> Self { Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 } }
+}
+
+/// ## Instantiation.
+impl Utc2k {
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	#[must_use]
 	/// # New (From Parts).
