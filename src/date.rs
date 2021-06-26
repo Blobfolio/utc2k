@@ -1174,6 +1174,9 @@ mod tests {
 			let c = Utc.timestamp(i as i64, 0);
 			buf.set_datetime(u);
 
+			// Make sure the timestamp comes back the same.
+			assert_eq!(i, u.unixtime());
+
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
 			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
 			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", i);
@@ -1196,6 +1199,9 @@ mod tests {
 			let u = Utc2k::from(i);
 			let c = Utc.timestamp(i as i64, 0);
 			buf.set_datetime(u);
+
+			// Make sure the timestamp comes back the same.
+			assert_eq!(i, u.unixtime());
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
 			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
