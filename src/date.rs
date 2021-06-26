@@ -489,7 +489,7 @@ impl TryFrom<&str> for Utc2k {
 	/// expected will be looked at.
 	///
 	/// String length is used to determine whether or not the value should be
-	/// parsed as a date/time (19) or a date (10).
+	/// parsed as a full date/time (19) or just a date (10).
 	///
 	/// See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
 	/// information.
@@ -1521,6 +1521,12 @@ mod tests {
 		assert_eq!(
 			carry_over_parts(2000, 1, 1, 99, 99, 99),
 			(2000, 1, 5, 4, 40, 39)
+		);
+
+		// Max overflows!
+		assert_eq!(
+			carry_over_parts(2000, 255, 255, 255, 255, 255),
+			(2021, 11, 20, 19, 19, 15)
 		);
 
 		// Saturating low.
