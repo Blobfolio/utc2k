@@ -33,6 +33,9 @@ const DD: &[u8; 200] = b"\
 /// # All the Date/Time Parts.
 type DateTimeParts = (u16, u8, u8, u8, u8, u8);
 
+/// # The Fallible Version of Date/Time Parts.
+type PartsResult = Result<DateTimeParts, Utc2kError>;
+
 
 
 /// # Helper: `TryFrom` Unixtime For Non-u32 Formats.
@@ -478,23 +481,18 @@ try_from_unixtime!(i32, u64, i64, usize, isize);
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	#[allow(clippy::cast_possible_truncation)]
 	/// # Parse String.
 	///
-	/// This will attempt to construct a [`Utc2k`] from a date/time string.
+	/// This will attempt to construct a [`Utc2k`] from a date/time or date
+	/// string. Parsing is naive; only the positions where numbers are
+	/// expected will be looked at.
 	///
-	/// If the length is exactly `10`, it will try to parse as a date in
-	/// `YYYY-MM-DD` format (assuming midnight for the time).
+	/// String length is used to determine whether or not the value should be
+	/// parsed as a date/time (19) or a date (10).
 	///
-	/// If the length is `>= 19`, it will try to parse as a date/time in
-	/// `YYYY-MM-DD HH:MM:SS` format.
-	///
-	/// The in-between bits don't really matter so long as they're valid ASCII,
-	/// but the numbers have to be in the right place or it will fail. (For
-	/// example, both "2020-01-01" and "2020/01/01" will parse.)
-	///
-	/// As with all the other methods, dates outside the `2000..=2099` range
-	/// will be saturated (non-failing), and overflows will be carried over to
-	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
+	/// See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
+	/// information.
 	///
 	/// ## Examples
 	///
@@ -513,39 +511,20 @@ impl TryFrom<&str> for Utc2k {
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
 		let bytes = src.as_bytes();
-
-		// It has to be at least 19 characters long.
-		if bytes.is_ascii() {
+		let (y, m, d, hh, mm, ss) =
 			if bytes.len() >= 19 {
-				return Ok(Self::new(
-					bytes[..4].iter()
-						.try_fold(0, |a, c|
-							if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
-							else { Err(Utc2kError::Invalid) }
-						)?,
-					parse_u8_str(bytes[5], bytes[6])?,
-					parse_u8_str(bytes[8], bytes[9])?,
-					parse_u8_str(bytes[11], bytes[12])?,
-					parse_u8_str(bytes[14], bytes[15])?,
-					parse_u8_str(bytes[17], bytes[18])?,
-				));
+				parse_parts_from_datetime(unsafe {
+					&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
+				})
 			}
-			// If the length is exactly ten, we can try it as just the date.
-			else if bytes.len() == 10 {
-				return Ok(Self::new(
-					bytes[..4].iter()
-						.try_fold(0, |a, c|
-							if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
-							else { Err(Utc2kError::Invalid) }
-						)?,
-					parse_u8_str(bytes[5], bytes[6])?,
-					parse_u8_str(bytes[8], bytes[9])?,
-					0, 0, 0,
-				));
+			else if bytes.len() >= 10 {
+				parse_parts_from_date(unsafe {
+					&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
+				})
 			}
-		}
+			else { Err(Utc2kError::Invalid) }?;
 
-		Err(Utc2kError::Invalid)
+		Ok(Self { y: (y - 2000) as u8, m, d, hh, mm, ss})
 	}
 }
 
@@ -656,6 +635,108 @@ impl Utc2k {
 		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
 		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
 		else { Ok(Self::from(src)) }
+	}
+}
+
+/// ## String Parsing.
+impl Utc2k {
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	/// # From Date/Time.
+	///
+	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
+	/// This operation is naive and only looks at the positions where numbers
+	/// are expected.
+	///
+	/// In other words, `2020-01-01 00:00:00` will parse the same as
+	/// `2020/01/01 00:00:00` or even `2020-01-01 00:00:00.0000 PDT`.
+	///
+	/// As with all the other methods, dates outside the `2000..=2099` range
+	/// will be saturated (non-failing), and overflows will be carried over to
+	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This isn't long enough.
+	/// assert!(Utc2k::from_datetime_str("2021/06/25").is_err());
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_datetime_str("2021-06-25 13:15:25.0000").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_datetime_str("Applebutter").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
+		let bytes: &[u8] = src.as_bytes();
+		if bytes.len() >= 19 {
+			let (y, m, d, hh, mm, ss) = parse_parts_from_datetime(unsafe {
+				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
+			})?;
+			Ok(Self {
+				y: (y - 2000) as u8,
+				m, d, hh, mm, ss
+			})
+		}
+		else { Err(Utc2kError::Invalid) }
+	}
+
+	#[allow(clippy::cast_possible_truncation)] // It fits.
+	/// # From Date/Time.
+	///
+	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
+	/// operation is naive and only looks at the positions where numbers are
+	/// expected.
+	///
+	/// In other words, `2020-01-01` will parse the same as `2020/01/01` or
+	/// even `2020-01-01 13:03:33.5900 PDT`.
+	///
+	/// As with all the other methods, dates outside the `2000..=2099` range
+	/// will be saturated (non-failing), and overflows will be carried over to
+	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
+	///
+	/// The time will always be set to midnight when using this method.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_date_str("2021/06/25").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This is fine, but the time will be ignored.
+	/// let date = Utc2k::from_date_str("2021-06-25 13:15:25.0000").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_date_str("Applebutter").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
+		let bytes: &[u8] = src.as_bytes();
+		if bytes.len() >= 10 {
+			let (y, m, d, hh, mm, ss) = parse_parts_from_date(unsafe {
+				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
+			})?;
+			Ok(Self {
+				y: (y - 2000) as u8,
+				m, d, hh, mm, ss
+			})
+		}
+		else { Err(Utc2kError::Invalid) }
 	}
 }
 
@@ -1000,27 +1081,37 @@ impl Utc2k {
 
 
 
-#[must_use]
-/// # Maybe Carry Over Parts.
+#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::integer_division)] // It's OK.
+/// # Carry Over Date Parts.
 ///
-/// This checks to see if all of the date/time parts are within range. If they
-/// are, it simply passes them back. If they aren't, it sends them to
-/// [`carry_over_parts`] so they can be adjusted.
-const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
--> DateTimeParts {
-	// Everything is in range!
-	if
-		1999 < y && y < 2100 &&
-		0 < m && m < 13 &&
-		0 < d &&
-		hh < 24 &&
-		mm < 60 &&
-		ss < 60 &&
-		(d < 29 || d <= month_days(y, m))
-	{ (y, m, d, hh, mm, ss) }
-	else {
-		carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16)
+/// This recurses in cases where days overflow as each new month brings a new
+/// maximum number of days.
+const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, u8) {
+	// There has to be a month.
+	if m == 0 { m = 1; }
+	// Months to Years.
+	else if m > 12 {
+		let div = m / 12;
+		y += div;
+		m -= div * 12;
 	}
+
+	// There has to be a day.
+	if d == 0 { d = 1; }
+	else {
+		// Days to Months.
+		let size = month_days(y, m as u8) as u16;
+		if d > size {
+			m += 1;
+			d -= size;
+
+			// Recurse.
+			return carry_over_date_parts(y, m, d);
+		}
+	}
+
+	(y, m as u8, d as u8)
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
@@ -1063,37 +1154,27 @@ const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, 
 	else { (y, m, d, hh as u8, mm as u8, ss as u8) }
 }
 
-#[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)] // It's OK.
-/// # Carry Over Date Parts.
+#[must_use]
+/// # Maybe Carry Over Parts.
 ///
-/// This recurses in cases where days overflow as each new month brings a new
-/// maximum number of days.
-const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, u8) {
-	// There has to be a month.
-	if m == 0 { m = 1; }
-	// Months to Years.
-	else if m > 12 {
-		let div = m / 12;
-		y += div;
-		m -= div * 12;
-	}
-
-	// There has to be a day.
-	if d == 0 { d = 1; }
+/// This checks to see if all of the date/time parts are within range. If they
+/// are, it simply passes them back. If they aren't, it sends them to
+/// [`carry_over_parts`] so they can be adjusted.
+const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
+-> DateTimeParts {
+	// Everything is in range!
+	if
+		1999 < y && y < 2100 &&
+		0 < m && m < 13 &&
+		0 < d &&
+		hh < 24 &&
+		mm < 60 &&
+		ss < 60 &&
+		(d < 29 || d <= month_days(y, m))
+	{ (y, m, d, hh, mm, ss) }
 	else {
-		// Days to Months.
-		let size = month_days(y, m as u8) as u16;
-		if d > size {
-			m += 1;
-			d -= size;
-
-			// Recurse.
-			return carry_over_date_parts(y, m, d);
-		}
+		carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16)
 	}
-
-	(y, m as u8, d as u8)
 }
 
 #[must_use]
@@ -1135,16 +1216,6 @@ const fn month_seconds(m: u8) -> u32 {
 	}
 }
 
-/// # Parse 4 Digits.
-///
-/// This parses a 4-digit numeric string slice into `u16`, or dies trying.
-const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
-	if one.is_ascii_digit() && two.is_ascii_digit() {
-		Ok((one & 0x0f) * 10 + (two & 0x0f))
-	}
-	else { Err(Utc2kError::Invalid) }
-}
-
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
 /// # Parse Date From Seconds.
@@ -1175,6 +1246,36 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	((year - 2000) as u8, month as u8, day as u8)
 }
 
+/// # Parse Parts From Date.
+fn parse_parts_from_date(src: &[u8; 10]) -> PartsResult {
+	Ok(maybe_carry_over_parts(
+		src[..4].iter()
+			.try_fold(0, |a, c|
+				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+				else { Err(Utc2kError::Invalid) }
+			)?,
+		parse_u8_str(src[5], src[6])?,
+		parse_u8_str(src[8], src[9])?,
+		0, 0, 0,
+	))
+}
+
+/// # Parse Parts From Date/Time.
+fn parse_parts_from_datetime(src: &[u8; 19]) -> PartsResult {
+	Ok(maybe_carry_over_parts(
+		src[..4].iter()
+			.try_fold(0, |a, c|
+				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+				else { Err(Utc2kError::Invalid) }
+			)?,
+		parse_u8_str(src[5], src[6])?,
+		parse_u8_str(src[8], src[9])?,
+		parse_u8_str(src[11], src[12])?,
+		parse_u8_str(src[14], src[15])?,
+		parse_u8_str(src[17], src[18])?,
+	))
+}
+
 #[allow(clippy::cast_possible_truncation)] // It fits.
 /// # Parse Time From Seconds.
 ///
@@ -1202,6 +1303,16 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 		else { 0 };
 
 	(hh, mm, src as u8)
+}
+
+/// # Parse 2 Digits.
+///
+/// This parses a 2-digit numeric string slice into `u8`, or dies trying.
+const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
+	if one.is_ascii_digit() && two.is_ascii_digit() {
+		Ok((one & 0x0f) * 10 + (two & 0x0f))
+	}
+	else { Err(Utc2kError::Invalid) }
 }
 
 #[allow(clippy::too_many_lines)] // We have a century to cover!
