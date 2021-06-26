@@ -1008,11 +1008,6 @@ const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, 
 	(y, m as u8, d as u8)
 }
 
-#[inline]
-#[must_use]
-/// # Is Leap Year?
-const fn leap_year(y: u16) -> bool { (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 }
-
 #[must_use]
 /// # Days in Month.
 ///
@@ -1023,7 +1018,7 @@ const fn month_days(y: u16, m: u8) -> u8 {
 		1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
 		4 |6 |9 | 11 => 30,
 		2 =>
-			if leap_year(y) { 29 }
+			if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 { 29 }
 			else { 28 },
 		_ => 0,
 	}
