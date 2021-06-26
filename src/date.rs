@@ -627,7 +627,7 @@ impl Utc2k {
 	/// ```
 	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
 		(
-			self.y as u16 + 2000,
+			self.year(),
 			self.m,
 			self.d,
 			self.hh,
@@ -652,9 +652,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.ymd(), (2010, 5, 5));
 	/// ```
-	pub const fn ymd(self) -> (u16, u8, u8) {
-		(self.y as u16 + 2000, self.m, self.d)
-	}
+	pub const fn ymd(self) -> (u16, u8, u8) { (self.year(), self.m, self.d) }
 
 	#[inline]
 	#[must_use]
@@ -706,6 +704,7 @@ impl Utc2k {
 		time
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Year.
 	///
@@ -721,6 +720,7 @@ impl Utc2k {
 	/// ```
 	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
 
+	#[inline]
 	#[must_use]
 	/// # Month.
 	///
@@ -767,6 +767,7 @@ impl Utc2k {
 		}
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Day.
 	///
@@ -782,6 +783,7 @@ impl Utc2k {
 	/// ```
 	pub const fn day(self) -> u8 { self.d }
 
+	#[inline]
 	#[must_use]
 	/// # Hour.
 	///
@@ -797,6 +799,7 @@ impl Utc2k {
 	/// ```
 	pub const fn hour(self) -> u8 { self.hh }
 
+	#[inline]
 	#[must_use]
 	/// # Minute.
 	///
@@ -812,6 +815,7 @@ impl Utc2k {
 	/// ```
 	pub const fn minute(self) -> u8 { self.mm }
 
+	#[inline]
 	#[must_use]
 	/// # Second.
 	///
