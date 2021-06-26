@@ -474,26 +474,74 @@ try_from_unixtime!(i32, u64, i64, usize, isize);
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	/// # Parse String.
+	///
+	/// This will attempt to construct a [`Utc2k`] from a date/time string.
+	///
+	/// If the length is exactly `10`, it will try to parse as a date in
+	/// `YYYY-MM-DD` format (assuming midnight for the time).
+	///
+	/// If the length is `>= 19`, it will try to parse as a date/time in
+	/// `YYYY-MM-DD HH:MM:SS` format.
+	///
+	/// The in-between bits don't really matter so long as they're valid ASCII,
+	/// but the numbers have to be in the right place or it will fail. (For
+	/// example, both "2020-01-01" and "2020/01/01" will parse.)
+	///
+	/// As with all the other methods, dates outside the `2000..=2099` range
+	/// will be saturated (non-failing), and overflows will be carried over to
+	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2021/06/25").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// let date = Utc2k::try_from("2021-06-25 13:15:25.0000").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// assert!(Utc2k::try_from("Applebutter").is_err());
+	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
 		let bytes = src.as_bytes();
 
 		// It has to be at least 19 characters long.
-		if bytes.len() >= 19 && bytes.is_ascii() {
-			Ok(Self::new(
-				bytes[..4].iter()
-					.try_fold(0, |a, c|
-						if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
-						else { Err(Utc2kError::Invalid) }
-					)?,
-				parse_u8_str(bytes[5], bytes[6])?,
-				parse_u8_str(bytes[8], bytes[9])?,
-				parse_u8_str(bytes[11], bytes[12])?,
-				parse_u8_str(bytes[14], bytes[15])?,
-				parse_u8_str(bytes[17], bytes[18])?,
-			))
+		if bytes.is_ascii() {
+			if bytes.len() >= 19 {
+				return Ok(Self::new(
+					bytes[..4].iter()
+						.try_fold(0, |a, c|
+							if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+							else { Err(Utc2kError::Invalid) }
+						)?,
+					parse_u8_str(bytes[5], bytes[6])?,
+					parse_u8_str(bytes[8], bytes[9])?,
+					parse_u8_str(bytes[11], bytes[12])?,
+					parse_u8_str(bytes[14], bytes[15])?,
+					parse_u8_str(bytes[17], bytes[18])?,
+				));
+			}
+			// If the length is exactly ten, we can try it as just the date.
+			else if bytes.len() == 10 {
+				return Ok(Self::new(
+					bytes[..4].iter()
+						.try_fold(0, |a, c|
+							if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+							else { Err(Utc2kError::Invalid) }
+						)?,
+					parse_u8_str(bytes[5], bytes[6])?,
+					parse_u8_str(bytes[8], bytes[9])?,
+					0, 0, 0,
+				));
+			}
 		}
-		else { Err(Utc2kError::Invalid) }
+
+		Err(Utc2kError::Invalid)
 	}
 }
 
