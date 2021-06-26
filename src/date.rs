@@ -283,7 +283,6 @@ impl FmtUtc2k {
 		}
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
 	#[inline]
 	/// # Set Unixtime.
 	///
@@ -1114,7 +1113,6 @@ const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
-#[allow(clippy::many_single_char_names)]
 /// # Parse Date From Seconds.
 ///
 /// This parses the date portion of a date/time timestamp using the same
