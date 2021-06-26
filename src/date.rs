@@ -430,14 +430,15 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
 	fn from(src: u32) -> Self {
-		if src < Self::MIN_UNIXTIME { return Self::min(); }
-		else if src > Self::MAX_UNIXTIME { return Self::max(); }
+		if src < Self::MIN_UNIXTIME { Self::min() }
+		else if src > Self::MAX_UNIXTIME { Self::max() }
+		else {
+			// Tease out the date parts with a lot of terrible math.
+			let (y, m, d) = parse_date_seconds(src / DAY_IN_SECONDS);
+			let (hh, mm, ss) = parse_time_seconds(src % DAY_IN_SECONDS);
 
-		// Tease out the date parts with a lot of terrible math.
-		let (y, m, d) = parse_date_seconds(src / DAY_IN_SECONDS);
-		let (hh, mm, ss) = parse_time_seconds(src % DAY_IN_SECONDS);
-
-		Self { y, m, d, hh, mm, ss }
+			Self { y, m, d, hh, mm, ss }
+		}
 	}
 }
 
@@ -720,6 +721,27 @@ impl Utc2k {
 	/// ```
 	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
 
+	#[must_use]
+	/// # Is Leap Year?
+	///
+	/// This returns `true` if this date is/was in a leap year.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
+	/// assert!(date.leap_year());
+	///
+	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
+	/// assert!(! date.leap_year());
+	/// ```
+	pub const fn leap_year(self) -> bool {
+		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
+	}
+
 	#[inline]
 	#[must_use]
 	/// # Month.
@@ -887,27 +909,6 @@ impl Utc2k {
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
 	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
-
-	#[must_use]
-	/// # Is Leap Year?
-	///
-	/// This returns `true` if this date is/was in a leap year.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
-	///
-	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
-	/// assert!(date.leap_year());
-	///
-	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
-	/// assert!(! date.leap_year());
-	/// ```
-	pub const fn leap_year(self) -> bool {
-		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
-	}
 }
 
 
