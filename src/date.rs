@@ -303,10 +303,10 @@ impl FmtUtc2k {
 	/// let mut fmt = FmtUtc2k::from(Utc2k::MIN_UNIXTIME);
 	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	///
-	/// fmt.set_timestamp(Utc2k::MAX_UNIXTIME);
+	/// fmt.set_unixtime(Utc2k::MAX_UNIXTIME);
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
-	pub fn set_timestamp(&mut self, src: u32) { self.set_datetime(Utc2k::from(src)); }
+	pub fn set_unixtime(&mut self, src: u32) { self.set_datetime(Utc2k::from(src)); }
 }
 
 /// ## Getters.
