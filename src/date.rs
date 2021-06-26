@@ -252,7 +252,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
 	/// ```
 	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		let (y, m, d, hh, mm, ss) = carry_over_parts(y, u16::from(m), u16::from(d), u16::from(hh), u16::from(mm), u16::from(ss));
+		let (y, m, d, hh, mm, ss) = maybe_carry_over_parts(y, m, d, hh, mm, ss);
 		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
 	}
 
@@ -560,7 +560,7 @@ impl Utc2k {
 	/// assert_eq!(date.to_string(), "2010-05-05 16:30:01");
 	/// ```
 	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
-		let (y, m, d, hh, mm, ss) = carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16);
+		let (y, m, d, hh, mm, ss) = maybe_carry_over_parts(y, m, d, hh, mm, ss);
 		Self {
 			y: (y - 2000) as u8,
 			m, d, hh, mm, ss
@@ -851,6 +851,29 @@ impl Utc2k {
 
 
 
+#[must_use]
+/// # Maybe Carry Over Parts.
+///
+/// This checks to see if all of the date/time parts are within range. If they
+/// are, it simply passes them back. If they aren't, it sends them to
+/// [`carry_over_parts`] so they can be adjusted.
+const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
+-> (u16, u8, u8, u8, u8, u8) {
+	// Everything is in range!
+	if
+		1999 < y && y < 2100 &&
+		0 < m && m < 13 &&
+		0 < d &&
+		hh < 24 &&
+		mm < 60 &&
+		ss < 60 &&
+		d <= month_days(y, m)
+	{ (y, m, d, hh, mm, ss) }
+	else {
+		carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16)
+	}
+}
+
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)] // It's OK.
 #[inline]
@@ -861,7 +884,8 @@ impl Utc2k {
 /// 13 months, say, that becomes 1 year and 1 month.
 ///
 /// Dates outside the century will be capped accordingly.
-const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u16) -> (u16, u8, u8, u8, u8, u8) {
+const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u16)
+-> (u16, u8, u8, u8, u8, u8) {
 	// Seconds to minutes.
 	if ss > 59 {
 		let div = ss / 60;
