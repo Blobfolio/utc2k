@@ -1087,13 +1087,13 @@ impl Utc2k {
 ///
 /// This recurses in cases where days overflow as each new month brings a new
 /// maximum number of days.
-const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, u8) {
+const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u16) -> (u16, u8, u8) {
 	// There has to be a month.
 	if m == 0 { m = 1; }
 	// Months to Years.
 	else if m > 12 {
 		let div = m / 12;
-		y += div;
+		y += div as u16;
 		m -= div * 12;
 	}
 
@@ -1101,7 +1101,7 @@ const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, 
 	if d == 0 { d = 1; }
 	else {
 		// Days to Months.
-		let size = month_days(y, m as u8) as u16;
+		let size = month_days(y, m) as u16;
 		if d > size {
 			m += 1;
 			d -= size;
@@ -1111,7 +1111,7 @@ const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, 
 		}
 	}
 
-	(y, m as u8, d as u8)
+	(y, m, d as u8)
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
@@ -1124,12 +1124,16 @@ const fn carry_over_date_parts(mut y: u16, mut m: u16, mut d: u16) -> (u16, u8, 
 /// 13 months, say, that becomes 1 year and 1 month.
 ///
 /// Dates outside the century will be capped accordingly.
-const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u16)
+///
+/// Months and seconds are able to remain `u8` as they're carried over first
+/// (and won't overflow). The other non-year parts are upcast to `u16` just in
+/// case.
+const fn carry_over_parts(y: u16, m: u8, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u8)
 -> DateTimeParts {
 	// Seconds to minutes.
 	if ss > 59 {
 		let div = ss / 60;
-		mm += div;
+		mm += div as u16;
 		ss -= div * 60;
 	}
 	// Minutes to hours.
@@ -1151,7 +1155,7 @@ const fn carry_over_parts(y: u16, m: u16, mut d: u16, mut hh: u16, mut mm: u16, 
 	// Did we overflow?
 	if y > 2099 { (2099, 12, 31, 23, 59, 59) }
 	else if y < 2000 { (2000, 1, 1, 0, 0, 0) }
-	else { (y, m, d, hh as u8, mm as u8, ss as u8) }
+	else { (y, m, d, hh as u8, mm as u8, ss) }
 }
 
 #[must_use]
@@ -1173,7 +1177,7 @@ const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
 		(d < 29 || d <= month_days(y, m))
 	{ (y, m, d, hh, mm, ss) }
 	else {
-		carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16)
+		carry_over_parts(y, m, d as u16, hh as u16, mm as u16, ss)
 	}
 }
 
