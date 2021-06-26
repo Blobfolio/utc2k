@@ -928,7 +928,7 @@ const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
 		hh < 24 &&
 		mm < 60 &&
 		ss < 60 &&
-		d <= month_days(y, m)
+		(d < 29 || d <= month_days(y, m))
 	{ (y, m, d, hh, mm, ss) }
 	else {
 		carry_over_parts(y, m as u16, d as u16, hh as u16, mm as u16, ss as u16)
