@@ -169,10 +169,10 @@ impl TryFrom<&str> for FmtUtc2k {
 /// ## Min/Max.
 impl FmtUtc2k {
 	/// # Minimum Date/Time.
-	pub const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
+	pub(crate) const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
 
 	/// # Maximum Date/Time.
-	pub const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
+	pub(crate) const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
 
 	#[inline]
 	#[must_use]
@@ -223,7 +223,7 @@ impl FmtUtc2k {
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
 	///
 	/// ## Examples
 	///
@@ -248,7 +248,7 @@ impl FmtUtc2k {
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
 	///
 	/// ## Examples
 	///
