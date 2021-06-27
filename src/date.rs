@@ -1216,7 +1216,7 @@ const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
 const fn month_days(y: u16, m: u8) -> u8 {
 	match m {
 		1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-		4 |6 |9 | 11 => 30,
+		4 | 6 | 9 | 11 => 30,
 		_ =>
 			if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 { 29 }
 			else { 28 },
