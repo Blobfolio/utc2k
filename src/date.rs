@@ -1088,8 +1088,16 @@ impl Utc2k {
 /// This recurses in cases where days overflow as each new month brings a new
 /// maximum number of days.
 const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u16) -> (u16, u8, u8) {
-	// There has to be a month.
-	if m == 0 { m = 1; }
+	// We can abort early if the year is super-old. Even with carry-over
+	// addition, it won't reach 2000.
+	if y < 1970 { return (1970, 1, 1) }
+
+	// There has to be a month. If there isn't, that just means December of the
+	// previous year.
+	if m == 0 {
+		y -= 1;
+		m = 12;
+	}
 	// Months to Years.
 	else if m > 12 {
 		let div = m / 12;
@@ -1097,12 +1105,26 @@ const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u16) -> (u16, u8, u
 		m -= div * 12;
 	}
 
-	// There has to be a day.
-	if d == 0 { d = 1; }
-	else {
+	// Likewise there has to be a day. If there isn't, it's the same as the
+	// last day of the previous month.
+	if d == 0 {
+		// If we're in January, we need to carry all the parts.
+		if m == 1 {
+			y -= 1;
+			m = 12;
+			d = 31;
+		}
+		// Otherwise just minus the month and set the day.
+		else {
+			m -= 1;
+			d = month_days(y, m) as u16;
+		}
+	}
+	// Days might not fit.
+	else if 28 < d {
 		// Days to Months.
 		let size = month_days(y, m) as u16;
-		if d > size {
+		if size < d {
 			m += 1;
 			d -= size;
 
@@ -1543,6 +1565,24 @@ mod tests {
 		assert_eq!(
 			carry_over_parts(2099, 25, 99, 1, 1, 1),
 			(2099, 12, 31, 23, 59, 59)
+		);
+
+		// Check double zero.
+		assert_eq!(
+			carry_over_parts(2010, 0, 0, 1, 1, 1),
+			(2009, 11, 30, 1, 1, 1)
+		);
+
+		// Check zero overflow.
+		assert_eq!(
+			carry_over_parts(2010, 0, 32, 1, 1, 1),
+			(2010, 1, 1, 1, 1, 1)
+		);
+
+		// Another zero quirk.
+		assert_eq!(
+			carry_over_parts(2010, 1, 0, 1, 1, 1),
+			(2009, 12, 31, 1, 1, 1)
 		);
 	}
 
