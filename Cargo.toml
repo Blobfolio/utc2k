@@ -22,7 +22,7 @@ brunch = "0.1.*"
 [dev-dependencies.chrono]
 version = "0.4.*"
 default-features = false
-features = [ "clock", "std" ]
+features = [ "std" ]
 
 [[bench]]
 name = "d_utc2k"
