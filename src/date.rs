@@ -15,7 +15,13 @@ use std::{
 	cmp::Ordering,
 	convert::TryFrom,
 	fmt,
-	ops::Deref,
+	ops::{
+		Add,
+		AddAssign,
+		Deref,
+		Sub,
+		SubAssign,
+	},
 };
 
 
@@ -409,6 +415,18 @@ pub struct Utc2k {
 	ss: u8,
 }
 
+impl Add<u32> for Utc2k {
+	type Output = Self;
+	fn add(self, other: u32) -> Self {
+		Self::from(self.unixtime().saturating_add(other))
+	}
+}
+
+impl AddAssign<u32> for Utc2k {
+	#[inline]
+	fn add_assign(&mut self, other: u32) { *self = *self + other; }
+}
+
 impl Default for Utc2k {
 	#[inline]
 	fn default() -> Self { Self::min() }
@@ -474,6 +492,18 @@ impl Ord for Utc2k {
 impl PartialOrd for Utc2k {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+impl Sub<u32> for Utc2k {
+	type Output = Self;
+	fn sub(self, other: u32) -> Self {
+		Self::from(self.unixtime().saturating_sub(other))
+	}
+}
+
+impl SubAssign<u32> for Utc2k {
+	#[inline]
+	fn sub_assign(&mut self, other: u32) { *self = *self - other; }
 }
 
 try_from_unixtime!(i32, u64, i64, usize, isize);
@@ -605,37 +635,6 @@ impl Utc2k {
 	///
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from(unixtime()) }
-
-	/// # From Unixtime (Checked).
-	///
-	/// This can be used instead of the usual `From<u32>` if you'd like to
-	/// trigger an error when the timestamp is out of range (rather than just
-	/// saturating it).
-	///
-	/// ## Errors
-	///
-	/// An error will be returned if the timestamp is less than [`Utc2k::MIN_UNIXTIME`]
-	/// or greater than [`Utc2k::MAX_UNIXTIME`].
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// // Too old.
-	/// assert!(Utc2k::checked_from_unixtime(0).is_err());
-	///
-	/// // Too new.
-	/// assert!(Utc2k::checked_from_unixtime(u32::MAX).is_err());
-	///
-	/// // This fits.
-	/// assert!(Utc2k::checked_from_unixtime(Utc2k::MIN_UNIXTIME).is_ok());
-	/// ```
-	pub fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
-		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
-		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
-		else { Ok(Self::from(src)) }
-	}
 }
 
 /// ## String Parsing.
@@ -1068,6 +1067,90 @@ impl Utc2k {
 		self.seconds_from_midnight() +
 		DAY_IN_SECONDS * u32::from(self.d - 1) +
 		month_seconds(self.m, leap)
+	}
+}
+
+/// ## Checked Operations.
+impl Utc2k {
+	/// # Checked Add.
+	///
+	/// Return a new [`Utc2k`] instance set _n_ seconds into the future from
+	/// this one, returning `none` (rather than saturating) on overflow.
+	///
+	/// If you'd rather saturate addition, you can just use [`std::ops::Add`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::max();
+	/// assert!(date.checked_add(1).is_none());
+	///
+	/// let date = Utc2k::new(2010, 1, 1, 0, 0, 0);
+	/// let added = date.checked_add(86_413).unwrap();
+	/// assert_eq!(added.to_string(), "2010-01-02 00:00:13");
+	/// ```
+	pub fn checked_add(self, secs: u32) -> Option<Self> {
+		self.unixtime().checked_add(secs)
+			.filter(|s| s <= &Self::MAX_UNIXTIME)
+			.map(Self::from)
+	}
+
+	/// # From Unixtime (Checked).
+	///
+	/// This can be used instead of the usual `From<u32>` if you'd like to
+	/// trigger an error when the timestamp is out of range (rather than just
+	/// saturating it).
+	///
+	/// ## Errors
+	///
+	/// An error will be returned if the timestamp is less than [`Utc2k::MIN_UNIXTIME`]
+	/// or greater than [`Utc2k::MAX_UNIXTIME`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // Too old.
+	/// assert!(Utc2k::checked_from_unixtime(0).is_err());
+	///
+	/// // Too new.
+	/// assert!(Utc2k::checked_from_unixtime(u32::MAX).is_err());
+	///
+	/// // This fits.
+	/// assert!(Utc2k::checked_from_unixtime(Utc2k::MIN_UNIXTIME).is_ok());
+	/// ```
+	pub fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
+		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
+		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
+		else { Ok(Self::from(src)) }
+	}
+
+	/// # Checked Sub.
+	///
+	/// Return a new [`Utc2k`] instance set _n_ seconds before this one,
+	/// returning `none` (rather than saturating) on overflow.
+	///
+	/// If you'd rather saturate subtraction, you can just use [`std::ops::Sub`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::min();
+	/// assert!(date.checked_sub(1).is_none());
+	///
+	/// let date = Utc2k::new(2010, 1, 1, 0, 0, 0);
+	/// let subbed = date.checked_sub(86_413).unwrap();
+	/// assert_eq!(subbed.to_string(), "2009-12-30 23:59:47");
+	/// ```
+	pub fn checked_sub(self, secs: u32) -> Option<Self> {
+		self.unixtime().checked_sub(secs)
+			.filter(|s| s >= &Self::MIN_UNIXTIME)
+			.map(Self::from)
 	}
 }
 
