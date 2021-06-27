@@ -437,8 +437,8 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
 	fn from(src: u32) -> Self {
-		if src < Self::MIN_UNIXTIME { Self::min() }
-		else if src > Self::MAX_UNIXTIME { Self::max() }
+		if src <= Self::MIN_UNIXTIME { Self::min() }
+		else if src >= Self::MAX_UNIXTIME { Self::max() }
 		else {
 			// Tease out the date parts with a lot of terrible math.
 			let (y, m, d) = parse_date_seconds(src / DAY_IN_SECONDS);
@@ -957,7 +957,6 @@ impl Utc2k {
 		}
 	}
 
-	#[allow(clippy::cast_lossless)]
 	#[must_use]
 	/// # Ordinal.
 	///
@@ -993,11 +992,10 @@ impl Utc2k {
 				_ => 0,
 			};
 
-		if self.m > 2 && self.leap_year() { days + 1 }
+		if 2 < self.m && self.leap_year() { days + 1 }
 		else { days }
 	}
 
-	#[allow(clippy::cast_lossless)]
 	#[inline]
 	#[must_use]
 	/// # Seconds From Midnight.
@@ -1063,19 +1061,13 @@ impl Utc2k {
 	/// ```
 	pub fn unixtime(self) -> u32 {
 		// Start with all the seconds prior to the year.
-		let (mut time, leap) = year_size(self.y);
+		let (time, leap) = year_size(self.y);
 
 		// Add up all the seconds since the start of the year.
-		time += self.seconds_from_midnight() +
-			DAY_IN_SECONDS * u32::from(self.d - 1) +
-			month_seconds(self.m);
-
-		// Factor in an extra leap day?
-		if leap && self.m > 2 {
-			time += DAY_IN_SECONDS;
-		}
-
-		time
+		time +
+		self.seconds_from_midnight() +
+		DAY_IN_SECONDS * u32::from(self.d - 1) +
+		month_seconds(self.m, leap)
 	}
 }
 
@@ -1217,9 +1209,8 @@ const fn month_days(y: u16, m: u8) -> u8 {
 	match m {
 		1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
 		4 | 6 | 9 | 11 => 30,
-		_ =>
-			if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 { 29 }
-			else { 28 },
+		2 if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 => 29,
+		_ => 28,
 	}
 }
 
@@ -1230,8 +1221,8 @@ const fn month_days(y: u16, m: u8) -> u8 {
 /// given month.
 ///
 /// Note: this does not consider February leap days.
-const fn month_seconds(m: u8) -> u32 {
-	match m {
+const fn month_seconds(m: u8, leap: bool) -> u32 {
+	let seconds = match m {
 		2 => 2_678_400,
 		3 => 5_097_600,
 		4 => 7_776_000,
@@ -1244,7 +1235,10 @@ const fn month_seconds(m: u8) -> u32 {
 		11 => 26_265_600,
 		12 => 28_857_600,
 		_ => 0,
-	}
+	};
+
+	if 2 < m && leap { seconds + DAY_IN_SECONDS }
+	else { seconds }
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
@@ -1264,17 +1258,17 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	let h = 100 * z - 25;
 	let mut a = h / 3_652_425;
 	a -= a / 4;
-	let mut year = (100 * a + h) / 36_525;
+	let year = (100 * a + h) / 36_525;
 	a += z - 365 * year - year / 4;
-	let mut month = (5 * a + 456) / 153;
-	let day = a - (153 * month - 457) / 5;
+	let month = (5 * a + 456) / 153;
+	let day = (a - (153 * month - 457) / 5) as u8;
 
 	if month > 12 {
-		year += 1;
-		month -= 12;
+		((year - 1999) as u8, month as u8 - 12, day)
 	}
-
-	((year - 2000) as u8, month as u8, day as u8)
+	else {
+		((year - 2000) as u8, month as u8, day)
+	}
 }
 
 /// # Parse Parts From Date.
