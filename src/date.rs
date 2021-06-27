@@ -1090,7 +1090,7 @@ impl Utc2k {
 const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u16) -> (u16, u8, u8) {
 	// We can abort early if the year is super-old. Even with carry-over
 	// addition, it won't reach 2000.
-	if y < 1970 { return (1970, 1, 1) }
+	if y < 1970 { return (1970, 1, 1); }
 
 	// There has to be a month. If there isn't, that just means December of the
 	// previous year.
@@ -1468,6 +1468,27 @@ mod tests {
 		Utc,
 	};
 
+	macro_rules! range_test {
+		($buf:ident, $i:ident) => (
+			let u = Utc2k::from($i);
+			let c = Utc.timestamp($i as i64, 0);
+			$buf.set_datetime(u);
+
+			// Make sure the timestamp comes back the same.
+			assert_eq!($i, u.unixtime(), "Timestamp out does not match timestamp in!");
+
+			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
+			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", $i);
+			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", $i);
+			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", $i);
+			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", $i);
+			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", $i);
+			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", $i);
+
+			assert_eq!($buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", $i);
+		);
+	}
+
 	#[test]
 	#[ignore]
 	/// # Test Full Unixtime Range for `FmtUtc2k` and `Utc2k`.
@@ -1480,22 +1501,7 @@ mod tests {
 	fn unixtime_range() {
 		let mut buf = FmtUtc2k::default();
 		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-			let u = Utc2k::from(i);
-			let c = Utc.timestamp(i as i64, 0);
-			buf.set_datetime(u);
-
-			// Make sure the timestamp comes back the same.
-			assert_eq!(i, u.unixtime(), "Timestamp out does not match timestamp in!");
-
-			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
-			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
-			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", i);
-			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
-			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
-			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
-			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", i);
-
-			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
+			range_test!(buf, i);
 		}
 	}
 
@@ -1507,22 +1513,7 @@ mod tests {
 	fn limited_unixtime_range() {
 		let mut buf = FmtUtc2k::default();
 		for i in (Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).step_by(97) {
-			let u = Utc2k::from(i);
-			let c = Utc.timestamp(i as i64, 0);
-			buf.set_datetime(u);
-
-			// Make sure the timestamp comes back the same.
-			assert_eq!(i, u.unixtime(), "Timestamp out does not match timestamp in!");
-
-			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", i);
-			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", i);
-			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", i);
-			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", i);
-			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", i);
-			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", i);
-			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", i);
-
-			assert_eq!(buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", i);
+			range_test!(buf, i);
 		}
 	}
 
@@ -1531,58 +1522,26 @@ mod tests {
 	///
 	/// This helps ensure we're doing the math correctly.
 	fn carries() {
-		// Overage of one everywhere.
-		assert_eq!(
-			carry_over_parts(2000, 13, 32, 24, 60, 60),
-			(2001, 2, 2, 1, 1, 0)
-		);
+		macro_rules! carry {
+			($(($y:literal, $m:literal, $d:literal, $hh:literal, $mm:literal, $ss:literal) ($y2:literal, $m2:literal, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal) $fail:literal),+) => ($(
+				assert_eq!(
+					carry_over_parts($y, $m, $d, $hh, $mm, $ss),
+					($y2, $m2, $d2, $hh2, $mm2, $ss2),
+					$fail
+				);
+			)+);
+		}
 
-		// Large month/day overages.
-		assert_eq!(
-			carry_over_parts(2000, 25, 99, 1, 1, 1),
-			(2002, 4, 9, 1, 1, 1)
-		);
-
-		// Large time overflows.
-		assert_eq!(
-			carry_over_parts(2000, 1, 1, 99, 99, 99),
-			(2000, 1, 5, 4, 40, 39)
-		);
-
-		// Max overflows!
-		assert_eq!(
-			carry_over_parts(2000, 255, 255, 255, 255, 255),
-			(2021, 11, 20, 19, 19, 15)
-		);
-
-		// Saturating low.
-		assert_eq!(
-			carry_over_parts(1970, 25, 99, 1, 1, 1),
-			(2000, 1, 1, 0, 0, 0)
-		);
-
-		// Saturating high.
-		assert_eq!(
-			carry_over_parts(2099, 25, 99, 1, 1, 1),
-			(2099, 12, 31, 23, 59, 59)
-		);
-
-		// Check double zero.
-		assert_eq!(
-			carry_over_parts(2010, 0, 0, 1, 1, 1),
-			(2009, 11, 30, 1, 1, 1)
-		);
-
-		// Check zero overflow.
-		assert_eq!(
-			carry_over_parts(2010, 0, 32, 1, 1, 1),
-			(2010, 1, 1, 1, 1, 1)
-		);
-
-		// Another zero quirk.
-		assert_eq!(
-			carry_over_parts(2010, 1, 0, 1, 1, 1),
-			(2009, 12, 31, 1, 1, 1)
+		carry!(
+			(2000, 13, 32, 24, 60, 60) (2001, 2, 2, 1, 1, 0) "Overage of one everywhere.",
+			(2000, 25, 99, 1, 1, 1) (2002, 4, 9, 1, 1, 1) "Large month/day overages.",
+			(2000, 1, 1, 99, 99, 99) (2000, 1, 5, 4, 40, 39) "Large time overflows.",
+			(2000, 255, 255, 255, 255, 255) (2021, 11, 20, 19, 19, 15) "Max overflows.",
+			(1970, 25, 99, 1, 1, 1) (2000, 1, 1, 0, 0, 0) "Saturating low.",
+			(2099, 25, 99, 1, 1, 1) (2099, 12, 31, 23, 59, 59) "Saturating high.",
+			(2010, 0, 0, 1, 1, 1) (2009, 11, 30, 1, 1, 1) "Zero month, zero day.",
+			(2010, 0, 32, 1, 1, 1) (2010, 1, 1, 1, 1, 1) "Zero month, overflowing day.",
+			(2010, 1, 0, 1, 1, 1) (2009, 12, 31, 1, 1, 1) "Zero day into zero month."
 		);
 	}
 
