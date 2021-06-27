@@ -6,7 +6,10 @@ UTC2K is a fast and lean date/time library that only cares about UTC happenings 
 With that very significant constraint in mind, UTC2K can:
 
 * Convert to/from Unix timestamps (`u32`);
-* Convert to/from date strings of the `YYYY-MM-DD hh:mm:ss` variety;
+* Convert to/from date strings of the `YYYY-MM-DD` and `YYYY-MM-DD hh:mm:ss` varieties;
+* Perform addition/subtraction (in seconds), checked or saturating;
+* Calculate the date's ordinal;
+* Calculate the number of seconds from midnight;
 
 That's it!
 
