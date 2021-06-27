@@ -1079,6 +1079,11 @@ impl Utc2k {
 	}
 }
 
+impl From<Utc2k> for u32 {
+	#[inline]
+	fn from(src: Utc2k) -> Self { src.unixtime() }
+}
+
 
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
