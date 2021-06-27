@@ -107,9 +107,11 @@ utc2k = "0.2.*"
 
 
 
+mod abacus;
 mod date;
 mod error;
 
+pub(crate) use abacus::Abacus;
 pub use date::{
 	FmtUtc2k,
 	Utc2k,
