@@ -79,7 +79,7 @@ Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
 ```ignore,text
 [dependencies]
-utc2k = "0.1.*"
+utc2k = "0.2.*"
 ```
 */
 
