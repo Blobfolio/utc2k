@@ -2,7 +2,10 @@
 # UTC2K
 */
 
+#![allow(clippy::shadow_unrelated)]
+
 use crate::{
+	Abacus,
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
 	JULIAN_EPOCH,
@@ -33,14 +36,6 @@ const DD: &[u8; 200] = b"\
 	4041424344454647484950515253545556575859\
 	6061626364656667686970717273747576777879\
 	8081828384858687888990919293949596979899";
-
-
-
-/// # All the Date/Time Parts.
-type DateTimeParts = (u16, u8, u8, u8, u8, u8);
-
-/// # The Fallible Version of Date/Time Parts.
-type PartsResult = Result<DateTimeParts, Utc2kError>;
 
 
 
@@ -169,10 +164,10 @@ impl TryFrom<&str> for FmtUtc2k {
 /// ## Min/Max.
 impl FmtUtc2k {
 	/// # Minimum Date/Time.
-	pub const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
+	pub(crate) const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
 
 	/// # Maximum Date/Time.
-	pub const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
+	pub(crate) const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
 
 	#[inline]
 	#[must_use]
@@ -223,7 +218,7 @@ impl FmtUtc2k {
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
 	///
 	/// ## Examples
 	///
@@ -241,14 +236,13 @@ impl FmtUtc2k {
 		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Set Parts.
 	///
 	/// This can be used to recycle an existing buffer.
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
+	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
 	///
 	/// ## Examples
 	///
@@ -266,8 +260,8 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
 	/// ```
 	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		let (y, m, d, hh, mm, ss) = maybe_carry_over_parts(y, m, d, hh, mm, ss);
-		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
+		let (y, m, d, hh, mm, ss) = Abacus::new(y, m, d, hh, mm, ss).parts();
+		self.set_parts_unchecked(y, m, d, hh, mm, ss);
 	}
 
 	/// # Set Parts (Unchecked).
@@ -418,7 +412,9 @@ pub struct Utc2k {
 impl Add<u32> for Utc2k {
 	type Output = Self;
 	fn add(self, other: u32) -> Self {
-		Self::from(self.unixtime().saturating_add(other))
+		let mut tmp = Abacus::from(self);
+		tmp += other;
+		Self::from(tmp)
 	}
 }
 
@@ -467,6 +463,13 @@ impl From<u32> for Utc2k {
 	}
 }
 
+impl From<Abacus> for Utc2k {
+	fn from(src: Abacus) -> Self {
+		let (y, m, d, hh, mm, ss) = src.parts();
+		Self { y, m, d, hh, mm, ss }
+	}
+}
+
 impl Ord for Utc2k {
 	fn cmp(&self, other: &Self) -> Ordering {
 		// Work our way down until there's a difference!
@@ -511,7 +514,6 @@ try_from_unixtime!(i32, u64, i64, usize, isize);
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
-	#[allow(clippy::cast_possible_truncation)]
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -541,20 +543,17 @@ impl TryFrom<&str> for Utc2k {
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
 		let bytes = src.as_bytes();
-		let (y, m, d, hh, mm, ss) =
-			if bytes.len() >= 19 {
-				parse_parts_from_datetime(unsafe {
-					&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-				})
-			}
-			else if bytes.len() >= 10 {
-				parse_parts_from_date(unsafe {
-					&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-				})
-			}
-			else { Err(Utc2kError::Invalid) }?;
-
-		Ok(Self { y: (y - 2000) as u8, m, d, hh, mm, ss})
+		if bytes.len() >= 19 {
+			parse_parts_from_datetime(unsafe {
+				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
+			})
+		}
+		else if bytes.len() >= 10 {
+			parse_parts_from_date(unsafe {
+				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
+			})
+		}
+		else { Err(Utc2kError::Invalid) }
 	}
 }
 
@@ -601,7 +600,7 @@ impl Utc2k {
 
 /// ## Instantiation.
 impl Utc2k {
-	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[inline]
 	#[must_use]
 	/// # New (From Parts).
 	///
@@ -621,12 +620,8 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.to_string(), "2010-05-05 16:30:01");
 	/// ```
-	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
-		let (y, m, d, hh, mm, ss) = maybe_carry_over_parts(y, m, d, hh, mm, ss);
-		Self {
-			y: (y - 2000) as u8,
-			m, d, hh, mm, ss
-		}
+	pub fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
+		Self::from(Abacus::new(y, m, d, hh, mm, ss))
 	}
 
 	#[inline]
@@ -639,7 +634,6 @@ impl Utc2k {
 
 /// ## String Parsing.
 impl Utc2k {
-	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
@@ -676,18 +670,13 @@ impl Utc2k {
 	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
 		let bytes: &[u8] = src.as_bytes();
 		if bytes.len() >= 19 {
-			let (y, m, d, hh, mm, ss) = parse_parts_from_datetime(unsafe {
+			parse_parts_from_datetime(unsafe {
 				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-			})?;
-			Ok(Self {
-				y: (y - 2000) as u8,
-				m, d, hh, mm, ss
 			})
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
@@ -727,12 +716,8 @@ impl Utc2k {
 	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
 		let bytes: &[u8] = src.as_bytes();
 		if bytes.len() >= 10 {
-			let (y, m, d, hh, mm, ss) = parse_parts_from_date(unsafe {
+			parse_parts_from_date(unsafe {
 				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-			})?;
-			Ok(Self {
-				y: (y - 2000) as u8,
-				m, d, hh, mm, ss
 			})
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -758,7 +743,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 4, 16, 30, 1);
 	/// assert_eq!(date.parts(), (2010, 5, 4, 16, 30, 1));
 	/// ```
-	pub const fn parts(self) -> DateTimeParts {
+	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
 		(
 			self.year(),
 			self.m,
@@ -1159,144 +1144,6 @@ impl From<Utc2k> for u32 {
 	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
 
-
-
-#[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)] // It's OK.
-/// # Carry Over Date Parts.
-///
-/// This recurses in cases where days overflow as each new month brings a new
-/// maximum number of days.
-const fn carry_over_date_parts(mut y: u16, mut m: u8, mut d: u16) -> (u16, u8, u8) {
-	// We can abort early if the year is super-old. Even with carry-over
-	// addition, it won't reach 2000.
-	if y < 1970 { return (1970, 1, 1); }
-
-	// There has to be a month. If there isn't, that just means December of the
-	// previous year.
-	if m == 0 {
-		y -= 1;
-		m = 12;
-	}
-	// Months to Years.
-	else if m > 12 {
-		let div = m / 12;
-		y += div as u16;
-		m -= div * 12;
-	}
-
-	// Likewise there has to be a day. If there isn't, it's the same as the
-	// last day of the previous month.
-	if d == 0 {
-		// If we're in January, we need to carry all the parts.
-		if m == 1 {
-			y -= 1;
-			m = 12;
-			d = 31;
-		}
-		// Otherwise just minus the month and set the day.
-		else {
-			m -= 1;
-			d = month_days(y, m) as u16;
-		}
-	}
-	// Days might not fit.
-	else if 28 < d {
-		// Days to Months.
-		let size = month_days(y, m) as u16;
-		if size < d {
-			m += 1;
-			d -= size;
-
-			// Recurse.
-			return carry_over_date_parts(y, m, d);
-		}
-	}
-
-	(y, m, d as u8)
-}
-
-#[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)] // It's OK.
-#[inline]
-#[must_use]
-/// # Carry Over Parts.
-///
-/// This makes sure years, months, etc., are in range. In cases where there are
-/// 13 months, say, that becomes 1 year and 1 month.
-///
-/// Dates outside the century will be capped accordingly.
-///
-/// Months and seconds are able to remain `u8` as they're carried over first
-/// (and won't overflow). The other non-year parts are upcast to `u16` just in
-/// case.
-const fn carry_over_parts(y: u16, m: u8, mut d: u16, mut hh: u16, mut mm: u16, mut ss: u8)
--> DateTimeParts {
-	// Seconds to minutes.
-	if ss > 59 {
-		let div = ss / 60;
-		mm += div as u16;
-		ss -= div * 60;
-	}
-	// Minutes to hours.
-	if mm > 59 {
-		let div = mm / 60;
-		hh += div;
-		mm -= div * 60;
-	}
-	// Hours to days.
-	if hh > 23 {
-		let div = hh / 24;
-		d += div;
-		hh -= div * 24;
-	}
-
-	// Fix the date bits, which is little trickier.
-	let (y, m, d) = carry_over_date_parts(y, m, d);
-
-	// Did we overflow?
-	if y > 2099 { (2099, 12, 31, 23, 59, 59) }
-	else if y < 2000 { (2000, 1, 1, 0, 0, 0) }
-	else { (y, m, d, hh as u8, mm as u8, ss) }
-}
-
-#[must_use]
-/// # Maybe Carry Over Parts.
-///
-/// This checks to see if all of the date/time parts are within range. If they
-/// are, it simply passes them back. If they aren't, it sends them to
-/// [`carry_over_parts`] so they can be adjusted.
-const fn maybe_carry_over_parts(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8)
--> DateTimeParts {
-	// Everything is in range!
-	if
-		1999 < y && y < 2100 &&
-		0 < m && m < 13 &&
-		0 < d &&
-		hh < 24 &&
-		mm < 60 &&
-		ss < 60 &&
-		(d < 29 || d <= month_days(y, m))
-	{ (y, m, d, hh, mm, ss) }
-	else {
-		carry_over_parts(y, m, d as u16, hh as u16, mm as u16, ss)
-	}
-}
-
-#[must_use]
-/// # Days in Month.
-///
-/// This returns the number of days in a given year/month. (Year is included to
-/// make this leap-aware.)
-const fn month_days(y: u16, m: u8) -> u8 {
-	match m {
-		1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-		4 | 6 | 9 | 11 => 30,
-		2 if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 => 29,
-		_ => 28,
-	}
-}
-
 #[must_use]
 /// # Month Size.
 ///
@@ -1355,8 +1202,8 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 }
 
 /// # Parse Parts From Date.
-fn parse_parts_from_date(src: &[u8; 10]) -> PartsResult {
-	Ok(maybe_carry_over_parts(
+fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
+	let tmp = Abacus::new(
 		src[..4].iter()
 			.try_fold(0, |a, c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
@@ -1364,13 +1211,14 @@ fn parse_parts_from_date(src: &[u8; 10]) -> PartsResult {
 			)?,
 		parse_u8_str(src[5], src[6])?,
 		parse_u8_str(src[8], src[9])?,
-		0, 0, 0,
-	))
+		0, 0, 0
+	);
+	Ok(Utc2k::from(tmp))
 }
 
 /// # Parse Parts From Date/Time.
-fn parse_parts_from_datetime(src: &[u8; 19]) -> PartsResult {
-	Ok(maybe_carry_over_parts(
+fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
+	let tmp = Abacus::new(
 		src[..4].iter()
 			.try_fold(0, |a, c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
@@ -1381,7 +1229,8 @@ fn parse_parts_from_datetime(src: &[u8; 19]) -> PartsResult {
 		parse_u8_str(src[11], src[12])?,
 		parse_u8_str(src[14], src[15])?,
 		parse_u8_str(src[17], src[18])?,
-	))
+	);
+	Ok(Utc2k::from(tmp))
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
@@ -1597,34 +1446,6 @@ mod tests {
 		for i in (Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).step_by(97) {
 			range_test!(buf, i);
 		}
-	}
-
-	#[test]
-	/// # Test Carry-Over.
-	///
-	/// This helps ensure we're doing the math correctly.
-	fn carries() {
-		macro_rules! carry {
-			($(($y:literal, $m:literal, $d:literal, $hh:literal, $mm:literal, $ss:literal) ($y2:literal, $m2:literal, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal) $fail:literal),+) => ($(
-				assert_eq!(
-					carry_over_parts($y, $m, $d, $hh, $mm, $ss),
-					($y2, $m2, $d2, $hh2, $mm2, $ss2),
-					$fail
-				);
-			)+);
-		}
-
-		carry!(
-			(2000, 13, 32, 24, 60, 60) (2001, 2, 2, 1, 1, 0) "Overage of one everywhere.",
-			(2000, 25, 99, 1, 1, 1) (2002, 4, 9, 1, 1, 1) "Large month/day overages.",
-			(2000, 1, 1, 99, 99, 99) (2000, 1, 5, 4, 40, 39) "Large time overflows.",
-			(2000, 255, 255, 255, 255, 255) (2021, 11, 20, 19, 19, 15) "Max overflows.",
-			(1970, 25, 99, 1, 1, 1) (2000, 1, 1, 0, 0, 0) "Saturating low.",
-			(2099, 25, 99, 1, 1, 1) (2099, 12, 31, 23, 59, 59) "Saturating high.",
-			(2010, 0, 0, 1, 1, 1) (2009, 11, 30, 1, 1, 1) "Zero month, zero day.",
-			(2010, 0, 32, 1, 1, 1) (2010, 1, 1, 1, 1, 1) "Zero month, overflowing day.",
-			(2010, 1, 0, 1, 1, 1) (2009, 12, 31, 1, 1, 1) "Zero day into zero month."
-		);
 	}
 
 	#[test]

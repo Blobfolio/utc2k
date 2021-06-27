@@ -79,7 +79,7 @@ Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
 ```ignore,text
 [dependencies]
-utc2k = "0.1.*"
+utc2k = "0.2.*"
 ```
 */
 
@@ -107,9 +107,11 @@ utc2k = "0.1.*"
 
 
 
+mod abacus;
 mod date;
 mod error;
 
+pub(crate) use abacus::Abacus;
 pub use date::{
 	FmtUtc2k,
 	Utc2k,
@@ -133,11 +135,8 @@ pub const WEEK_IN_SECONDS: u32 = 604_800;
 /// # Seconds per (Normal) Year.
 pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 
-/// # Seconds Between 1970 and 2000.
-pub const OLD_SECONDS: u32 = 946_684_800;
-
 /// # Julian Day Epoch.
-pub const JULIAN_EPOCH: u32 = 2_440_588;
+pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
 
 
 
