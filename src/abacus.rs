@@ -191,7 +191,7 @@ impl Abacus {
 	/// even from their selves year-to-year, this method recurses to simplify
 	/// handling.
 	fn rebalance_date(&mut self) {
-		// No amount of rebalancing can bring this in range.
+		// No amount of rebalancing can bring this within range.
 		if self.y < 1500 {
 			self.y = 1500;
 			self.m = 1;
@@ -205,16 +205,10 @@ impl Abacus {
 			self.m = 12;
 		}
 		// Carry excess months over to years.
-		else if self.m > 12 {
-			let div = self.m / 12;
+		else if 12 < self.m {
+			let div = (self.m - 1) / 12;
 			self.y += div;
 			self.m -= div * 12;
-
-			// We can't end up with zero!
-			if 0 == self.m {
-				self.y -= 1;
-				self.m = 12;
-			}
 		}
 
 		// Rewind the month.
