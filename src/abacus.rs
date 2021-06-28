@@ -247,7 +247,7 @@ impl Abacus {
 		match self.m {
 			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
 			4 | 6 | 9 | 11 => 30,
-			2 if (self.y % 4 == 0 && self.y % 100 != 0) || self.y % 400 == 0 => 29,
+			2 if self.y.trailing_zeros() >= 2 && ((self.y % 100) != 0 || (self.y % 400) == 0) => 29,
 			_ => 28,
 		}
 	}
