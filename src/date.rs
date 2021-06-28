@@ -1253,15 +1253,14 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 		}
 		else { 0 };
 
-	let mm =
-		if src >= MINUTE_IN_SECONDS {
-			let mm = ((src * 0x889) >> 17) as u8;
-			src -= mm as u32 * MINUTE_IN_SECONDS;
-			mm
-		}
-		else { 0 };
-
-	(hh, mm, src as u8)
+	if src >= MINUTE_IN_SECONDS {
+		let mm = ((src * 0x889) >> 17) as u8;
+		src -= mm as u32 * MINUTE_IN_SECONDS;
+		(hh, mm, src as u8)
+	}
+	else {
+		(hh, 0, src as u8)
+	}
 }
 
 /// # Parse 2 Digits.
