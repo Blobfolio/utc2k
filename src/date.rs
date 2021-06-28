@@ -906,9 +906,9 @@ impl Utc2k {
 	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
 	/// assert!(! date.leap_year());
 	/// ```
-	pub fn leap_year(self) -> bool {
+	pub const fn leap_year(self) -> bool {
 		// Leap years this century.
-		static LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
+		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
 
 		LEAP_YEARS[self.y as usize]
 	}
@@ -962,8 +962,8 @@ impl Utc2k {
 	/// let date = Utc2k::try_from("2021-01-15 00:00:00").unwrap();
 	/// assert_eq!(date.ordinal(), 15);
 	/// ```
-	pub fn ordinal(self) -> u16 {
-		let days = u16::from(self.d) +
+	pub const fn ordinal(self) -> u16 {
+		let days = self.d as u16 +
 			match self.m {
 				2 => 31,
 				3 => 59,
