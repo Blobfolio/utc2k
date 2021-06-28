@@ -260,6 +260,39 @@ mod tests {
 	use super::*;
 
 	#[test]
+	/// # Addition.
+	fn addition() {
+		macro_rules! add {
+			($($start:ident + $num:literal = ($y2:literal, $m2:literal, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal)),+) => ($(
+				assert_eq!(
+					($start + $num).parts(),
+					($y2, $m2, $d2, $hh2, $mm2, $ss2)
+				);
+
+				// Make sure add/assign is the same as adding. It's obviously
+				// fine now, but could get broken later. Who knows!
+				{
+					let mut tmp = $start;
+					tmp += $num;
+					assert_eq!($start + $num, tmp);
+				}
+			)+);
+		}
+
+		// Add nothing.
+		let start = Abacus::new(2000, 1, 1, 0, 0, 0);
+		add!(
+			start + 0 = (0, 1, 1, 0, 0, 0),
+			start + 1 = (0, 1, 1, 0, 0, 1),
+			start + 60 = (0, 1, 1, 0, 1, 0),
+			start + 3600 = (0, 1, 1, 1, 0, 0),
+			start + 3661 = (0, 1, 1, 1, 1, 1),
+			start + 31_622_400 = (1, 1, 1, 0, 0, 0),
+			start + 4_294_967_295 = (99, 12, 31, 23, 59, 59)
+		);
+	}
+
+	#[test]
 	/// # Test Carry-Over.
 	///
 	/// This helps ensure we're doing the math correctly.
