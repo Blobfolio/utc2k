@@ -413,8 +413,7 @@ pub struct Utc2k {
 impl Add<u32> for Utc2k {
 	type Output = Self;
 	fn add(self, other: u32) -> Self {
-		let mut tmp = Abacus::from(self);
-		tmp += other;
+		let tmp = Abacus::from(self) + other;
 		Self::from(tmp)
 	}
 }
