@@ -398,6 +398,7 @@ impl FmtUtc2k {
 /// // need are in the right place, it will be fine.
 /// assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
 /// assert!(Utc2k::try_from("2099-12-31T23:59:59.0000").is_ok()); // Also fine.
+/// assert!(Utc2k::try_from("2099-12-31").is_ok()); // Also fine, but midnight.
 /// assert!(Utc2k::try_from("January 1, 2010").is_err()); // Nope!
 /// ```
 pub struct Utc2k {
@@ -1201,11 +1202,11 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	}
 }
 
-/// # Parse Parts From Date.
 fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
-		src[..4].iter()
-			.try_fold(0, |a, c|
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
 				else { Err(Utc2kError::Invalid) }
 			)?,
@@ -1219,8 +1220,9 @@ fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 /// # Parse Parts From Date/Time.
 fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
-		src[..4].iter()
-			.try_fold(0, |a, c|
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
 				else { Err(Utc2kError::Invalid) }
 			)?,
