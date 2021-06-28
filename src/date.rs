@@ -963,7 +963,7 @@ impl Utc2k {
 	/// assert_eq!(date.ordinal(), 15);
 	/// ```
 	pub fn ordinal(self) -> u16 {
-		let days = self.d as u16 +
+		let days = u16::from(self.d) +
 			match self.m {
 				2 => 31,
 				3 => 59,
