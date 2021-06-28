@@ -1163,9 +1163,6 @@ impl From<Utc2k> for u32 {
 /// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
 ///
 /// (Our version is a little simpler as we aren't worried about old times.)
-///
-/// It is not quite as fast as the Gregorian approach used by [`chrono`](https://crates.io/crates/chrono),
-/// but is significantly simpler.
 const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
 	let h = 100 * z - 25;
@@ -1184,6 +1181,10 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	}
 }
 
+/// # Parse Parts From Date.
+///
+/// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
+/// slice. Only the numeric ranges are parsed — separators can be whatever.
 fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
@@ -1200,6 +1201,10 @@ fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 }
 
 /// # Parse Parts From Date/Time.
+///
+/// This attempts to extract the year, month, day, hour, minute and second from
+/// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
+/// separators can be whatever.
 fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
@@ -1247,7 +1252,8 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 
 /// # Parse 2 Digits.
 ///
-/// This parses a 2-digit numeric string slice into `u8`, or dies trying.
+/// This combines two ASCII `u8` values into a single `u8` integer, or dies
+/// trying (if, i.e., one or both are non-numeric).
 const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 	if one.is_ascii_digit() && two.is_ascii_digit() {
 		Ok((one & 0x0f) * 10 + (two & 0x0f))

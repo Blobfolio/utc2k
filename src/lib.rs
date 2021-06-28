@@ -136,6 +136,8 @@ pub const WEEK_IN_SECONDS: u32 = 604_800;
 pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 
 /// # Julian Day Epoch.
+///
+/// This is used internally when parsing date components from days.
 pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
 
 
