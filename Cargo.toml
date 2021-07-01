@@ -18,6 +18,7 @@ exclude = [
 
 [dev-dependencies]
 brunch = "0.1.*"
+rand = "0.8.*"
 
 [dev-dependencies.chrono]
 version = "0.4.*"

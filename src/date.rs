@@ -1273,6 +1273,12 @@ mod tests {
 		TimeZone,
 		Utc,
 	};
+	use rand::{
+		distributions::Uniform,
+		Rng,
+	};
+
+
 
 	macro_rules! range_test {
 		($buf:ident, $i:ident) => (
@@ -1295,16 +1301,18 @@ mod tests {
 		);
 	}
 
+
+
 	#[test]
 	#[ignore]
-	/// # Test Full Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	/// # Full Range Unixtime Test.
 	///
 	/// This compares our objects against `chrono` to ensure conversions line
 	/// up as expected for the supported unixtime range.
 	///
-	/// Chrono's string formatting is ridiculously slow; if you run this test
-	/// it will take a while to complete.
-	fn unixtime_range() {
+	/// With billions of seconds to check, this takes a very long time to
+	/// complete.
+	fn full_unixtime() {
 		let mut buf = FmtUtc2k::default();
 		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
 			range_test!(buf, i);
@@ -1312,13 +1320,17 @@ mod tests {
 	}
 
 	#[test]
-	/// # Test Limited Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	/// # Limited Range Unixtime Test.
 	///
-	/// This covers about 1% of the `ignore`d full-range test, providing decent
-	/// coverage and a reasonable runtime.
-	fn limited_unixtime_range() {
+	/// This performs the same tests as [`full_unixtime`], but applies them
+	/// against 5 million random entries from the range rather than the whole
+	/// thing.
+	///
+	/// This provides reasonable coverage in reasonable time.
+	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
-		for i in (Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).step_by(97) {
+		let set = Uniform::new_inclusive(Utc2k::MIN_UNIXTIME, Utc2k::MAX_UNIXTIME);
+		for i in rand::thread_rng().sample_iter(set).take(5_000_000) {
 			range_test!(buf, i);
 		}
 	}
