@@ -101,6 +101,11 @@ macro_rules! try_from_unixtime {
 /// ```
 pub struct FmtUtc2k([u8; 19]);
 
+impl AsRef<[u8]> for FmtUtc2k {
+	#[inline]
+	fn as_ref(&self) -> &[u8] { self.as_bytes() }
+}
+
 impl AsRef<str> for FmtUtc2k {
 	#[inline]
 	fn as_ref(&self) -> &str { self.as_str() }
@@ -313,12 +318,39 @@ impl FmtUtc2k {
 impl FmtUtc2k {
 	#[inline]
 	#[must_use]
+	/// # As Bytes.
+	///
+	/// Return a byte string slice in `YYYY-MM-DD HH:MM:SS` format.
+	///
+	/// A byte slice can also be obtained using [`FmtUtc2k::as_ref`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let fmt = FmtUtc2k::max();
+	/// assert_eq!(fmt.as_bytes(), b"2099-12-31 23:59:59");
+	/// ```
+	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
+
+	#[inline]
+	#[must_use]
 	/// # As Str.
 	///
 	/// Return a string slice in `YYYY-MM-DD HH:MM:SS` format.
 	///
 	/// A string slice can also be obtained using [`FmtUtc2k::as_ref`] or
 	/// through dereferencing.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let fmt = FmtUtc2k::max();
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// ```
 	pub fn as_str(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
