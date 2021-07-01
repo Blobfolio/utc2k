@@ -101,6 +101,11 @@ macro_rules! try_from_unixtime {
 /// ```
 pub struct FmtUtc2k([u8; 19]);
 
+impl AsRef<[u8]> for FmtUtc2k {
+	#[inline]
+	fn as_ref(&self) -> &[u8] { self.as_bytes() }
+}
+
 impl AsRef<str> for FmtUtc2k {
 	#[inline]
 	fn as_ref(&self) -> &str { self.as_str() }
@@ -313,12 +318,39 @@ impl FmtUtc2k {
 impl FmtUtc2k {
 	#[inline]
 	#[must_use]
+	/// # As Bytes.
+	///
+	/// Return a byte string slice in `YYYY-MM-DD HH:MM:SS` format.
+	///
+	/// A byte slice can also be obtained using [`FmtUtc2k::as_ref`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let fmt = FmtUtc2k::max();
+	/// assert_eq!(fmt.as_bytes(), b"2099-12-31 23:59:59");
+	/// ```
+	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
+
+	#[inline]
+	#[must_use]
 	/// # As Str.
 	///
 	/// Return a string slice in `YYYY-MM-DD HH:MM:SS` format.
 	///
 	/// A string slice can also be obtained using [`FmtUtc2k::as_ref`] or
 	/// through dereferencing.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// let fmt = FmtUtc2k::max();
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// ```
 	pub fn as_str(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
@@ -398,6 +430,7 @@ impl FmtUtc2k {
 /// // need are in the right place, it will be fine.
 /// assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
 /// assert!(Utc2k::try_from("2099-12-31T23:59:59.0000").is_ok()); // Also fine.
+/// assert!(Utc2k::try_from("2099-12-31").is_ok()); // Also fine, but midnight.
 /// assert!(Utc2k::try_from("January 1, 2010").is_err()); // Nope!
 /// ```
 pub struct Utc2k {
@@ -411,11 +444,8 @@ pub struct Utc2k {
 
 impl Add<u32> for Utc2k {
 	type Output = Self;
-	fn add(self, other: u32) -> Self {
-		let mut tmp = Abacus::from(self);
-		tmp += other;
-		Self::from(tmp)
-	}
+	#[inline]
+	fn add(self, other: u32) -> Self { Self::from(Abacus::from(self) + other) }
 }
 
 impl AddAssign<u32> for Utc2k {
@@ -907,7 +937,10 @@ impl Utc2k {
 	/// assert!(! date.leap_year());
 	/// ```
 	pub const fn leap_year(self) -> bool {
-		matches!(self.y, 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 68 | 72 | 76 | 80 | 84 | 88 | 92 | 96)
+		// Leap years this century.
+		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
+
+		LEAP_YEARS[self.y as usize]
 	}
 
 	#[must_use]
@@ -1044,14 +1077,21 @@ impl Utc2k {
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
 	pub fn unixtime(self) -> u32 {
-		// Start with all the seconds prior to the year.
-		let (time, leap) = year_size(self.y);
+		// Seconds from the new year up to the start of the month.
+		static MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
 
-		// Add up all the seconds since the start of the year.
-		time +
-		self.seconds_from_midnight() +
-		DAY_IN_SECONDS * u32::from(self.d - 1) +
-		month_seconds(self.m, leap)
+		// Seconds *before* the new year.
+		static YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
+
+		// Add up everything as it would be in a non-leap year.
+		let time = YEAR_SECONDS[usize::from(self.y)] +
+			MONTH_SECONDS[usize::from(self.m - 1)] +
+			self.seconds_from_midnight() +
+			DAY_IN_SECONDS * u32::from(self.d - 1);
+
+		// Add a day's worth of seconds if we need to.
+		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
+		else { time }
 	}
 }
 
@@ -1144,33 +1184,6 @@ impl From<Utc2k> for u32 {
 	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
 
-#[must_use]
-/// # Month Size.
-///
-/// This returns the number of seconds from the start of the year up to the
-/// given month.
-///
-/// Note: this does not consider February leap days.
-const fn month_seconds(m: u8, leap: bool) -> u32 {
-	let seconds = match m {
-		2 => 2_678_400,
-		3 => 5_097_600,
-		4 => 7_776_000,
-		5 => 10_368_000,
-		6 => 13_046_400,
-		7 => 15_638_400,
-		8 => 18_316_800,
-		9 => 20_995_200,
-		10 => 23_587_200,
-		11 => 26_265_600,
-		12 => 28_857_600,
-		_ => 0,
-	};
-
-	if 2 < m && leap { seconds + DAY_IN_SECONDS }
-	else { seconds }
-}
-
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
 /// # Parse Date From Seconds.
@@ -1180,9 +1193,6 @@ const fn month_seconds(m: u8, leap: bool) -> u32 {
 /// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
 ///
 /// (Our version is a little simpler as we aren't worried about old times.)
-///
-/// It is not quite as fast as the Gregorian approach used by [`chrono`](https://crates.io/crates/chrono),
-/// but is significantly simpler.
 const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
 	let h = 100 * z - 25;
@@ -1202,10 +1212,14 @@ const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 }
 
 /// # Parse Parts From Date.
+///
+/// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
+/// slice. Only the numeric ranges are parsed — separators can be whatever.
 fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
-		src[..4].iter()
-			.try_fold(0, |a, c|
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
 				else { Err(Utc2kError::Invalid) }
 			)?,
@@ -1217,10 +1231,15 @@ fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 }
 
 /// # Parse Parts From Date/Time.
+///
+/// This attempts to extract the year, month, day, hour, minute and second from
+/// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
+/// separators can be whatever.
 fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
-		src[..4].iter()
-			.try_fold(0, |a, c|
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c|
 				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
 				else { Err(Utc2kError::Invalid) }
 			)?,
@@ -1251,139 +1270,25 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 		}
 		else { 0 };
 
-	let mm =
-		if src >= MINUTE_IN_SECONDS {
-			let mm = ((src * 0x889) >> 17) as u8;
-			src -= mm as u32 * MINUTE_IN_SECONDS;
-			mm
-		}
-		else { 0 };
-
-	(hh, mm, src as u8)
+	if src >= MINUTE_IN_SECONDS {
+		let mm = ((src * 0x889) >> 17) as u8;
+		src -= mm as u32 * MINUTE_IN_SECONDS;
+		(hh, mm, src as u8)
+	}
+	else {
+		(hh, 0, src as u8)
+	}
 }
 
 /// # Parse 2 Digits.
 ///
-/// This parses a 2-digit numeric string slice into `u8`, or dies trying.
+/// This combines two ASCII `u8` values into a single `u8` integer, or dies
+/// trying (if, i.e., one or both are non-numeric).
 const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 	if one.is_ascii_digit() && two.is_ascii_digit() {
 		Ok((one & 0x0f) * 10 + (two & 0x0f))
 	}
 	else { Err(Utc2kError::Invalid) }
-}
-
-#[allow(clippy::too_many_lines)] // We have a century to cover!
-#[must_use]
-/// # Year Size.
-///
-/// This returns the number of seconds from 1970 up to a given year, and a
-/// bool indicating whether or not it is/was a leap year.
-///
-/// Because we're only looking at a single century, a simple pre-computed table
-/// lookup is faster than any realtime calculation.
-const fn year_size(y: u8) -> (u32, bool) {
-	match y {
-		0 => (946_684_800, true),
-		1 => (978_307_200, false),
-		2 => (1_009_843_200, false),
-		3 => (1_041_379_200, false),
-		4 => (1_072_915_200, true),
-		5 => (1_104_537_600, false),
-		6 => (1_136_073_600, false),
-		7 => (1_167_609_600, false),
-		8 => (1_199_145_600, true),
-		9 => (1_230_768_000, false),
-		10 => (1_262_304_000, false),
-		11 => (1_293_840_000, false),
-		12 => (1_325_376_000, true),
-		13 => (1_356_998_400, false),
-		14 => (1_388_534_400, false),
-		15 => (1_420_070_400, false),
-		16 => (1_451_606_400, true),
-		17 => (1_483_228_800, false),
-		18 => (1_514_764_800, false),
-		19 => (1_546_300_800, false),
-		20 => (1_577_836_800, true),
-		21 => (1_609_459_200, false),
-		22 => (1_640_995_200, false),
-		23 => (1_672_531_200, false),
-		24 => (1_704_067_200, true),
-		25 => (1_735_689_600, false),
-		26 => (1_767_225_600, false),
-		27 => (1_798_761_600, false),
-		28 => (1_830_297_600, true),
-		29 => (1_861_920_000, false),
-		30 => (1_893_456_000, false),
-		31 => (1_924_992_000, false),
-		32 => (1_956_528_000, true),
-		33 => (1_988_150_400, false),
-		34 => (2_019_686_400, false),
-		35 => (2_051_222_400, false),
-		36 => (2_082_758_400, true),
-		37 => (2_114_380_800, false),
-		38 => (2_145_916_800, false),
-		39 => (2_177_452_800, false),
-		40 => (2_208_988_800, true),
-		41 => (2_240_611_200, false),
-		42 => (2_272_147_200, false),
-		43 => (2_303_683_200, false),
-		44 => (2_335_219_200, true),
-		45 => (2_366_841_600, false),
-		46 => (2_398_377_600, false),
-		47 => (2_429_913_600, false),
-		48 => (2_461_449_600, true),
-		49 => (2_493_072_000, false),
-		50 => (2_524_608_000, false),
-		51 => (2_556_144_000, false),
-		52 => (2_587_680_000, true),
-		53 => (2_619_302_400, false),
-		54 => (2_650_838_400, false),
-		55 => (2_682_374_400, false),
-		56 => (2_713_910_400, true),
-		57 => (2_745_532_800, false),
-		58 => (2_777_068_800, false),
-		59 => (2_808_604_800, false),
-		60 => (2_840_140_800, true),
-		61 => (2_871_763_200, false),
-		62 => (2_903_299_200, false),
-		63 => (2_934_835_200, false),
-		64 => (2_966_371_200, true),
-		65 => (2_997_993_600, false),
-		66 => (3_029_529_600, false),
-		67 => (3_061_065_600, false),
-		68 => (3_092_601_600, true),
-		69 => (3_124_224_000, false),
-		70 => (3_155_760_000, false),
-		71 => (3_187_296_000, false),
-		72 => (3_218_832_000, true),
-		73 => (3_250_454_400, false),
-		74 => (3_281_990_400, false),
-		75 => (3_313_526_400, false),
-		76 => (3_345_062_400, true),
-		77 => (3_376_684_800, false),
-		78 => (3_408_220_800, false),
-		79 => (3_439_756_800, false),
-		80 => (3_471_292_800, true),
-		81 => (3_502_915_200, false),
-		82 => (3_534_451_200, false),
-		83 => (3_565_987_200, false),
-		84 => (3_597_523_200, true),
-		85 => (3_629_145_600, false),
-		86 => (3_660_681_600, false),
-		87 => (3_692_217_600, false),
-		88 => (3_723_753_600, true),
-		89 => (3_755_376_000, false),
-		90 => (3_786_912_000, false),
-		91 => (3_818_448_000, false),
-		92 => (3_849_984_000, true),
-		93 => (3_881_606_400, false),
-		94 => (3_913_142_400, false),
-		95 => (3_944_678_400, false),
-		96 => (3_976_214_400, true),
-		97 => (4_007_836_800, false),
-		98 => (4_039_372_800, false),
-		_ => (4_070_908_800, false),
-	}
 }
 
 
@@ -1398,6 +1303,12 @@ mod tests {
 		TimeZone,
 		Utc,
 	};
+	use rand::{
+		distributions::Uniform,
+		Rng,
+	};
+
+
 
 	macro_rules! range_test {
 		($buf:ident, $i:ident) => (
@@ -1420,16 +1331,18 @@ mod tests {
 		);
 	}
 
+
+
 	#[test]
 	#[ignore]
-	/// # Test Full Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	/// # Full Range Unixtime Test.
 	///
 	/// This compares our objects against `chrono` to ensure conversions line
 	/// up as expected for the supported unixtime range.
 	///
-	/// Chrono's string formatting is ridiculously slow; if you run this test
-	/// it will take a while to complete.
-	fn unixtime_range() {
+	/// With billions of seconds to check, this takes a very long time to
+	/// complete.
+	fn full_unixtime() {
 		let mut buf = FmtUtc2k::default();
 		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
 			range_test!(buf, i);
@@ -1437,14 +1350,31 @@ mod tests {
 	}
 
 	#[test]
-	/// # Test Limited Unixtime Range for `FmtUtc2k` and `Utc2k`.
+	/// # Limited Range Unixtime Test.
 	///
-	/// This covers about 1% of the `ignore`d full-range test, providing decent
-	/// coverage and a reasonable runtime.
-	fn limited_unixtime_range() {
+	/// This performs the same tests as [`full_unixtime`], but applies them
+	/// against 5 million random entries from the range rather than the whole
+	/// thing.
+	///
+	/// This provides reasonable coverage in reasonable time.
+	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
-		for i in (Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).step_by(97) {
+		let set = Uniform::new_inclusive(Utc2k::MIN_UNIXTIME, Utc2k::MAX_UNIXTIME);
+		for i in rand::thread_rng().sample_iter(set).take(5_000_000) {
 			range_test!(buf, i);
+		}
+	}
+
+	#[test]
+	/// # Leap Years.
+	fn leap_years() {
+		for y in 2000..2100 {
+			let date = Utc2k::new(y, 1, 1, 0, 0, 0);
+			assert_eq!(date.year(), y);
+			assert_eq!(
+				date.leap_year(),
+				y.trailing_zeros() >= 2 && ((y % 100) != 0 || (y % 400) == 0)
+			);
 		}
 	}
 

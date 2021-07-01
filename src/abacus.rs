@@ -191,7 +191,7 @@ impl Abacus {
 	/// even from their selves year-to-year, this method recurses to simplify
 	/// handling.
 	fn rebalance_date(&mut self) {
-		// No amount of rebalancing can bring this in range.
+		// No amount of rebalancing can bring this within range.
 		if self.y < 1500 {
 			self.y = 1500;
 			self.m = 1;
@@ -205,16 +205,10 @@ impl Abacus {
 			self.m = 12;
 		}
 		// Carry excess months over to years.
-		else if self.m > 12 {
-			let div = self.m / 12;
+		else if 12 < self.m {
+			let div = (self.m - 1) / 12;
 			self.y += div;
 			self.m -= div * 12;
-
-			// We can't end up with zero!
-			if 0 == self.m {
-				self.y -= 1;
-				self.m = 12;
-			}
 		}
 
 		// Rewind the month.
@@ -253,7 +247,7 @@ impl Abacus {
 		match self.m {
 			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
 			4 | 6 | 9 | 11 => 30,
-			2 if (self.y % 4 == 0 && self.y % 100 != 0) || self.y % 400 == 0 => 29,
+			2 if self.y.trailing_zeros() >= 2 && ((self.y % 100) != 0 || (self.y % 400) == 0) => 29,
 			_ => 28,
 		}
 	}
@@ -264,6 +258,39 @@ impl Abacus {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	/// # Addition.
+	fn addition() {
+		macro_rules! add {
+			($($start:ident + $num:literal = ($y2:literal, $m2:literal, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal)),+) => ($(
+				assert_eq!(
+					($start + $num).parts(),
+					($y2, $m2, $d2, $hh2, $mm2, $ss2)
+				);
+
+				// Make sure add/assign is the same as adding. It's obviously
+				// fine now, but could get broken later. Who knows!
+				{
+					let mut tmp = $start;
+					tmp += $num;
+					assert_eq!($start + $num, tmp);
+				}
+			)+);
+		}
+
+		// Add nothing.
+		let start = Abacus::new(2000, 1, 1, 0, 0, 0);
+		add!(
+			start + 0 = (0, 1, 1, 0, 0, 0),
+			start + 1 = (0, 1, 1, 0, 0, 1),
+			start + 60 = (0, 1, 1, 0, 1, 0),
+			start + 3600 = (0, 1, 1, 1, 0, 0),
+			start + 3661 = (0, 1, 1, 1, 1, 1),
+			start + 31_622_400 = (1, 1, 1, 0, 0, 0),
+			start + 4_294_967_295 = (99, 12, 31, 23, 59, 59)
+		);
+	}
 
 	#[test]
 	/// # Test Carry-Over.
@@ -286,7 +313,8 @@ mod tests {
 			(2000, 1, 1, 99, 99, 99) (00, 1, 5, 4, 40, 39) "Large time overflows.",
 			(2000, 255, 255, 255, 255, 255) (21, 11, 20, 19, 19, 15) "Max overflows.",
 			(1970, 25, 99, 1, 1, 1) (00, 1, 1, 0, 0, 0) "Saturating low.",
-			(2099, 25, 99, 1, 1, 1) (99, 12, 31, 23, 59, 59) "Saturating high.",
+			(3000, 25, 99, 1, 1, 1) (99, 12, 31, 23, 59, 59) "Saturating high #1.",
+			(2099, 25, 99, 1, 1, 1) (99, 12, 31, 23, 59, 59) "Saturating high #2.",
 			(2010, 0, 0, 1, 1, 1) (09, 11, 30, 1, 1, 1) "Zero month, zero day.",
 			(2010, 0, 32, 1, 1, 1) (10, 1, 1, 1, 1, 1) "Zero month, overflowing day.",
 			(2010, 1, 0, 1, 1, 1) (09, 12, 31, 1, 1, 1) "Zero day into zero month.",
