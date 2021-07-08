@@ -73,6 +73,13 @@ let s: &str = fmt.borrow();
 ```
 
 
+
+## Optional Crate Features
+
+* `serde`: Enables serialization/deserialization support.
+
+
+
 ## Installation
 
 Add `utc2k` to your `dependencies` in `Cargo.toml`, like:

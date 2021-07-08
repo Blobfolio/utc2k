@@ -63,6 +63,21 @@ macro_rules! try_from_unixtime {
 
 
 
+#[cfg(any(test, feature = "serde"))]
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+/// # Ambiguous Serde Value.
+///
+/// We want to be able to deserialize our structs from either datetime strings
+/// or unix timestamps. Using this enum as an intermediate step seems to be the
+/// best way to achieve that.
+enum RawSerde<'a> {
+	Str(&'a str),
+	Num(u32),
+}
+
+
+
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 /// # Formatted UTC2K.
 ///
@@ -391,6 +406,34 @@ impl FmtUtc2k {
 	/// ```
 	pub fn time(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
+	}
+}
+
+
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for FmtUtc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.as_str().serialize(serializer)
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for FmtUtc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
 	}
 }
 
@@ -1179,10 +1222,42 @@ impl Utc2k {
 	}
 }
 
+
+
 impl From<Utc2k> for u32 {
 	#[inline]
 	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
+
+
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for Utc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.unixtime().serialize(serializer)
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for Utc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
+	}
+}
+
+
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
@@ -1413,5 +1488,47 @@ mod tests {
 		// Now they should match.
 		assert_eq!(expected, shuffled);
 		assert_eq!(f_expected, f_shuffled);
+	}
+
+	#[test]
+	/// # Test Serialization.
+	fn t_serde() {
+		const DATESTR: &str = "2021-07-08 11:33:16";
+		const DATENUM: &str = "1625743996";
+		const DATESTR_Q: &str = "\"2021-07-08 11:33:16\"";
+
+		{
+			// Formatted Version.
+			let date = FmtUtc2k::try_from(DATESTR).unwrap();
+			let serial = serde_json::to_string(&date)
+				.expect("FmtUtc2k serialization failed.");
+			assert_eq!(serial, DATESTR_Q);
+
+			let mut date2: FmtUtc2k = serde_json::from_str(&serial)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a timestamp.
+			date2 = serde_json::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+		}
+
+		{
+			// Utc2k Version.
+			let date = Utc2k::try_from(DATESTR).unwrap();
+			let serial = serde_json::to_string(&date)
+				.expect("Utc2k serialization failed.");
+			assert_eq!(serial, DATENUM);
+
+			let mut date2: Utc2k = serde_json::from_str(&serial)
+				.expect("Utc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a datetime string.
+			date2 = serde_json::from_str(DATESTR_Q)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+		}
 	}
 }

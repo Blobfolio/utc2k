@@ -19,11 +19,17 @@ exclude = [
 [dev-dependencies]
 brunch = "0.1.*"
 rand = "0.8.*"
+serde = "1.0.*"
+serde_json = "1.0.*"
 
 [dev-dependencies.chrono]
 version = "0.4.*"
 default-features = false
 features = [ "std" ]
+
+[dependencies.serde]
+version = "1.0.*"
+optional = true
 
 [[bench]]
 name = "d_utc2k"

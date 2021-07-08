@@ -22,6 +22,8 @@ This library is still a work in progress and there is certainly room to improve 
 
 If you have any suggestions for improvement, feel free to open [an issue](https://github.com/Blobfolio/utc2k/issues) on Github!
 
+
+
 ## Examples
 
 The main date object is `Utc2k`.
@@ -72,6 +74,13 @@ let s: &str = fmt.as_ref();
 let s: &str = fmt.as_str();
 let s: &str = fmt.borrow();
 ```
+
+
+
+## Optional Crate Features
+
+* `serde`: Enables serialization/deserialization support.
+
 
 
 ## Installation
