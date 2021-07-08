@@ -1018,6 +1018,23 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # Month Size (Days).
+	///
+	/// This returns the total number of days this month could hold, or put
+	/// another way, the last day of this month.
+	///
+	/// The value will always be between `28..=31`, with leap Februaries
+	/// returning `29`.
+	pub const fn month_size(self) -> u8 {
+		match self.m {
+			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+			4 | 6 | 9 | 11 => 30,
+			2 if self.leap_year() => 29,
+			_ => 28,
+		}
+	}
+
+	#[must_use]
 	/// # Ordinal.
 	///
 	/// Return the day-of-year value. This will be between `1..=365` (or `1..=366`
