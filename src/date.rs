@@ -12,6 +12,7 @@ use crate::{
 	MINUTE_IN_SECONDS,
 	unixtime,
 	Utc2kError,
+	Weekday,
 };
 use std::{
 	borrow::Borrow,
@@ -1025,6 +1026,16 @@ impl Utc2k {
 	///
 	/// The value will always be between `28..=31`, with leap Februaries
 	/// returning `29`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
+	/// assert_eq!(date.month_size(), 31);
+	/// ```
 	pub const fn month_size(self) -> u8 {
 		match self.m {
 			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
@@ -1101,6 +1112,25 @@ impl Utc2k {
 		self.ss as u32 +
 		self.mm as u32 * MINUTE_IN_SECONDS +
 		self.hh as u32 * HOUR_IN_SECONDS
+	}
+
+	#[must_use]
+	/// # Weekday.
+	///
+	/// Return the [`Weekday`] corresponding to the given date.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Utc2k, Weekday};
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
+	/// assert_eq!(date.weekday(), Weekday::Thursday);
+	/// assert_eq!(date.weekday().as_ref(), "Thursday");
+	/// ```
+	pub fn weekday(self) -> Weekday {
+		Weekday::year_begins_on(self.y) + (self.ordinal() - 1)
 	}
 }
 
@@ -1419,7 +1449,12 @@ mod tests {
 			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", $i);
 			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", $i);
 
+			// Make sure the weekdays match.
+			assert_eq!(u.weekday().as_ref(), c.format("%A").to_string());
+
+			// Test string conversion.
 			assert_eq!($buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", $i);
+
 		);
 	}
 
