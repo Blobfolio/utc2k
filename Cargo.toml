@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2018"
 description = "A fast and lean UTC date/time library concerned only with happenings in this century (2000-2099)."
