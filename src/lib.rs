@@ -73,6 +73,13 @@ let s: &str = fmt.borrow();
 ```
 
 
+
+## Optional Crate Features
+
+* `serde`: Enables serialization/deserialization support.
+
+
+
 ## Installation
 
 Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
@@ -110,6 +117,7 @@ utc2k = "0.2.*"
 mod abacus;
 mod date;
 mod error;
+mod weekday;
 
 pub(crate) use abacus::Abacus;
 pub use date::{
@@ -117,6 +125,7 @@ pub use date::{
 	Utc2k,
 };
 pub use error::Utc2kError;
+pub use weekday::Weekday;
 
 
 

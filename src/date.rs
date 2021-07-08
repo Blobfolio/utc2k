@@ -12,6 +12,7 @@ use crate::{
 	MINUTE_IN_SECONDS,
 	unixtime,
 	Utc2kError,
+	Weekday,
 };
 use std::{
 	borrow::Borrow,
@@ -59,6 +60,21 @@ macro_rules! try_from_unixtime {
 			}
 		}
 	)+);
+}
+
+
+
+#[cfg(any(test, feature = "serde"))]
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+/// # Ambiguous Serde Value.
+///
+/// We want to be able to deserialize our structs from either datetime strings
+/// or unix timestamps. Using this enum as an intermediate step seems to be the
+/// best way to achieve that.
+enum RawSerde<'a> {
+	Str(&'a str),
+	Num(u32),
 }
 
 
@@ -391,6 +407,34 @@ impl FmtUtc2k {
 	/// ```
 	pub fn time(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
+	}
+}
+
+
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for FmtUtc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.as_str().serialize(serializer)
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for FmtUtc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
 	}
 }
 
@@ -975,6 +1019,33 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # Month Size (Days).
+	///
+	/// This returns the total number of days this month could hold, or put
+	/// another way, the last day of this month.
+	///
+	/// The value will always be between `28..=31`, with leap Februaries
+	/// returning `29`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
+	/// assert_eq!(date.month_size(), 31);
+	/// ```
+	pub const fn month_size(self) -> u8 {
+		match self.m {
+			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+			4 | 6 | 9 | 11 => 30,
+			2 if self.leap_year() => 29,
+			_ => 28,
+		}
+	}
+
+	#[must_use]
 	/// # Ordinal.
 	///
 	/// Return the day-of-year value. This will be between `1..=365` (or `1..=366`
@@ -1041,6 +1112,25 @@ impl Utc2k {
 		self.ss as u32 +
 		self.mm as u32 * MINUTE_IN_SECONDS +
 		self.hh as u32 * HOUR_IN_SECONDS
+	}
+
+	#[must_use]
+	/// # Weekday.
+	///
+	/// Return the [`Weekday`] corresponding to the given date.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Utc2k, Weekday};
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
+	/// assert_eq!(date.weekday(), Weekday::Thursday);
+	/// assert_eq!(date.weekday().as_ref(), "Thursday");
+	/// ```
+	pub fn weekday(self) -> Weekday {
+		Weekday::year_begins_on(self.y) + (self.ordinal() - 1)
 	}
 }
 
@@ -1179,10 +1269,42 @@ impl Utc2k {
 	}
 }
 
+
+
 impl From<Utc2k> for u32 {
 	#[inline]
 	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
+
+
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for Utc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.unixtime().serialize(serializer)
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for Utc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
+	}
+}
+
+
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
 #[allow(clippy::integer_division)]
@@ -1327,7 +1449,12 @@ mod tests {
 			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", $i);
 			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", $i);
 
+			// Make sure the weekdays match.
+			assert_eq!(u.weekday().as_ref(), c.format("%A").to_string());
+
+			// Test string conversion.
 			assert_eq!($buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", $i);
+
 		);
 	}
 
@@ -1413,5 +1540,47 @@ mod tests {
 		// Now they should match.
 		assert_eq!(expected, shuffled);
 		assert_eq!(f_expected, f_shuffled);
+	}
+
+	#[test]
+	/// # Test Serialization.
+	fn t_serde() {
+		const DATESTR: &str = "2021-07-08 11:33:16";
+		const DATENUM: &str = "1625743996";
+		const DATESTR_Q: &str = "\"2021-07-08 11:33:16\"";
+
+		{
+			// Formatted Version.
+			let date = FmtUtc2k::try_from(DATESTR).unwrap();
+			let serial = serde_json::to_string(&date)
+				.expect("FmtUtc2k serialization failed.");
+			assert_eq!(serial, DATESTR_Q);
+
+			let mut date2: FmtUtc2k = serde_json::from_str(&serial)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a timestamp.
+			date2 = serde_json::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+		}
+
+		{
+			// Utc2k Version.
+			let date = Utc2k::try_from(DATESTR).unwrap();
+			let serial = serde_json::to_string(&date)
+				.expect("Utc2k serialization failed.");
+			assert_eq!(serial, DATENUM);
+
+			let mut date2: Utc2k = serde_json::from_str(&serial)
+				.expect("Utc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a datetime string.
+			date2 = serde_json::from_str(DATESTR_Q)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+		}
 	}
 }
