@@ -73,7 +73,7 @@ macro_rules! try_from_unixtime {
 /// or unix timestamps. Using this enum as an intermediate step seems to be the
 /// best way to achieve that.
 enum RawSerde<'a> {
-	Str(&'a str),
+	Str(std::borrow::Cow<'a, str>),
 	Num(u32),
 }
 
@@ -413,6 +413,20 @@ impl FmtUtc2k {
 
 
 #[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for FmtUtc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
 impl serde::Serialize for FmtUtc2k {
 	#[inline]
 	/// # Serialize.
@@ -421,20 +435,6 @@ impl serde::Serialize for FmtUtc2k {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: serde::Serializer {
 		self.as_str().serialize(serializer)
-	}
-}
-
-#[cfg(any(test, feature = "serde"))]
-impl<'de> serde::Deserialize<'de> for FmtUtc2k {
-	/// # Deserialize.
-	///
-	/// Use the optional `serde` crate feature to enable serialization support.
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where D: serde::de::Deserializer<'de> {
-		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
-			RawSerde::Num(d) => Ok(Self::from(d)),
-		}
 	}
 }
 
@@ -704,6 +704,36 @@ impl Utc2k {
 	///
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from(unixtime()) }
+
+	#[inline]
+	#[must_use]
+	/// # Tomorrow.
+	///
+	/// Create a new instance representing one day from now (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::tomorrow(), Utc2k::now() + 86_400_u32);
+	/// ```
+	pub fn tomorrow() -> Self { Self::from(unixtime() + DAY_IN_SECONDS) }
+
+	#[inline]
+	#[must_use]
+	/// # Yesterday.
+	///
+	/// Create a new instance representing one day ago (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::yesterday(), Utc2k::now() - 86_400_u32);
+	/// ```
+	pub fn yesterday() -> Self { Self::from(unixtime() - DAY_IN_SECONDS) }
 }
 
 /// ## String Parsing.
@@ -988,6 +1018,37 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # Abbreviated Month Name.
+	///
+	/// Return the abbreviated name of the month, nice and pretty.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
+	/// assert_eq!(date.month_abbreviation(), "Jun");
+	/// ```
+	pub const fn month_abbreviation(self) -> &'static str {
+		match self.m {
+			1 => "Jan",
+			2 => "Feb",
+			3 => "Mar",
+			4 => "Apr",
+			5 => "May",
+			6 => "Jun",
+			7 => "Jul",
+			8 => "Aug",
+			9 => "Sep",
+			10 => "Oct",
+			11 => "Nov",
+			_ => "Dec",
+		}
+	}
+
+	#[must_use]
 	/// # Month Name.
 	///
 	/// Return the name of the month, nice and pretty.
@@ -1183,6 +1244,27 @@ impl Utc2k {
 		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
 		else { time }
 	}
+
+	#[must_use]
+	/// # Change Time.
+	///
+	/// Return a new [`Utc2k`] instance with the original date — unless there
+	/// is carry-over needed — and a new time.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::default();
+	/// assert_eq!(date.to_string(), "2000-01-01 00:00:00");
+	///
+	/// // Change the time bits.
+	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
+	/// ```
+	pub fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
+		Self::from(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
+	}
 }
 
 /// ## Checked Operations.
@@ -1279,6 +1361,20 @@ impl From<Utc2k> for u32 {
 
 
 #[cfg(any(test, feature = "serde"))]
+impl<'de> serde::Deserialize<'de> for Utc2k {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: serde::de::Deserializer<'de> {
+		match RawSerde::deserialize(deserializer)? {
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Num(d) => Ok(Self::from(d)),
+		}
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
 impl serde::Serialize for Utc2k {
 	#[inline]
 	/// # Serialize.
@@ -1287,20 +1383,6 @@ impl serde::Serialize for Utc2k {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: serde::Serializer {
 		self.unixtime().serialize(serializer)
-	}
-}
-
-#[cfg(any(test, feature = "serde"))]
-impl<'de> serde::Deserialize<'de> for Utc2k {
-	/// # Deserialize.
-	///
-	/// Use the optional `serde` crate feature to enable serialization support.
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where D: serde::de::Deserializer<'de> {
-		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
-			RawSerde::Num(d) => Ok(Self::from(d)),
-		}
 	}
 }
 
@@ -1549,6 +1631,9 @@ mod tests {
 		const DATENUM: &str = "1625743996";
 		const DATESTR_Q: &str = "\"2021-07-08 11:33:16\"";
 
+		const YSERIALNUM: &str = "---\n1625743996\n";
+		const YSERIALSTR: &str = "---\n\"2021-07-08 11:33:16\"\n";
+
 		{
 			// Formatted Version.
 			let date = FmtUtc2k::try_from(DATESTR).unwrap();
@@ -1562,6 +1647,29 @@ mod tests {
 
 			// We should also be able to deserialize from a timestamp.
 			date2 = serde_json::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// Try it with serde_yaml, which is a bit stricter.
+			date2 = serde_yaml::from_str(&serial)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// Serialize it with serde_yaml too.
+			let serial2 = serde_yaml::to_string(&date)
+				.expect("FmtUtc2k serialization failed.");
+			assert_eq!(serial2, YSERIALSTR);
+
+			// And make sure deserialization from YAML format works.
+			date2 = serde_yaml::from_str(YSERIALSTR)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(YSERIALNUM)
 				.expect("FmtUtc2k deserialization (u32) failed.");
 			assert_eq!(date, date2);
 		}
@@ -1580,6 +1688,28 @@ mod tests {
 			// We should also be able to deserialize from a datetime string.
 			date2 = serde_json::from_str(DATESTR_Q)
 				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			// Again, retry with serde_yaml.
+			date2 = serde_yaml::from_str(&serial)
+				.expect("Utc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a datetime string.
+			date2 = serde_yaml::from_str(DATESTR_Q)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			let serial2 = serde_yaml::to_string(&date)
+				.expect("Utc2k serialization failed.");
+			assert_eq!(serial2, YSERIALNUM);
+
+			date2 = serde_yaml::from_str(YSERIALSTR)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(YSERIALNUM)
+				.expect("Utc2k deserialization (u32) failed.");
 			assert_eq!(date, date2);
 		}
 	}
