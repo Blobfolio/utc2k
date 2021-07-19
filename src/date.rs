@@ -709,7 +709,7 @@ impl Utc2k {
 	#[must_use]
 	/// # Tomorrow.
 	///
-	/// Create a new instance representing one day from now.
+	/// Create a new instance representing one day from now (present time).
 	///
 	/// ## Examples
 	///
@@ -724,8 +724,7 @@ impl Utc2k {
 	#[must_use]
 	/// # Yesterday.
 	///
-	/// Create a new instance representing one day ago (from the current UTC
-	/// time).
+	/// Create a new instance representing one day ago (present time).
 	///
 	/// ## Examples
 	///
@@ -1250,7 +1249,7 @@ impl Utc2k {
 	/// # Change Time.
 	///
 	/// Return a new [`Utc2k`] instance with the original date — unless there
-	/// is carry-over needed — but a new time.
+	/// is carry-over needed — and a new time.
 	///
 	/// ## Examples
 	///
