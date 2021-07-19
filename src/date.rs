@@ -413,18 +413,6 @@ impl FmtUtc2k {
 
 
 #[cfg(any(test, feature = "serde"))]
-impl serde::Serialize for FmtUtc2k {
-	#[inline]
-	/// # Serialize.
-	///
-	/// Use the optional `serde` crate feature to enable serialization support.
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: serde::Serializer {
-		self.as_str().serialize(serializer)
-	}
-}
-
-#[cfg(any(test, feature = "serde"))]
 impl<'de> serde::Deserialize<'de> for FmtUtc2k {
 	/// # Deserialize.
 	///
@@ -435,6 +423,18 @@ impl<'de> serde::Deserialize<'de> for FmtUtc2k {
 			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
 		}
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for FmtUtc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.as_str().serialize(serializer)
 	}
 }
 
@@ -1279,18 +1279,6 @@ impl From<Utc2k> for u32 {
 
 
 #[cfg(any(test, feature = "serde"))]
-impl serde::Serialize for Utc2k {
-	#[inline]
-	/// # Serialize.
-	///
-	/// Use the optional `serde` crate feature to enable serialization support.
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: serde::Serializer {
-		self.unixtime().serialize(serializer)
-	}
-}
-
-#[cfg(any(test, feature = "serde"))]
 impl<'de> serde::Deserialize<'de> for Utc2k {
 	/// # Deserialize.
 	///
@@ -1301,6 +1289,18 @@ impl<'de> serde::Deserialize<'de> for Utc2k {
 			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
 		}
+	}
+}
+
+#[cfg(any(test, feature = "serde"))]
+impl serde::Serialize for Utc2k {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: serde::Serializer {
+		self.unixtime().serialize(serializer)
 	}
 }
 
