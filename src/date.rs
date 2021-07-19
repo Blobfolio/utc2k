@@ -704,6 +704,37 @@ impl Utc2k {
 	///
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from(unixtime()) }
+
+	#[inline]
+	#[must_use]
+	/// # Tomorrow.
+	///
+	/// Create a new instance representing one day from now.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::tomorrow(), Utc2k::now() + 86_400_u32);
+	/// ```
+	pub fn tomorrow() -> Self { Self::from(unixtime() + DAY_IN_SECONDS) }
+
+	#[inline]
+	#[must_use]
+	/// # Yesterday.
+	///
+	/// Create a new instance representing one day ago (from the current UTC
+	/// time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::yesterday(), Utc2k::now() - 86_400_u32);
+	/// ```
+	pub fn yesterday() -> Self { Self::from(unixtime() - DAY_IN_SECONDS) }
 }
 
 /// ## String Parsing.
