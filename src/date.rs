@@ -1214,6 +1214,27 @@ impl Utc2k {
 		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
 		else { time }
 	}
+
+	#[must_use]
+	/// # Change Time.
+	///
+	/// Return a new [`Utc2k`] instance with the original date — unless there
+	/// is carry-over needed — but a new time.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::default();
+	/// assert_eq!(date.to_string(), "2000-01-01 00:00:00");
+	///
+	/// // Change the time bits.
+	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
+	/// ```
+	pub fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
+		Self::from(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
+	}
 }
 
 /// ## Checked Operations.
