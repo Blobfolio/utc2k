@@ -988,6 +988,37 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # Abbreviated Month Name.
+	///
+	/// Return the abbreviated name of the month, nice and pretty.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::convert::TryFrom;
+	///
+	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
+	/// assert_eq!(date.month_abbreviation(), "Jun");
+	/// ```
+	pub const fn month_abbreviation(self) -> &'static str {
+		match self.m {
+			1 => "Jan",
+			2 => "Feb",
+			3 => "Mar",
+			4 => "Apr",
+			5 => "May",
+			6 => "Jun",
+			7 => "Jul",
+			8 => "Aug",
+			9 => "Sep",
+			10 => "Oct",
+			11 => "Nov",
+			_ => "Dec",
+		}
+	}
+
+	#[must_use]
 	/// # Month Name.
 	///
 	/// Return the name of the month, nice and pretty.
