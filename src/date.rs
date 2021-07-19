@@ -73,7 +73,7 @@ macro_rules! try_from_unixtime {
 /// or unix timestamps. Using this enum as an intermediate step seems to be the
 /// best way to achieve that.
 enum RawSerde<'a> {
-	Str(&'a str),
+	Str(std::borrow::Cow<'a, str>),
 	Num(u32),
 }
 
@@ -420,7 +420,7 @@ impl<'de> serde::Deserialize<'de> for FmtUtc2k {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: serde::de::Deserializer<'de> {
 		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
 		}
 	}
@@ -1286,7 +1286,7 @@ impl<'de> serde::Deserialize<'de> for Utc2k {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: serde::de::Deserializer<'de> {
 		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
 		}
 	}
@@ -1549,6 +1549,9 @@ mod tests {
 		const DATENUM: &str = "1625743996";
 		const DATESTR_Q: &str = "\"2021-07-08 11:33:16\"";
 
+		const YSERIALNUM: &str = "---\n1625743996\n";
+		const YSERIALSTR: &str = "---\n\"2021-07-08 11:33:16\"\n";
+
 		{
 			// Formatted Version.
 			let date = FmtUtc2k::try_from(DATESTR).unwrap();
@@ -1562,6 +1565,29 @@ mod tests {
 
 			// We should also be able to deserialize from a timestamp.
 			date2 = serde_json::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// Try it with serde_yaml, which is a bit stricter.
+			date2 = serde_yaml::from_str(&serial)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(DATENUM)
+				.expect("FmtUtc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// Serialize it with serde_yaml too.
+			let serial2 = serde_yaml::to_string(&date)
+				.expect("FmtUtc2k serialization failed.");
+			assert_eq!(serial2, YSERIALSTR);
+
+			// And make sure deserialization from YAML format works.
+			date2 = serde_yaml::from_str(YSERIALSTR)
+				.expect("FmtUtc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(YSERIALNUM)
 				.expect("FmtUtc2k deserialization (u32) failed.");
 			assert_eq!(date, date2);
 		}
@@ -1580,6 +1606,28 @@ mod tests {
 			// We should also be able to deserialize from a datetime string.
 			date2 = serde_json::from_str(DATESTR_Q)
 				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			// Again, retry with serde_yaml.
+			date2 = serde_yaml::from_str(&serial)
+				.expect("Utc2k deserialization (u32) failed.");
+			assert_eq!(date, date2);
+
+			// We should also be able to deserialize from a datetime string.
+			date2 = serde_yaml::from_str(DATESTR_Q)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			let serial2 = serde_yaml::to_string(&date)
+				.expect("Utc2k serialization failed.");
+			assert_eq!(serial2, YSERIALNUM);
+
+			date2 = serde_yaml::from_str(YSERIALSTR)
+				.expect("Utc2k deserialization (str) failed.");
+			assert_eq!(date, date2);
+
+			date2 = serde_yaml::from_str(YSERIALNUM)
+				.expect("Utc2k deserialization (u32) failed.");
 			assert_eq!(date, date2);
 		}
 	}
