@@ -28,6 +28,14 @@ use std::{
 	},
 };
 
+#[cfg(any(test, feature = "serde"))]
+use serde::{
+	de,
+	Deserialize,
+	ser,
+	Serialize,
+};
+
 
 
 /// # Double-Digit ASCII.
@@ -65,7 +73,7 @@ macro_rules! try_from_unixtime {
 
 
 #[cfg(any(test, feature = "serde"))]
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 #[serde(untagged)]
 /// # Ambiguous Serde Value.
 ///
@@ -73,8 +81,8 @@ macro_rules! try_from_unixtime {
 /// or unix timestamps. Using this enum as an intermediate step seems to be the
 /// best way to achieve that.
 enum RawSerde<'a> {
-	Str(std::borrow::Cow<'a, str>),
 	Num(u32),
+	Str(std::borrow::Cow<'a, str>),
 }
 
 
@@ -413,27 +421,27 @@ impl FmtUtc2k {
 
 
 #[cfg(any(test, feature = "serde"))]
-impl<'de> serde::Deserialize<'de> for FmtUtc2k {
+impl<'de> Deserialize<'de> for FmtUtc2k {
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where D: serde::de::Deserializer<'de> {
+	where D: de::Deserializer<'de> {
 		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
 		}
 	}
 }
 
 #[cfg(any(test, feature = "serde"))]
-impl serde::Serialize for FmtUtc2k {
+impl Serialize for FmtUtc2k {
 	#[inline]
 	/// # Serialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: serde::Serializer {
+	where S: ser::Serializer {
 		self.as_str().serialize(serializer)
 	}
 }
@@ -1361,27 +1369,27 @@ impl From<Utc2k> for u32 {
 
 
 #[cfg(any(test, feature = "serde"))]
-impl<'de> serde::Deserialize<'de> for Utc2k {
+impl<'de> Deserialize<'de> for Utc2k {
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where D: serde::de::Deserializer<'de> {
+	where D: de::Deserializer<'de> {
 		match RawSerde::deserialize(deserializer)? {
-			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| serde::de::Error::custom("Invalid date string.")),
 			RawSerde::Num(d) => Ok(Self::from(d)),
+			RawSerde::Str(s) => Self::try_from(s.as_ref()).map_err(|_| de::Error::custom("Invalid date string.")),
 		}
 	}
 }
 
 #[cfg(any(test, feature = "serde"))]
-impl serde::Serialize for Utc2k {
+impl Serialize for Utc2k {
 	#[inline]
 	/// # Serialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: serde::Serializer {
+	where S: ser::Serializer {
 		self.unixtime().serialize(serializer)
 	}
 }
