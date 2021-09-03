@@ -439,7 +439,7 @@ impl Serialize for FmtUtc2k {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: ser::Serializer {
-		self.as_str().serialize(serializer)
+		serializer.serialize_str(self.as_str())
 	}
 }
 
@@ -1387,7 +1387,7 @@ impl Serialize for Utc2k {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: ser::Serializer {
-		self.unixtime().serialize(serializer)
+		serializer.serialize_u32(self.unixtime())
 	}
 }
 
