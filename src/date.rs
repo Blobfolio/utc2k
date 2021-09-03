@@ -14,6 +14,13 @@ use crate::{
 	Utc2kError,
 	Weekday,
 };
+#[cfg(any(test, feature = "serde"))]
+use serde::{
+	de,
+	Deserialize,
+	ser,
+	Serialize,
+};
 use std::{
 	borrow::Borrow,
 	cmp::Ordering,
@@ -26,14 +33,6 @@ use std::{
 		Sub,
 		SubAssign,
 	},
-};
-
-#[cfg(any(test, feature = "serde"))]
-use serde::{
-	de,
-	Deserialize,
-	ser,
-	Serialize,
 };
 
 
@@ -417,8 +416,6 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
 	}
 }
-
-
 
 #[cfg(any(test, feature = "serde"))]
 impl<'de> Deserialize<'de> for FmtUtc2k {
