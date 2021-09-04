@@ -30,7 +30,6 @@ features = [ "std" ]
 
 [dependencies.serde]
 version = "1.0.*"
-features = [ "derive" ]
 optional = true
 
 [[bench]]
