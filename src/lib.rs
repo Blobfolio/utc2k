@@ -117,6 +117,7 @@ utc2k = "0.2.*"
 mod abacus;
 mod date;
 mod error;
+#[cfg(any(test, feature = "serde"))] mod serde;
 mod weekday;
 
 pub(crate) use abacus::Abacus;
