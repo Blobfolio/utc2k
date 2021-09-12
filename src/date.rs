@@ -18,6 +18,7 @@ use std::{
 	borrow::Borrow,
 	cmp::Ordering,
 	convert::TryFrom,
+	ffi::OsStr,
 	fmt,
 	ops::{
 		Add,
@@ -156,6 +157,31 @@ impl Ord for FmtUtc2k {
 impl PartialOrd for FmtUtc2k {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+impl TryFrom<&OsStr> for FmtUtc2k {
+	type Error = Utc2kError;
+
+	#[inline]
+	/// # From `OsStr`.
+	///
+	/// ```
+	/// use std::convert::TryFrom;
+	/// use std::ffi::OsStr;
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::try_from(OsStr::new("2013-12-15 21:30:02")).unwrap().as_str(),
+	///     "2013-12-15 21:30:02"
+	/// );
+	/// assert_eq!(
+	///     FmtUtc2k::try_from(OsStr::new("2013-12-15")).unwrap().as_str(),
+	///     "2013-12-15 00:00:00"
+	/// );
+	/// ```
+	fn try_from(src: &OsStr) -> Result<Self, Self::Error> {
+		Utc2k::try_from(src).map(Self::from)
+	}
 }
 
 impl TryFrom<&str> for FmtUtc2k {
@@ -541,6 +567,31 @@ impl SubAssign<u32> for Utc2k {
 }
 
 try_from_unixtime!(i32, u64, i64, usize, isize);
+
+impl TryFrom<&OsStr> for Utc2k {
+	type Error = Utc2kError;
+
+	/// # From `OsStr`.
+	///
+	/// ```
+	/// use std::convert::TryFrom;
+	/// use std::ffi::OsStr;
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::try_from(OsStr::new("2013-12-15 21:30:02")).unwrap().to_string(),
+	///     "2013-12-15 21:30:02"
+	/// );
+	/// assert_eq!(
+	///     Utc2k::try_from(OsStr::new("2013-12-15")).unwrap().to_string(),
+	///     "2013-12-15 00:00:00"
+	/// );
+	/// ```
+	fn try_from(src: &OsStr) -> Result<Self, Self::Error> {
+		let src: &str = src.to_str().ok_or(Utc2kError::Invalid)?;
+		Self::try_from(src)
+	}
+}
 
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
