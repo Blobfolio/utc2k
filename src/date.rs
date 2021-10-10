@@ -17,7 +17,6 @@ use crate::{
 use std::{
 	borrow::Borrow,
 	cmp::Ordering,
-	convert::TryFrom,
 	ffi::OsStr,
 	fmt,
 	ops::{
@@ -166,7 +165,6 @@ impl TryFrom<&OsStr> for FmtUtc2k {
 	/// # From `OsStr`.
 	///
 	/// ```
-	/// use std::convert::TryFrom;
 	/// use std::ffi::OsStr;
 	/// use utc2k::FmtUtc2k;
 	///
@@ -447,7 +445,6 @@ impl FmtUtc2k {
 ///
 /// ```
 /// use utc2k::Utc2k;
-/// use std::convert::TryFrom;
 ///
 /// let date = Utc2k::default(); // 2000-01-01 00:00:00
 /// let date = Utc2k::now(); // The current time.
@@ -574,7 +571,6 @@ impl TryFrom<&OsStr> for Utc2k {
 	/// # From `OsStr`.
 	///
 	/// ```
-	/// use std::convert::TryFrom;
 	/// use std::ffi::OsStr;
 	/// use utc2k::Utc2k;
 	///
@@ -612,7 +608,6 @@ impl TryFrom<&str> for Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2021/06/25").unwrap();
 	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
@@ -1010,7 +1005,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
 	/// assert!(date.leap_year());
@@ -1034,7 +1028,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
 	/// assert_eq!(date.month_abbreviation(), "Jun");
@@ -1065,7 +1058,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
 	/// assert_eq!(date.month_name(), "June");
@@ -1100,7 +1092,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
 	/// assert_eq!(date.month_size(), 31);
@@ -1124,7 +1115,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::Utc2k;
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2020-05-10 00:00:00").unwrap();
 	/// assert_eq!(date.ordinal(), 131);
@@ -1192,7 +1182,6 @@ impl Utc2k {
 	///
 	/// ```
 	/// use utc2k::{Utc2k, Weekday};
-	/// use std::convert::TryFrom;
 	///
 	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
 	/// assert_eq!(date.weekday(), Weekday::Thursday);
