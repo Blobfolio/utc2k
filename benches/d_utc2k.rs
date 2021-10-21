@@ -10,7 +10,6 @@ use chrono::{
 	Utc,
 	TimeZone,
 };
-use std::convert::TryFrom;
 use utc2k::Utc2k;
 
 

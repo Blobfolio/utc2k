@@ -27,7 +27,6 @@ The main date object is [`Utc2k`].
 
 ```
 use utc2k::Utc2k;
-use std::convert::TryFrom;
 
 let date = Utc2k::default(); // 2000-01-01 00:00:00
 let date = Utc2k::now(); // The current time.
@@ -47,7 +46,6 @@ There is also [`FmtUtc2k`], used for string representation.
 
 ```
 use utc2k::{FmtUtc2k, Utc2k};
-use std::convert::TryFrom;
 
 // You can generate it from an existing Utc2k with either:
 assert_eq!(Utc2k::default().formatted(), FmtUtc2k::from(Utc2k::default()));
@@ -86,7 +84,7 @@ Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
 ```ignore,text
 [dependencies]
-utc2k = "0.2.*"
+utc2k = "0.3.*"
 ```
 */
 
