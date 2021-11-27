@@ -1470,41 +1470,42 @@ const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 mod tests {
 	use super::*;
 	use brunch as _;
-	use chrono::{
-		Datelike,
-		Timelike,
-		TimeZone,
-		Utc,
-	};
 	use rand::{
 		distributions::Uniform,
 		Rng,
 	};
+	use time::OffsetDateTime;
 
 
 
 	macro_rules! range_test {
-		($buf:ident, $i:ident) => (
+		($buf:ident, $i:ident, $format:ident) => (
 			let u = Utc2k::from($i);
-			let c = Utc.timestamp($i as i64, 0);
+			let c = OffsetDateTime::from_unix_timestamp($i as i64)
+				.expect("Unable to create time::OffsetDateTime.");
 			$buf.set_datetime(u);
 
 			// Make sure the timestamp comes back the same.
 			assert_eq!($i, u.unixtime(), "Timestamp out does not match timestamp in!");
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
-			assert_eq!(u.month(), c.month() as u8, "Month mismatch for unixtime {}", $i);
-			assert_eq!(u.day(), c.day() as u8, "Day mismatch for unixtime {}", $i);
-			assert_eq!(u.hour(), c.hour() as u8, "Hour mismatch for unixtime {}", $i);
-			assert_eq!(u.minute(), c.minute() as u8, "Minute mismatch for unixtime {}", $i);
-			assert_eq!(u.second(), c.second() as u8, "Second mismatch for unixtime {}", $i);
-			assert_eq!(u.ordinal(), c.ordinal() as u16, "Ordinal mismatch for unixtime {}", $i);
+			assert_eq!(u.month(), u8::from(c.month()), "Month mismatch for unixtime {}", $i);
+			assert_eq!(u.day(), c.day(), "Day mismatch for unixtime {}", $i);
+			assert_eq!(u.hour(), c.hour(), "Hour mismatch for unixtime {}", $i);
+			assert_eq!(u.minute(), c.minute(), "Minute mismatch for unixtime {}", $i);
+			assert_eq!(u.second(), c.second(), "Second mismatch for unixtime {}", $i);
+			assert_eq!(u.ordinal(), c.ordinal(), "Ordinal mismatch for unixtime {}", $i);
 
 			// Make sure the weekdays match.
-			assert_eq!(u.weekday().as_ref(), c.format("%A").to_string());
+			assert_eq!(u.weekday().as_ref(), c.weekday().to_string());
 
 			// Test string conversion.
-			assert_eq!($buf.as_str(), c.format("%Y-%m-%d %H:%M:%S").to_string(), "Date mismatch for unixtime {}", $i);
+			assert_eq!(
+				$buf.as_str(),
+				&c.format(&$format).expect("Unable to format datetime."),
+				"Date mismatch for unixtime {}",
+				$i
+			);
 
 		);
 	}
@@ -1522,8 +1523,11 @@ mod tests {
 	/// complete.
 	fn full_unixtime() {
 		let mut buf = FmtUtc2k::default();
+		let format = time::format_description::parse(
+			"[year]-[month]-[day] [hour]:[minute]:[second]",
+		).expect("Unable to parse datetime format.");
 		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-			range_test!(buf, i);
+			range_test!(buf, i, format);
 		}
 	}
 
@@ -1538,8 +1542,11 @@ mod tests {
 	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
 		let set = Uniform::new_inclusive(Utc2k::MIN_UNIXTIME, Utc2k::MAX_UNIXTIME);
+		let format = time::format_description::parse(
+			"[year]-[month]-[day] [hour]:[minute]:[second]",
+		).expect("Unable to parse datetime format.");
 		for i in rand::thread_rng().sample_iter(set).take(5_000_000) {
-			range_test!(buf, i);
+			range_test!(buf, i, format);
 		}
 	}
 

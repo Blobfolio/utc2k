@@ -228,19 +228,20 @@ impl From<Weekday> for u8 {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use chrono::{
-		TimeZone,
-		Utc,
+	use time::{
+		Date,
+		Month,
 	};
 
 	#[test]
 	/// # Test First of Year.
 	fn t_year_start() {
 		for y in 2000..=2099 {
-			let c = Utc.ymd(y, 1, 1);
+			let c = Date::from_calendar_date(y, Month::January, 1)
+				.expect("Unable to create time::Date.");
 			assert_eq!(
 				Weekday::year_begins_on((y - 2000) as u8).as_ref(),
-				c.format("%A").to_string(),
+				c.weekday().to_string(),
 				"Failed with year {}", y
 			);
 		}
