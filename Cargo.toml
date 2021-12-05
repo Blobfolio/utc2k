@@ -17,6 +17,12 @@ exclude = [
 	"justfile",
 ]
 
+[package.metadata.bashman]
+name = "UTC2K"
+bash-dir = "./"
+man-dir = "./"
+credits-dir = "./"
+
 [dev-dependencies]
 brunch = "0.2.*"
 rand = "0.8.*"

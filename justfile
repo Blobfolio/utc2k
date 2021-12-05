@@ -78,6 +78,12 @@ bench BENCH="":
 		--target-dir "{{ cargo_dir }}"
 
 
+# Generate CREDITS.
+@credits:
+	cargo bashman --no-bash --no-man
+	just _fix-chown "{{ justfile_directory() }}/CREDITS.md"
+
+
 # Build Docs.
 @doc:
 	# Make sure nightly is installed; this version generates better docs.
