@@ -21,5 +21,8 @@ benches!(
 		.with(|| FmtUtc2k::try_from("2019-04-10")),
 
 	Bench::new("utc2k::FmtUtc2k", "to_string()")
-		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_string())
+		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_string()),
+
+	Bench::new("utc2k::FmtUtc2k", "to_rfc3339()")
+		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_rfc3339()),
 );

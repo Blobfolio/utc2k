@@ -419,6 +419,36 @@ impl FmtUtc2k {
 	}
 }
 
+/// ## Formatting.
+impl FmtUtc2k {
+	#[must_use]
+	/// # To RFC3339.
+	///
+	/// Return a string formatted according to [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339).
+	///
+	/// Note: this method is allocating.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let mut fmt = FmtUtc2k::from(Utc2k::MIN_UNIXTIME);
+	/// assert_eq!(fmt.to_rfc3339(), "2000-01-01T00:00:00Z");
+	///
+	/// fmt.set_unixtime(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.to_rfc3339(), "2099-12-31T23:59:59Z");
+	/// ```
+	pub fn to_rfc3339(&self) -> String {
+		let mut out = String::with_capacity(20);
+		out.push_str(self.date());
+		out.push('T');
+		out.push_str(self.time());
+		out.push('Z');
+		out
+	}
+}
+
 
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
@@ -1210,6 +1240,26 @@ impl Utc2k {
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
 	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
+
+	#[inline]
+	#[must_use]
+	/// # To RFC3339.
+	///
+	/// Return a string formatted according to [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339).
+	///
+	/// Note: this method is allocating.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2021, 12, 13, 11, 56, 1);
+	/// assert_eq!(date.to_rfc3339(), "2021-12-13T11:56:01Z");
+	/// ```
+	pub fn to_rfc3339(&self) -> String {
+		FmtUtc2k::from(*self).to_rfc3339()
+	}
 
 	#[must_use]
 	/// # Unix Timestamp.
