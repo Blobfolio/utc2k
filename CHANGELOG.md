@@ -2,6 +2,15 @@
 
 
 
+## [0.3.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.2) - 2021-12-13
+
+### Added
+
+- `Utc2k::to_rfc3339`
+- `FmtUtc2k::to_rfc3339`
+
+
+
 ## [0.3.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.1) - 2021-11-27
 
 ### Changed
