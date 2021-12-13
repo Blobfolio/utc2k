@@ -88,7 +88,7 @@ impl Abacus {
 		out
 	}
 
-	#[allow(clippy::cast_possible_truncation)]
+	#[allow(clippy::cast_possible_truncation)] // It fits.
 	#[must_use]
 	/// # Parts.
 	///
