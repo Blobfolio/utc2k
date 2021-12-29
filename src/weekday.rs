@@ -2,11 +2,12 @@
 # UTC2K - Weekday
 */
 
-use crate::Utc2k;
+use crate::{
+	macros,
+	Utc2k,
+};
 use std::{
-	borrow::Borrow,
 	cmp::Ordering,
-	fmt,
 	ops::{
 		Add,
 		Deref,
@@ -62,15 +63,7 @@ macro_rules! impl_bigint {
 	)+);
 }
 
-impl AsRef<str> for Weekday {
-	#[inline]
-	fn as_ref(&self) -> &str { self.as_str() }
-}
-
-impl Borrow<str> for Weekday {
-	#[inline]
-	fn borrow(&self) -> &str { self.as_str() }
-}
+macros::as_ref_borrow_cast!(Weekday: as_str str);
 
 impl Default for Weekday {
 	#[inline]
@@ -83,12 +76,7 @@ impl Deref for Weekday {
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
 
-impl fmt::Display for Weekday {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(self.as_str())
-	}
-}
+macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
 	fn from(src: u8) -> Self {

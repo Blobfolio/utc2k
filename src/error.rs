@@ -2,10 +2,8 @@
 # UTC2K - Errors.
 */
 
-use std::{
-	error::Error,
-	fmt,
-};
+use crate::macros;
+use std::error::Error;
 
 #[allow(missing_docs)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -18,17 +16,8 @@ pub enum Utc2kError {
 
 impl Error for Utc2kError {}
 
-impl AsRef<str> for Utc2kError {
-	#[inline]
-	fn as_ref(&self) -> &str { self.as_str() }
-}
-
-impl fmt::Display for Utc2kError {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(self.as_str())
-	}
-}
+macros::as_ref_borrow_cast!(Utc2kError: as_str str);
+macros::display_str!(as_str Utc2kError);
 
 impl Utc2kError {
 	#[must_use]

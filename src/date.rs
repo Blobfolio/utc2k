@@ -9,13 +9,13 @@ use crate::{
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
 	JULIAN_EPOCH,
+	macros,
 	MINUTE_IN_SECONDS,
 	unixtime,
 	Utc2kError,
 	Weekday,
 };
 use std::{
-	borrow::Borrow,
 	cmp::Ordering,
 	ffi::OsStr,
 	fmt,
@@ -102,20 +102,11 @@ macro_rules! try_from_unixtime {
 /// ```
 pub struct FmtUtc2k([u8; 19]);
 
-impl AsRef<[u8]> for FmtUtc2k {
-	#[inline]
-	fn as_ref(&self) -> &[u8] { self.as_bytes() }
-}
-
-impl AsRef<str> for FmtUtc2k {
-	#[inline]
-	fn as_ref(&self) -> &str { self.as_str() }
-}
-
-impl Borrow<str> for FmtUtc2k {
-	#[inline]
-	fn borrow(&self) -> &str { self.as_str() }
-}
+macros::as_ref_borrow_cast!(
+	FmtUtc2k:
+		as_bytes [u8],
+		as_str str,
+);
 
 impl Default for FmtUtc2k {
 	#[inline]
@@ -128,12 +119,7 @@ impl Deref for FmtUtc2k {
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
 
-impl fmt::Display for FmtUtc2k {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(self.as_str())
-	}
-}
+macros::display_str!(as_str FmtUtc2k);
 
 impl From<u32> for FmtUtc2k {
 	#[inline]
