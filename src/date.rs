@@ -439,6 +439,68 @@ impl FmtUtc2k {
 		out.push('Z');
 		out
 	}
+
+	#[must_use]
+	/// # To RFC2822.
+	///
+	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
+	///
+	/// There are a few things to consider:
+	/// * This method is allocating;
+	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
+	/// * The [`Utc2k::to_rfc2822`] implementation is _slightly_ faster than this one;
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let date = FmtUtc2k::from(Utc2k::new(2003, 7, 1, 10, 52, 37));
+	/// assert_eq!(date.to_rfc2822(), "Tue, 1 Jul 2003 10:52:37 +0000");
+	///
+	/// let date = FmtUtc2k::from(Utc2k::new(2020, 6, 13, 8, 8, 8));
+	/// assert_eq!(date.to_rfc2822(), "Sat, 13 Jun 2020 08:08:08 +0000");
+	/// ```
+	pub fn to_rfc2822(&self) -> String {
+		let utc = Utc2k::from(self);
+		let weekday = utc.weekday().abbreviation().as_bytes();
+		let month = Month::from_u8(utc.m).abbreviation().as_bytes();
+
+		// Working from bytes is ugly, but performs much better than any
+		// string-based operations.
+		let out: Vec<u8> =
+			if utc.d < 10 {
+				vec![
+					weekday[0], weekday[1], weekday[2],
+					b',', b' ',
+					self.0[9],
+					b' ',
+					month[0], month[1], month[2],
+					b' ',
+					b'2', b'0', self.0[2], self.0[3],
+					b' ',
+					self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
+					b' ', b'+', b'0', b'0', b'0', b'0'
+				]
+			}
+			else {
+				vec![
+					weekday[0], weekday[1], weekday[2],
+					b',', b' ',
+					self.0[8], self.0[9],
+					b' ',
+					month[0], month[1], month[2],
+					b' ',
+					b'2', b'0', self.0[2], self.0[3],
+					b' ',
+					self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
+					b' ', b'+', b'0', b'0', b'0', b'0'
+				]
+			};
+
+		// The output is ASCII; it's fine.
+		unsafe { String::from_utf8_unchecked(out) }
+	}
 }
 
 
@@ -1237,8 +1299,72 @@ impl Utc2k {
 	/// let date = Utc2k::new(2021, 12, 13, 11, 56, 1);
 	/// assert_eq!(date.to_rfc3339(), "2021-12-13T11:56:01Z");
 	/// ```
-	pub fn to_rfc3339(&self) -> String {
-		FmtUtc2k::from(*self).to_rfc3339()
+	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
+
+	#[must_use]
+	/// # To RFC2822.
+	///
+	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
+	///
+	/// There are a couple things to consider:
+	/// * This method is allocating;
+	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
+	/// * This implementation is slightly faster than [`FmtUtc2k::to_rfc2822`];
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2003, 7, 1, 10, 52, 37);
+	/// assert_eq!(date.to_rfc2822(), "Tue, 1 Jul 2003 10:52:37 +0000");
+	///
+	/// let date = Utc2k::new(2036, 12, 15, 16, 30, 55);
+	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
+	/// ```
+	pub fn to_rfc2822(&self) -> String {
+		let weekday = self.weekday().abbreviation().as_bytes();
+		let month = Month::from_u8(self.m).abbreviation().as_bytes();
+		let d_idx = (self.d << 1) as usize;
+		let y_idx = (self.y << 1) as usize;
+		let hh_idx = (self.hh << 1) as usize;
+		let mm_idx = (self.mm << 1) as usize;
+		let ss_idx = (self.ss << 1) as usize;
+
+		// Working from bytes is ugly, but performs much better than any
+		// string-based operations.
+		let out: Vec<u8> =
+			if self.d < 10 {
+				vec![
+					weekday[0], weekday[1], weekday[2],
+					b',', b' ',
+					DD[d_idx + 1],
+					b' ',
+					month[0], month[1], month[2],
+					b' ',
+					b'2', b'0', DD[y_idx], DD[y_idx + 1],
+					b' ',
+					DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
+					b' ', b'+', b'0', b'0', b'0', b'0'
+				]
+			}
+			else {
+				vec![
+					weekday[0], weekday[1], weekday[2],
+					b',', b' ',
+					DD[d_idx], DD[d_idx + 1],
+					b' ',
+					month[0], month[1], month[2],
+					b' ',
+					b'2', b'0', DD[y_idx], DD[y_idx + 1],
+					b' ',
+					DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
+					b' ', b'+', b'0', b'0', b'0', b'0'
+				]
+			};
+
+		// The output is ASCII; it's fine.
+		unsafe { String::from_utf8_unchecked(out) }
 	}
 
 	#[must_use]
