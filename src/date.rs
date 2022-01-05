@@ -127,6 +127,11 @@ impl From<u32> for FmtUtc2k {
 	fn from(src: u32) -> Self { Self::from(Utc2k::from(src)) }
 }
 
+impl From<&Utc2k> for FmtUtc2k {
+	#[inline]
+	fn from(src: &Utc2k) -> Self { Self::from(*src) }
+}
+
 impl From<Utc2k> for FmtUtc2k {
 	fn from(src: Utc2k) -> Self {
 		let mut out = Self::default();
