@@ -36,7 +36,13 @@ pub enum Weekday {
 	Saturday,
 }
 
-macro_rules! impl_bigint {
+impl Add<u8> for Weekday {
+	type Output = Self;
+	#[inline]
+	fn add(self, other: u8) -> Self { Self::from(self.as_u8() + (other % 7)) }
+}
+
+macro_rules! add_bigint {
 	($($ty:ty),+) => ($(
 		impl Add<$ty> for Weekday {
 			type Output = Self;
@@ -44,24 +50,10 @@ macro_rules! impl_bigint {
 			#[inline]
 			fn add(self, other: $ty) -> Self { Self::from(self.as_u8() + (other % 7) as u8) }
 		}
-
-		impl From<$ty> for Weekday {
-			#[allow(clippy::cast_possible_truncation)] // It fits.
-			fn from(src: $ty) -> Self {
-				match src {
-					1 => Self::Sunday,
-					2 => Self::Monday,
-					3 => Self::Tuesday,
-					4 => Self::Wednesday,
-					5 => Self::Thursday,
-					6 => Self::Friday,
-					0 | 7 => Self::Saturday,
-					_ => Self::from((src % 7) as u8),
-				}
-			}
-		}
 	)+);
 }
+
+add_bigint!(u16, u32, u64, usize);
 
 macros::as_ref_borrow_cast!(Weekday: as_str str);
 
