@@ -1650,12 +1650,16 @@ mod tests {
 	macro_rules! range_test {
 		($buf:ident, $i:ident, $format:ident) => (
 			let u = Utc2k::from($i);
+			let f = FmtUtc2k::from(u);
 			let c = OffsetDateTime::from_unix_timestamp($i as i64)
 				.expect("Unable to create time::OffsetDateTime.");
 			$buf.set_datetime(u);
 
 			// Make sure the timestamp comes back the same.
 			assert_eq!($i, u.unixtime(), "Timestamp out does not match timestamp in!");
+
+			// Make sure back-and-forth froms work as expected.
+			assert_eq!(Utc2k::from(f), u);
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
 			assert_eq!(u.month(), u8::from(c.month()), "Month mismatch for unixtime {}", $i);

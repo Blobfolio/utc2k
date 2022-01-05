@@ -203,6 +203,14 @@ impl Weekday {
 	/// # Current Day.
 	///
 	/// Return the current day of the week (i.e. today).
+	///
+	/// ## Examples.
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// assert_eq!(Weekday::now(), Utc2k::now().weekday());
+	/// ```
 	pub fn now() -> Self { Utc2k::now().weekday() }
 
 
