@@ -445,10 +445,9 @@ impl FmtUtc2k {
 	///
 	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
 	///
-	/// There are a few things to consider:
+	/// There are a couple things to consider:
 	/// * This method is allocating;
 	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	/// * The [`Utc2k::to_rfc2822`] implementation is _slightly_ faster than this one;
 	///
 	/// ## Examples
 	///
@@ -609,15 +608,13 @@ impl From<Abacus> for Utc2k {
 }
 
 impl From<&FmtUtc2k> for Utc2k {
-	fn from(src: &FmtUtc2k) -> Self {
-		parse_parts_from_datetime(&src.0).unwrap_or_default()
-	}
+	#[inline]
+	fn from(src: &FmtUtc2k) -> Self { parse_parts_from_fmt(&src.0) }
 }
 
 impl From<FmtUtc2k> for Utc2k {
-	fn from(src: FmtUtc2k) -> Self {
-		parse_parts_from_datetime(&src.0).unwrap_or_default()
-	}
+	#[inline]
+	fn from(src: FmtUtc2k) -> Self { parse_parts_from_fmt(&src.0) }
 }
 
 impl Ord for Utc2k {
@@ -1309,7 +1306,6 @@ impl Utc2k {
 	/// There are a couple things to consider:
 	/// * This method is allocating;
 	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	/// * This implementation is slightly faster than [`FmtUtc2k::to_rfc2822`];
 	///
 	/// ## Examples
 	///
@@ -1579,6 +1575,23 @@ fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 		parse_u8_str(src[17], src[18])?,
 	);
 	Ok(Utc2k::from(tmp))
+}
+
+/// # Parse Parts From `FmtUtc2k`
+///
+/// This is identical to `parse_parts_from_datetime`, but the input is treated
+/// as trusted, since it is fed directly from a (valid) `FmtUtc2k` object.
+fn parse_parts_from_fmt(src: &[u8; 19]) -> Utc2k {
+	Utc2k::new(
+		src.iter()
+			.take(4)
+			.fold(0, |a, &c| a * 10 + u16::from(c & 0x0f)),
+		(src[5] & 0x0f) * 10 + (src[6] & 0x0f),
+		(src[8] & 0x0f) * 10 + (src[9] & 0x0f),
+		(src[11] & 0x0f) * 10 + (src[12] & 0x0f),
+		(src[14] & 0x0f) * 10 + (src[15] & 0x0f),
+		(src[17] & 0x0f) * 10 + (src[18] & 0x0f),
+	)
 }
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
