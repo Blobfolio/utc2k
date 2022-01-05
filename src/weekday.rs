@@ -239,6 +239,24 @@ impl Weekday {
 	/// ```
 	pub fn now() -> Self { Utc2k::now().weekday() }
 
+	/// # From Abbreviation Bytes.
+	///
+	/// This matches the first three bytes, case-insensitively, against the
+	/// `Month` abbreviations.
+	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		let src = src.get(..3)?;
+		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
+			b"sun" => Some(Self::Sunday),
+			b"mon" => Some(Self::Monday),
+			b"tue" => Some(Self::Tuesday),
+			b"wed" => Some(Self::Wednesday),
+			b"thu" => Some(Self::Thursday),
+			b"fri" => Some(Self::Friday),
+			b"sat" => Some(Self::Saturday),
+			_ => None,
+		}
+	}
+
 	#[must_use]
 	/// # Start of Year.
 	///
@@ -255,21 +273,6 @@ impl Weekday {
 			4 | 9 | 15 | 26 | 32 | 37 | 43 | 54 | 60 | 65 | 71 | 82 | 88 | 93 | 99 => Self::Thursday,
 			6 | 12 | 17 | 23 | 34 | 40 | 45 | 51 | 62 | 68 | 73 | 79 | 90 | 96 => Self::Sunday,
 			_ => Self::Friday,
-		}
-	}
-
-	/// # From Abbreviation Bytes.
-	fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		let src = src.get(..3)?;
-		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
-			b"sun" => Some(Self::Sunday),
-			b"mon" => Some(Self::Monday),
-			b"tue" => Some(Self::Tuesday),
-			b"wed" => Some(Self::Wednesday),
-			b"thu" => Some(Self::Thursday),
-			b"fri" => Some(Self::Friday),
-			b"sat" => Some(Self::Saturday),
-			_ => None,
 		}
 	}
 }

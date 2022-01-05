@@ -154,7 +154,10 @@ impl Month {
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
 	/// # From Abbreviation Bytes.
-	fn from_abbreviation(src: &[u8]) -> Option<Self> {
+	///
+	/// This matches the first three bytes, case-insensitively, against the
+	/// `Month` abbreviations.
+	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
 		let src = src.get(..3)?;
 		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
 			b"jan" => Some(Self::January),

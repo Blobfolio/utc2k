@@ -443,6 +443,48 @@ impl FmtUtc2k {
 		out
 	}
 
+	#[inline]
+	/// # From RFC2822.
+	///
+	/// This method can be used to construct a `FmtUtc2k` from an RFC2822-formatted
+	/// string. Variations with and without a leading weekday, and with and
+	/// without a trailing offset, are supported. If an offset is included, the
+	/// datetime will be adjusted accordingly to make it properly UTC.
+	///
+	/// Note: missing offsets are meant to imply "localized" time, but as this
+	/// library has no timezone handling, strings without any "+HHMM" at the
+	/// end will be parsed as if they were already in UTC.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0000"),
+	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
+	/// );
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("1 Jul 2003 10:52:37"),
+	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
+	/// );
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("Tue, 10 Jul 2003 10:52:37 -0700"),
+	///     FmtUtc2k::try_from("2003-07-10 17:52:37").ok(),
+	/// );
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0430"),
+	///     FmtUtc2k::try_from("2003-07-01 06:22:37").ok(),
+	/// );
+	/// ```
+	pub fn from_rfc2822<S>(src: S) -> Option<Self>
+	where S: AsRef<str> {
+		Utc2k::from_rfc2822(src).map(Self::from)
+	}
+
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -1366,6 +1408,100 @@ impl Utc2k {
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 
+	/// # From RFC2822.
+	///
+	/// This method can be used to construct a `Utc2k` from an RFC2822-formatted
+	/// string. Variations with and without a leading weekday, and with and
+	/// without a trailing offset, are supported. If an offset is included, the
+	/// datetime will be adjusted accordingly to make it properly UTC.
+	///
+	/// Note: missing offsets are meant to imply "localized" time, but as this
+	/// library has no timezone handling, strings without any "+HHMM" at the
+	/// end will be parsed as if they were already in UTC.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0000"),
+	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::from_rfc2822("1 Jul 2003 10:52:37"),
+	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::from_rfc2822("Tue, 10 Jul 2003 10:52:37 -0700"),
+	///     Some(Utc2k::new(2003, 7, 10, 17, 52, 37)),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0430"),
+	///     Some(Utc2k::new(2003, 7, 1, 6, 22, 37)),
+	/// );
+	/// ```
+	pub fn from_rfc2822<S>(src: S) -> Option<Self>
+	where S: AsRef<str> {
+		let mut src: &[u8] = src.as_ref().trim().as_bytes();
+
+		// Trim the leading weekday; that serves no purpose for us.
+		if src.get(0)?.is_ascii_alphabetic() {
+			src = src.get(5..)?;
+		}
+
+		// No matter how we cut it, the length needs to be at least this.
+		if src.len() < 19 || ! src[0].is_ascii_digit() { return None; }
+
+		// Find the day, and re-trim the slice so we can parse everything else
+		// the same way.
+		let d: u8 =
+			if src[1] == b' ' {
+				let d = src[0] & 0x0f;
+				src = &src[2..];
+				d
+			}
+			else if src[1].is_ascii_digit() {
+				let d = (src[0] & 0x0f) * 10 + (src[1] & 0x0f);
+				src = &src[3..];
+				d
+			}
+			else { return None; };
+
+		// The month should be written out as a 3-char abbreviation.
+		let m: u8 = Month::from_abbreviation(&src[..3])?.as_u8();
+
+		// The year should follow the month, after a space.
+		let y: u16 = src.iter()
+			.skip(4)
+			.take(4)
+			.try_fold(0, |a, &c|
+				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
+				else { None }
+			)?;
+
+		// The time parts.
+		let hh: u8 = parse_u8_str(src[9], src[10]).ok()?;
+		let mm: u8 = parse_u8_str(src[12], src[13]).ok()?;
+		let ss: u8 = parse_u8_str(src[15], src[16]).ok()?;
+
+		// Build it!
+		let out = Self::new(y, m, d, hh, mm, ss);
+
+		// Apply an offset?
+		if let Some((plus, offset_ss)) = parse_rfc2822_offset(src) {
+			// The offset is beyond UTC; we need to subtract.
+			if plus { Some(out - offset_ss) }
+			// The offset is earlier than UTC; we need to add.
+			else { Some(out + offset_ss) }
+		}
+		// Pass through as-is!
+		else { Some(out) }
+	}
+
 	#[must_use]
 	/// # Unix Timestamp.
 	///
@@ -1597,6 +1733,33 @@ fn parse_parts_from_fmt(src: &[u8; 19]) -> Utc2k {
 	)
 }
 
+/// # Parse RFC2822 Offset.
+///
+/// This tries to tease out the UTC offset from the end of an RFC2822 string.
+const fn parse_rfc2822_offset(src: &[u8]) -> Option<(bool, u32)> {
+	let len: usize = src.len();
+	if len > 6 && src[len - 6] == b' ' {
+		let plus: bool = match src[len - 5] {
+			b'+' => true,
+			b'-' => false,
+			_ => return None,
+		};
+
+		if let Ok(hh) = parse_u8_str(src[len - 4], src[len - 3]) {
+			if let Ok(mm) = parse_u8_str(src[len - 2], src[len - 1]) {
+				if 0 < hh || 0 < mm {
+					return Some((
+						plus,
+						(hh as u32 * HOUR_IN_SECONDS + mm as u32 * MINUTE_IN_SECONDS)
+					));
+				}
+			}
+		}
+	}
+
+	None
+}
+
 #[allow(clippy::cast_possible_truncation)] // It fits.
 /// # Parse Time From Seconds.
 ///
@@ -1663,6 +1826,9 @@ mod tests {
 
 			// Make sure back-and-forth froms work as expected.
 			assert_eq!(Utc2k::from(f), u);
+
+			// Test RFC2822 back and forth.
+			assert_eq!(Some(u), Utc2k::from_rfc2822(u.to_rfc2822()));
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
 			assert_eq!(u.month(), u8::from(c.month()), "Month mismatch for unixtime {}", $i);
