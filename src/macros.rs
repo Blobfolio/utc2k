@@ -30,6 +30,35 @@ macro_rules! display_str {
 }
 
 /// # Helper: 2-Way `PartialEq`.
+macro_rules! partial_eq_cast {
+	// Dereference.
+	(deref $parent:ty: $($cast:ident $ty:ty),+ $(,)?) => ($(
+		impl PartialEq<$ty> for $parent {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { self.$cast() == *other }
+		}
+
+		impl PartialEq<$parent> for $ty {
+			#[inline]
+			fn eq(&self, other: &$parent) -> bool { other.$cast() == *self }
+		}
+	)+);
+
+	// Plain.
+	($parent:ty: $($cast:ident $ty:ty),+ $(,)?) => ($(
+		impl PartialEq<$ty> for $parent {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { self.$cast() == other }
+		}
+
+		impl PartialEq<$parent> for $ty {
+			#[inline]
+			fn eq(&self, other: &$parent) -> bool { other.$cast() == self }
+		}
+	)+);
+}
+
+/// # Helper: 2-Way `PartialEq`.
 macro_rules! partial_eq_from {
 	($parent:ty: $($ty:ty),+ $(,)?) => ($(
 		impl PartialEq<$ty> for $parent {
@@ -49,5 +78,6 @@ macro_rules! partial_eq_from {
 pub(super) use {
 	as_ref_borrow_cast,
 	display_str,
+	partial_eq_cast,
 	partial_eq_from,
 };

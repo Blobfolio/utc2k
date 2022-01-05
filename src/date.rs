@@ -145,6 +145,9 @@ impl Ord for FmtUtc2k {
 	fn cmp(&self, other: &Self) -> Ordering { self.0.cmp(&other.0) }
 }
 
+macros::partial_eq_cast!(deref FmtUtc2k: as_str &str, as_str &String);
+macros::partial_eq_cast!(FmtUtc2k: as_str str, as_str String);
+
 impl PartialOrd for FmtUtc2k {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
