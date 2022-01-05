@@ -5,6 +5,7 @@
 use crate::{
 	macros,
 	Utc2k,
+	Utc2kError,
 };
 use std::{
 	cmp::Ordering,
@@ -122,6 +123,31 @@ impl PartialOrd for Weekday {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
+impl TryFrom<&str> for Weekday {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
+
+impl TryFrom<String> for Weekday {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: String) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
 
 impl Weekday {
 	#[must_use]
@@ -213,7 +239,6 @@ impl Weekday {
 	/// ```
 	pub fn now() -> Self { Utc2k::now().weekday() }
 
-
 	#[must_use]
 	/// # Start of Year.
 	///
@@ -230,6 +255,21 @@ impl Weekday {
 			4 | 9 | 15 | 26 | 32 | 37 | 43 | 54 | 60 | 65 | 71 | 82 | 88 | 93 | 99 => Self::Thursday,
 			6 | 12 | 17 | 23 | 34 | 40 | 45 | 51 | 62 | 68 | 73 | 79 | 90 | 96 => Self::Sunday,
 			_ => Self::Friday,
+		}
+	}
+
+	/// # From Abbreviation Bytes.
+	fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		let src = src.get(..3)?;
+		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
+			b"sun" => Some(Self::Sunday),
+			b"mon" => Some(Self::Monday),
+			b"tue" => Some(Self::Tuesday),
+			b"wed" => Some(Self::Wednesday),
+			b"thu" => Some(Self::Thursday),
+			b"fri" => Some(Self::Friday),
+			b"sat" => Some(Self::Saturday),
+			_ => None,
 		}
 	}
 }
@@ -298,5 +338,17 @@ mod tests {
 			when += 1;
 			assert_eq!(days, ALL_DAYS, "Round #{}", when);
 		}
+	}
+
+	#[test]
+	/// # String Tests.
+	fn t_str() {
+		for &d in ALL_DAYS {
+			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
+			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
+			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
+		}
+
+		assert!(Weekday::try_from("Hello").is_err());
 	}
 }
