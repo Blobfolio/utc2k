@@ -86,6 +86,20 @@ macro_rules! from_int {
 				}
 			}
 		}
+
+		impl From<Weekday> for $ty {
+			fn from(src: Weekday) -> Self {
+				match src {
+					Weekday::Sunday => 1,
+					Weekday::Monday => 2,
+					Weekday::Tuesday => 3,
+					Weekday::Wednesday => 4,
+					Weekday::Thursday => 5,
+					Weekday::Friday => 6,
+					Weekday::Saturday => 7,
+				}
+			}
+		}
 	)+);
 }
 
@@ -100,6 +114,8 @@ impl Ord for Weekday {
 	#[inline]
 	fn cmp(&self, other: &Self) -> Ordering { self.as_u8().cmp(&other.as_u8()) }
 }
+
+macros::partial_eq_from!(Weekday: u8, u16, u32, u64, usize);
 
 impl PartialOrd for Weekday {
 	#[inline]
@@ -203,11 +219,6 @@ impl Weekday {
 	}
 }
 
-impl From<Weekday> for u8 {
-	#[inline]
-	fn from(src: Weekday) -> Self { src.as_u8() }
-}
-
 
 
 #[cfg(test)]
@@ -217,6 +228,16 @@ mod tests {
 		Date,
 		Month,
 	};
+
+	const ALL_DAYS: &[Weekday] = &[
+		Weekday::Sunday,
+		Weekday::Monday,
+		Weekday::Tuesday,
+		Weekday::Wednesday,
+		Weekday::Thursday,
+		Weekday::Friday,
+		Weekday::Saturday,
+	];
 
 	#[test]
 	/// # Test First of Year.
@@ -234,23 +255,24 @@ mod tests {
 
 	#[test]
 	/// # Test Fromness.
+	fn t_abbr() {
+		for d in ALL_DAYS {
+			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
+		}
+	}
+
+	#[test]
+	/// # Test Fromness.
 	fn t_from() {
 		// There and back again.
 		for i in 1..=7_u8 {
 			assert_eq!(Weekday::from(i).as_u8(), i);
 		}
+		for i in 1..=7_u64 {
+			assert_eq!(u64::from(Weekday::from(i)), i);
+		}
 
 		assert_eq!(Weekday::from(0_u64), Weekday::Saturday);
-
-		let ordered: &[Weekday] = &[
-			Weekday::Sunday,
-			Weekday::Monday,
-			Weekday::Tuesday,
-			Weekday::Wednesday,
-			Weekday::Thursday,
-			Weekday::Friday,
-			Weekday::Saturday,
-		];
 
 		let many: Vec<Weekday> = (1..=35_u32).into_iter()
 			.map(Weekday::from)
@@ -259,7 +281,7 @@ mod tests {
 		let mut when = 0;
 		for days in many.as_slice().chunks_exact(7) {
 			when += 1;
-			assert_eq!(days, ordered, "Round #1 {}", when);
+			assert_eq!(days, ALL_DAYS, "Round #{}", when);
 		}
 	}
 }

@@ -29,8 +29,25 @@ macro_rules! display_str {
 	);
 }
 
+/// # Helper: 2-Way `PartialEq`.
+macro_rules! partial_eq_from {
+	($parent:ty: $($ty:ty),+ $(,)?) => ($(
+		impl PartialEq<$ty> for $parent {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { <$ty>::from(*self).eq(other) }
+		}
+
+		impl PartialEq<$parent> for $ty {
+			#[inline]
+			fn eq(&self, other: &$parent) -> bool { <$ty>::from(*other).eq(self) }
+		}
+	)+);
+}
+
+
 
 pub(super) use {
 	as_ref_borrow_cast,
 	display_str,
+	partial_eq_from,
 };
