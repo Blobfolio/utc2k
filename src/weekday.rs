@@ -200,6 +200,13 @@ impl Weekday {
 
 impl Weekday {
 	#[must_use]
+	/// # Current Day.
+	///
+	/// Return the current day of the week (i.e. today).
+	pub fn now() -> Self { Utc2k::now().weekday() }
+
+
+	#[must_use]
 	/// # Start of Year.
 	///
 	/// Return the first day of the given year.
