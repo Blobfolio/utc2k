@@ -5,6 +5,7 @@
 use crate::{
 	macros,
 	Utc2k,
+	Utc2kError,
 };
 use std::{
 	cmp::Ordering,
@@ -111,6 +112,32 @@ impl PartialOrd for Month {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
+impl TryFrom<&str> for Month {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Decimal", for example, will match `Month::December`.
+	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
+
+impl TryFrom<String> for Month {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Decimal", for example, will match `Month::December`.
+	fn try_from(src: String) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
+
 impl Month {
 	#[must_use]
 	/// # Current Month.
@@ -125,6 +152,26 @@ impl Month {
 	/// assert_eq!(u8::from(Month::now()), Utc2k::now().month());
 	/// ```
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
+
+	/// # From Abbreviation Bytes.
+	fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		let src = src.get(..3)?;
+		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
+			b"jan" => Some(Self::January),
+			b"feb" => Some(Self::February),
+			b"mar" => Some(Self::March),
+			b"apr" => Some(Self::April),
+			b"may" => Some(Self::May),
+			b"jun" => Some(Self::June),
+			b"jul" => Some(Self::July),
+			b"aug" => Some(Self::August),
+			b"sep" => Some(Self::September),
+			b"oct" => Some(Self::October),
+			b"nov" => Some(Self::November),
+			b"dec" => Some(Self::December),
+			_ => None,
+		}
+	}
 }
 
 impl Month {
@@ -291,5 +338,17 @@ mod tests {
 			when += 1;
 			assert_eq!(months, ALL_MONTHS, "Round #{}", when);
 		}
+	}
+
+	#[test]
+	/// # String Tests.
+	fn t_str() {
+		for &m in ALL_MONTHS {
+			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
+			assert_eq!(Ok(m), Month::try_from(m.as_str()));
+			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));
+		}
+
+		assert!(Month::try_from("Hello").is_err());
 	}
 }
