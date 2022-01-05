@@ -546,6 +546,18 @@ impl From<Abacus> for Utc2k {
 	}
 }
 
+impl From<&FmtUtc2k> for Utc2k {
+	fn from(src: &FmtUtc2k) -> Self {
+		parse_parts_from_datetime(&src.0).unwrap_or_default()
+	}
+}
+
+impl From<FmtUtc2k> for Utc2k {
+	fn from(src: FmtUtc2k) -> Self {
+		parse_parts_from_datetime(&src.0).unwrap_or_default()
+	}
+}
+
 impl Ord for Utc2k {
 	fn cmp(&self, other: &Self) -> Ordering {
 		// Work our way down until there's a difference!
