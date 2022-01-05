@@ -70,20 +70,26 @@ impl Deref for Weekday {
 
 macros::display_str!(as_str Weekday);
 
-impl From<u8> for Weekday {
-	fn from(src: u8) -> Self {
-		match src {
-			1 => Self::Sunday,
-			2 => Self::Monday,
-			3 => Self::Tuesday,
-			4 => Self::Wednesday,
-			5 => Self::Thursday,
-			6 => Self::Friday,
-			0 | 7 => Self::Saturday,
-			_ => Self::from(src % 7),
+macro_rules! from_int {
+	($($ty:ty),+) => ($(
+		impl From<$ty> for Weekday {
+			fn from(src: $ty) -> Self {
+				match src {
+					1 => Self::Sunday,
+					2 => Self::Monday,
+					3 => Self::Tuesday,
+					4 => Self::Wednesday,
+					5 => Self::Thursday,
+					6 => Self::Friday,
+					0 | 7 => Self::Saturday,
+					_ => Self::from(src % 7),
+				}
+			}
 		}
-	}
+	)+);
 }
+
+from_int!(u8, u16, u32, u64, usize);
 
 impl From<Utc2k> for Weekday {
 	#[inline]
@@ -100,7 +106,6 @@ impl PartialOrd for Weekday {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-impl_bigint!(u16, u32, u64, usize);
 
 impl Weekday {
 	#[must_use]
@@ -224,6 +229,37 @@ mod tests {
 				c.weekday().to_string(),
 				"Failed with year {}", y
 			);
+		}
+	}
+
+	#[test]
+	/// # Test Fromness.
+	fn t_from() {
+		// There and back again.
+		for i in 1..=7_u8 {
+			assert_eq!(Weekday::from(i).as_u8(), i);
+		}
+
+		assert_eq!(Weekday::from(0_u64), Weekday::Saturday);
+
+		let ordered: &[Weekday] = &[
+			Weekday::Sunday,
+			Weekday::Monday,
+			Weekday::Tuesday,
+			Weekday::Wednesday,
+			Weekday::Thursday,
+			Weekday::Friday,
+			Weekday::Saturday,
+		];
+
+		let many: Vec<Weekday> = (1..=35_u32).into_iter()
+			.map(Weekday::from)
+			.collect();
+
+		let mut when = 0;
+		for days in many.as_slice().chunks_exact(7) {
+			when += 1;
+			assert_eq!(days, ordered, "Round #1 {}", when);
 		}
 	}
 }
