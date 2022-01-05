@@ -11,6 +11,7 @@ use crate::{
 	JULIAN_EPOCH,
 	macros,
 	MINUTE_IN_SECONDS,
+	Month,
 	unixtime,
 	Utc2kError,
 	Weekday,
@@ -1035,6 +1036,7 @@ impl Utc2k {
 		LEAP_YEARS[self.y as usize]
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Abbreviated Month Name.
 	///
@@ -1049,22 +1051,10 @@ impl Utc2k {
 	/// assert_eq!(date.month_abbreviation(), "Jun");
 	/// ```
 	pub const fn month_abbreviation(self) -> &'static str {
-		match self.m {
-			1 => "Jan",
-			2 => "Feb",
-			3 => "Mar",
-			4 => "Apr",
-			5 => "May",
-			6 => "Jun",
-			7 => "Jul",
-			8 => "Aug",
-			9 => "Sep",
-			10 => "Oct",
-			11 => "Nov",
-			_ => "Dec",
-		}
+		Month::from_u8(self.m).abbreviation()
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Month Name.
 	///
@@ -1079,20 +1069,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_name(), "June");
 	/// ```
 	pub const fn month_name(self) -> &'static str {
-		match self.m {
-			1 => "January",
-			2 => "February",
-			3 => "March",
-			4 => "April",
-			5 => "May",
-			6 => "June",
-			7 => "July",
-			8 => "August",
-			9 => "September",
-			10 => "October",
-			11 => "November",
-			_ => "December",
-		}
+		Month::from_u8(self.m).as_str()
 	}
 
 	#[must_use]
