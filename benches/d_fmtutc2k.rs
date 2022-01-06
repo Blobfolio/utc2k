@@ -23,6 +23,9 @@ benches!(
 	Bench::new("utc2k::FmtUtc2k", "to_string()")
 		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_string()),
 
+	Bench::new("utc2k::FmtUtc2k", "to_rfc2822()")
+		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_rfc2822()),
+
 	Bench::new("utc2k::FmtUtc2k", "to_rfc3339()")
 		.with(|| FmtUtc2k::from(Utc2k::MAX_UNIXTIME).to_rfc3339()),
 );

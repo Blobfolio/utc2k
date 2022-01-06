@@ -2,20 +2,26 @@
 # UTC2K - Weekday
 */
 
-use crate::Utc2k;
+use crate::{
+	macros,
+	Utc2k,
+	Utc2kError,
+};
 use std::{
-	borrow::Borrow,
 	cmp::Ordering,
-	fmt,
 	ops::{
 		Add,
+		AddAssign,
 		Deref,
+		Sub,
+		SubAssign,
 	},
 };
 
 
 
 #[allow(missing_docs)]
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// # Weekday.
 ///
@@ -26,7 +32,7 @@ use std::{
 ///
 /// Otherwise this is only really used by [`Utc2k::weekday`].
 pub enum Weekday {
-	Sunday,
+	Sunday = 1_u8,
 	Monday,
 	Tuesday,
 	Wednesday,
@@ -35,42 +41,20 @@ pub enum Weekday {
 	Saturday,
 }
 
-macro_rules! impl_bigint {
-	($($ty:ty),+) => ($(
-		impl Add<$ty> for Weekday {
-			type Output = Self;
-			#[allow(clippy::cast_possible_truncation)] // It fits.
-			#[inline]
-			fn add(self, other: $ty) -> Self { Self::from(self.as_u8() + (other % 7) as u8) }
-		}
-
-		impl From<$ty> for Weekday {
-			#[allow(clippy::cast_possible_truncation)] // It fits.
-			fn from(src: $ty) -> Self {
-				match src {
-					1 => Self::Sunday,
-					2 => Self::Monday,
-					3 => Self::Tuesday,
-					4 => Self::Wednesday,
-					5 => Self::Thursday,
-					6 => Self::Friday,
-					0 | 7 => Self::Saturday,
-					_ => Self::from((src % 7) as u8),
-				}
-			}
-		}
-	)+);
-}
-
-impl AsRef<str> for Weekday {
+impl Add<u8> for Weekday {
+	type Output = Self;
 	#[inline]
-	fn as_ref(&self) -> &str { self.as_str() }
+	fn add(self, other: u8) -> Self {
+		Self::from(self as u8 + other % 7)
+	}
 }
 
-impl Borrow<str> for Weekday {
+impl AddAssign<u8> for Weekday {
 	#[inline]
-	fn borrow(&self) -> &str { self.as_str() }
+	fn add_assign(&mut self, other: u8) { *self = *self + other; }
 }
+
+macros::as_ref_borrow_cast!(Weekday: as_str str);
 
 impl Default for Weekday {
 	#[inline]
@@ -83,27 +67,93 @@ impl Deref for Weekday {
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
 
-impl fmt::Display for Weekday {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(self.as_str())
-	}
-}
+macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
 	fn from(src: u8) -> Self {
-		match src {
-			1 => Self::Sunday,
-			2 => Self::Monday,
-			3 => Self::Tuesday,
-			4 => Self::Wednesday,
-			5 => Self::Thursday,
-			6 => Self::Friday,
-			0 | 7 => Self::Saturday,
-			_ => Self::from(src % 7),
+		if src > 7 { Self::from(src % 7) }
+		else if src == 0 { Self::Saturday }
+		else {
+			unsafe { std::mem::transmute(src) }
 		}
 	}
 }
+
+impl From<Weekday> for u8 {
+	#[inline]
+	fn from(src: Weekday) -> Self { src as Self }
+}
+
+macro_rules! impl_int {
+	($($ty:ty),+) => ($(
+		impl Add<$ty> for Weekday {
+			type Output = Self;
+			#[inline]
+			fn add(self, other: $ty) -> Self {
+				Self::from(<$ty>::from(self) + other % 7)
+			}
+		}
+
+		impl AddAssign<$ty> for Weekday {
+			#[inline]
+			fn add_assign(&mut self, other: $ty) { *self = *self + other; }
+		}
+
+		impl From<$ty> for Weekday {
+			fn from(src: $ty) -> Self {
+				match src {
+					1 => Self::Sunday,
+					2 => Self::Monday,
+					3 => Self::Tuesday,
+					4 => Self::Wednesday,
+					5 => Self::Thursday,
+					6 => Self::Friday,
+					0 | 7 => Self::Saturday,
+					_ => Self::from(src % 7),
+				}
+			}
+		}
+
+		impl From<Weekday> for $ty {
+			fn from(src: Weekday) -> Self {
+				match src {
+					Weekday::Sunday => 1,
+					Weekday::Monday => 2,
+					Weekday::Tuesday => 3,
+					Weekday::Wednesday => 4,
+					Weekday::Thursday => 5,
+					Weekday::Friday => 6,
+					Weekday::Saturday => 7,
+				}
+			}
+		}
+
+		impl Sub<$ty> for Weekday {
+			type Output = Self;
+
+			#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+			fn sub(self, other: $ty) -> Self {
+				let mut lhs = <$ty>::from(self);
+				let mut rhs = other % 7;
+
+				while rhs > 0 {
+					rhs -= 1;
+					if lhs == 1 { lhs = 7; }
+					else { lhs -= 1; }
+				}
+
+				Self::from(lhs)
+			}
+		}
+
+		impl SubAssign<$ty> for Weekday {
+			#[inline]
+			fn sub_assign(&mut self, other: $ty) { *self = *self - other; }
+		}
+	)+);
+}
+
+impl_int!(u16, u32, u64, usize);
 
 impl From<Utc2k> for Weekday {
 	#[inline]
@@ -112,15 +162,78 @@ impl From<Utc2k> for Weekday {
 
 impl Ord for Weekday {
 	#[inline]
-	fn cmp(&self, other: &Self) -> Ordering { self.as_u8().cmp(&other.as_u8()) }
+	fn cmp(&self, other: &Self) -> Ordering {
+		let a = *self as u8;
+		let b = *other as u8;
+		a.cmp(&b)
+	}
 }
+
+impl PartialEq<u8> for Weekday {
+	#[inline]
+	fn eq(&self, other: &u8) -> bool { (*self as u8).eq(other) }
+}
+
+impl PartialEq<Weekday> for u8 {
+	#[inline]
+	fn eq(&self, other: &Weekday) -> bool { (*other as Self).eq(self) }
+}
+
+macros::partial_eq_from!(Weekday: u16, u32, u64, usize);
 
 impl PartialOrd for Weekday {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-impl_bigint!(u16, u32, u64, usize);
+impl Sub<u8> for Weekday {
+	type Output = Self;
+
+	#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+	fn sub(self, other: u8) -> Self {
+		let mut lhs = self as u8;
+		let mut rhs = other % 7;
+
+		while rhs > 0 {
+			rhs -= 1;
+			if lhs == 1 { lhs = 7; }
+			else { lhs -= 1; }
+		}
+
+		Self::from(lhs)
+	}
+}
+
+impl SubAssign<u8> for Weekday {
+	#[inline]
+	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
+}
+
+impl TryFrom<&str> for Weekday {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: &str) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
+
+impl TryFrom<String> for Weekday {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: String) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim().as_bytes())
+			.ok_or(Utc2kError::Invalid)
+	}
+}
 
 impl Weekday {
 	#[must_use]
@@ -171,33 +284,79 @@ impl Weekday {
 		}
 	}
 
+	#[deprecated(since = "0.3.3", note = "Use `Weekday::XYZ as u8` instead.")]
+	#[inline]
 	#[must_use]
 	/// # As U8.
 	///
 	/// Return the weekday as an integer, starting with Sunday as `1_u8`,
 	/// ending with Saturday as `7_u8`.
+	pub const fn as_u8(self) -> u8 { unsafe { std::mem::transmute(self) } }
+}
+
+impl Weekday {
+	#[must_use]
+	/// # Current Day.
+	///
+	/// Return the current day of the week (i.e. today).
 	///
 	/// ## Examples.
 	///
 	/// ```
-	/// use utc2k::Weekday;
+	/// use utc2k::{Weekday, Utc2k};
 	///
-	/// assert_eq!(Weekday::Sunday.as_u8(), 1);
+	/// assert_eq!(Weekday::now(), Utc2k::now().weekday());
 	/// ```
-	pub const fn as_u8(self) -> u8 {
-		match self {
-			Self::Sunday => 1,
-			Self::Monday => 2,
-			Self::Tuesday => 3,
-			Self::Wednesday => 4,
-			Self::Thursday => 5,
-			Self::Friday => 6,
-			Self::Saturday => 7,
+	pub fn now() -> Self { Utc2k::now().weekday() }
+
+	#[inline]
+	#[must_use]
+	/// # Tomorrow.
+	///
+	/// Create a new instance representing one day from now (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// assert_eq!(Weekday::tomorrow(), Utc2k::tomorrow().weekday());
+	/// ```
+	pub fn tomorrow() -> Self { Utc2k::tomorrow().weekday() }
+
+	#[inline]
+	#[must_use]
+	/// # Yesterday.
+	///
+	/// Create a new instance representing one day ago (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// assert_eq!(Weekday::yesterday(), Utc2k::yesterday().weekday());
+	/// ```
+	pub fn yesterday() -> Self { Utc2k::yesterday().weekday() }
+
+	/// # From Abbreviation Bytes.
+	///
+	/// This matches the first three bytes, case-insensitively, against the
+	/// `Month` abbreviations.
+	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		let src = src.get(..3)?;
+		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
+			b"sun" => Some(Self::Sunday),
+			b"mon" => Some(Self::Monday),
+			b"tue" => Some(Self::Tuesday),
+			b"wed" => Some(Self::Wednesday),
+			b"thu" => Some(Self::Thursday),
+			b"fri" => Some(Self::Friday),
+			b"sat" => Some(Self::Saturday),
+			_ => None,
 		}
 	}
-}
 
-impl Weekday {
 	#[must_use]
 	/// # Start of Year.
 	///
@@ -218,11 +377,6 @@ impl Weekday {
 	}
 }
 
-impl From<Weekday> for u8 {
-	#[inline]
-	fn from(src: Weekday) -> Self { src.as_u8() }
-}
-
 
 
 #[cfg(test)]
@@ -232,6 +386,16 @@ mod tests {
 		Date,
 		Month,
 	};
+
+	const ALL_DAYS: &[Weekday] = &[
+		Weekday::Sunday,
+		Weekday::Monday,
+		Weekday::Tuesday,
+		Weekday::Wednesday,
+		Weekday::Thursday,
+		Weekday::Friday,
+		Weekday::Saturday,
+	];
 
 	#[test]
 	/// # Test First of Year.
@@ -245,5 +409,76 @@ mod tests {
 				"Failed with year {}", y
 			);
 		}
+	}
+
+	#[test]
+	/// # Test Fromness.
+	fn t_abbr() {
+		for d in ALL_DAYS {
+			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
+		}
+	}
+
+	#[test]
+	/// # Test Fromness.
+	fn t_from() {
+		// There and back again.
+		for i in 1..=7_u8 {
+			assert_eq!(Weekday::from(i) as u8, i);
+		}
+		for i in 1..=7_u64 {
+			assert_eq!(u64::from(Weekday::from(i)), i);
+		}
+
+		assert_eq!(Weekday::from(0_u64), Weekday::Saturday);
+
+		let many: Vec<Weekday> = (1..=35_u32).into_iter()
+			.map(Weekday::from)
+			.collect();
+
+		let mut when = 0;
+		for days in many.as_slice().chunks_exact(7) {
+			when += 1;
+			assert_eq!(days, ALL_DAYS, "Round #{}", when);
+		}
+	}
+
+	#[test]
+	/// # Test Some Math!
+	fn t_math() {
+		let days: Vec<Weekday> = std::iter::repeat(ALL_DAYS)
+			.take(6)
+			.flatten()
+			.copied()
+			.collect();
+
+		// Test additions and subtractions.
+		for idx in 0..7 {
+			for a in 0..36 {
+				// Add and sub.
+				let b = days[idx] + a;
+				assert_eq!(b, days[idx + a]);
+				assert_eq!(b - a, days[idx]);
+
+				// Assigning add and sub.
+				let mut c = days[idx];
+				c += a;
+				assert_eq!(c, b);
+				c -= a;
+				assert_eq!(c, days[idx]);
+			}
+		}
+	}
+
+	#[test]
+	/// # String Tests.
+	fn t_str() {
+		for &d in ALL_DAYS {
+			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
+			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
+			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
+		}
+
+		assert!(Weekday::try_from("Hello").is_err());
 	}
 }
