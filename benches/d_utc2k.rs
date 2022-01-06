@@ -22,4 +22,7 @@ benches!(
 
 	Bench::new("utc2k::Utc2k", "to_rfc2822()")
 		.with_setup(Utc2k::from(Utc2k::MAX_UNIXTIME), |u| u.to_rfc2822()),
+
+	Bench::new("utc2k::Utc2k", "from_rfc2822(Tue, 10 Jul 2003 10:52:37 +0000)")
+		.with(|| Utc2k::from_rfc2822("Tue, 10 Jul 2003 10:52:37 +0000")),
 );

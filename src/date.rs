@@ -1446,60 +1446,14 @@ impl Utc2k {
 	/// ```
 	pub fn from_rfc2822<S>(src: S) -> Option<Self>
 	where S: AsRef<str> {
-		let mut src: &[u8] = src.as_ref().trim().as_bytes();
-
-		// Trim the leading weekday; that serves no purpose for us.
-		if src.get(0)?.is_ascii_alphabetic() {
-			src = src.get(5..)?;
+		let src: &[u8] = src.as_ref().trim().as_bytes();
+		if 19 <= src.len() {
+			// Strip off the optional weekday, if any, so we can parse the day
+			// from a predictable starting place.
+			if src[0].is_ascii_alphabetic() { parse_rfc2822_day(&src[5..]) }
+			else { parse_rfc2822_day(src) }
 		}
-
-		// No matter how we cut it, the length needs to be at least this.
-		if src.len() < 19 || ! src[0].is_ascii_digit() { return None; }
-
-		// Find the day, and re-trim the slice so we can parse everything else
-		// the same way.
-		let d: u8 =
-			if src[1] == b' ' {
-				let d = src[0] & 0x0f;
-				src = &src[2..];
-				d
-			}
-			else if src[1].is_ascii_digit() {
-				let d = (src[0] & 0x0f) * 10 + (src[1] & 0x0f);
-				src = &src[3..];
-				d
-			}
-			else { return None; };
-
-		// The month should be written out as a 3-char abbreviation.
-		let m: u8 = Month::from_abbreviation(&src[..3])?.as_u8();
-
-		// The year should follow the month, after a space.
-		let y: u16 = src.iter()
-			.skip(4)
-			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
-				else { None }
-			)?;
-
-		// The time parts.
-		let hh: u8 = parse_u8_str(src[9], src[10]).ok()?;
-		let mm: u8 = parse_u8_str(src[12], src[13]).ok()?;
-		let ss: u8 = parse_u8_str(src[15], src[16]).ok()?;
-
-		// Build it!
-		let out = Self::new(y, m, d, hh, mm, ss);
-
-		// Apply an offset?
-		if let Some((plus, offset_ss)) = parse_rfc2822_offset(src) {
-			// The offset is beyond UTC; we need to subtract.
-			if plus { Some(out - offset_ss) }
-			// The offset is earlier than UTC; we need to add.
-			else { Some(out + offset_ss) }
-		}
-		// Pass through as-is!
-		else { Some(out) }
+		else { None }
 	}
 
 	#[must_use]
@@ -1733,9 +1687,69 @@ fn parse_parts_from_fmt(src: &[u8; 19]) -> Utc2k {
 	)
 }
 
+/// # Parse RFC2822 Day.
+///
+/// This method represents the second stage of [`Utc2k::from_rfc2822`]. It
+/// parses the month-day component from the string, moves the pointer, and
+/// passes it along to [`parse_rfc2822_datetime`] to finish it up.
+fn parse_rfc2822_day(src: &[u8]) -> Option<Utc2k> {
+	if 19 <= src.len() && src[0].is_ascii_digit() {
+		// Double-digit day.
+		if src[1].is_ascii_digit() {
+			return parse_rfc2822_datetime(
+				&src[3..],
+				(src[0] & 0x0f) * 10 + (src[1] & 0x0f),
+			);
+		}
+		// Single-digit day.
+		else if src[1] == b' ' {
+			return parse_rfc2822_datetime(&src[2..], src[0] & 0x0f);
+		}
+	}
+
+	None
+}
+
+/// # Parse RFC2822 Date/Time.
+///
+/// This method represents the third stage of [`Utc2k::from_rfc2822`]. It
+/// parses the remaining date/time components from the string, applies the
+/// offset (if any), and returns the desired `Utc2k` object.
+fn parse_rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
+	if src.len() < 17 { return None; }
+
+	// Tease out the rest of the date/time components.
+	let tmp = Abacus::new(
+		src.iter()
+			.skip(4)
+			.take(4)
+			.try_fold(0, |a, &c|
+				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
+				else { None }
+			)?,
+		Month::from_abbreviation(&src[..3])?.as_u8(),
+		d,
+		parse_u8_str_opt(src[9], src[10])?,
+		parse_u8_str_opt(src[12], src[13])?,
+		parse_u8_str_opt(src[15], src[16])?,
+	);
+
+	// Apply an offset?
+	if let Some((plus, offset_ss)) = parse_rfc2822_offset(src) {
+		// The offset is beyond UTC; we need to subtract.
+		if plus { Some(Utc2k::from(tmp) - offset_ss) }
+		// The offset is earlier than UTC; we need to add.
+		else { Some(Utc2k::from(tmp + offset_ss)) }
+	}
+	// Pass through as-is!
+	else { Some(Utc2k::from(tmp)) }
+}
+
 /// # Parse RFC2822 Offset.
 ///
 /// This tries to tease out the UTC offset from the end of an RFC2822 string.
+/// If present, it returns a bool representing the sign and the offset as
+/// seconds.
 const fn parse_rfc2822_offset(src: &[u8]) -> Option<(bool, u32)> {
 	let len: usize = src.len();
 	if len > 6 && src[len - 6] == b' ' {
@@ -1797,6 +1811,17 @@ const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 		Ok((one & 0x0f) * 10 + (two & 0x0f))
 	}
 	else { Err(Utc2kError::Invalid) }
+}
+
+/// # Parse 2 Digits.
+///
+/// This combines two ASCII `u8` values into a single `u8` integer, or dies
+/// trying (if, i.e., one or both are non-numeric).
+const fn parse_u8_str_opt(one: u8, two: u8) -> Option<u8> {
+	if one.is_ascii_digit() && two.is_ascii_digit() {
+		Some((one & 0x0f) * 10 + (two & 0x0f))
+	}
+	else { None }
 }
 
 
