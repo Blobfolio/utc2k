@@ -250,6 +250,39 @@ impl Month {
 	}
 
 	#[must_use]
+	/// # Month Size (Days).
+	///
+	/// This returns the total number of days this month could hold, or put
+	/// another way, the last day of this month.
+	///
+	/// Note: this method is not leap-aware. If the month is February and it is
+	/// in a leap year, be sure to add `1` to reach `29`!
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Month;
+	///
+	/// assert_eq!(Month::January.days(), 31);
+	/// ```
+	pub const fn days(self) -> u8 {
+		match self {
+			Self::January
+				| Self::March
+				| Self::May
+				| Self::July
+				| Self::August
+				| Self::October
+				| Self::December => 31,
+			Self::April
+				| Self::June
+				| Self::September
+				| Self::November => 30,
+			Self::February => 28,
+		}
+	}
+
+	#[must_use]
 	/// # As Str.
 	///
 	/// Return the month as a string slice.

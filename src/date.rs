@@ -1218,7 +1218,6 @@ impl Utc2k {
 	pub const fn leap_year(self) -> bool {
 		// Leap years this century.
 		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
-
 		LEAP_YEARS[self.y as usize]
 	}
 
@@ -1276,12 +1275,8 @@ impl Utc2k {
 	/// assert_eq!(date.month_size(), 31);
 	/// ```
 	pub const fn month_size(self) -> u8 {
-		match self.m {
-			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-			4 | 6 | 9 | 11 => 30,
-			2 if self.leap_year() => 29,
-			_ => 28,
-		}
+		if self.m == 2 && self.leap_year() { 29 }
+		else { Month::from_u8(self.m).days() }
 	}
 
 	#[must_use]
