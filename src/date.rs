@@ -692,6 +692,7 @@ impl PartialOrd for Utc2k {
 impl Sub<u32> for Utc2k {
 	type Output = Self;
 
+	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Subtraction.
 	///
 	/// This method returns a new `Utc2k` object reduced by a given number of
@@ -727,16 +728,16 @@ impl Sub<u32> for Utc2k {
 		// amount, we can handle the subtraction without any month boundary or
 		// leap year shenanigans.
 		let mut easy: u32 =
-			(self.d - 1) as u32 * DAY_IN_SECONDS +
-			self.hh as u32 * HOUR_IN_SECONDS +
-			self.mm as u32 * MINUTE_IN_SECONDS +
-			self.ss as u32;
+			u32::from(self.d - 1) * DAY_IN_SECONDS +
+			u32::from(self.hh) * HOUR_IN_SECONDS +
+			u32::from(self.mm) * MINUTE_IN_SECONDS +
+			u32::from(self.ss);
 
 		if other <= easy {
 			easy -= other;
 			let d: u8 =
 				if easy >= DAY_IN_SECONDS {
-					let d = easy / DAY_IN_SECONDS;
+					let d = easy.wrapping_div(DAY_IN_SECONDS);
 					easy -= d * DAY_IN_SECONDS;
 					d as u8 + 1
 				}
