@@ -9,7 +9,13 @@ use crate::{
 };
 use std::{
 	cmp::Ordering,
-	ops::Deref,
+	ops::{
+		Add,
+		AddAssign,
+		Deref,
+		Sub,
+		SubAssign,
+	},
 };
 
 
@@ -50,8 +56,21 @@ impl Deref for Month {
 
 macros::display_str!(as_str Month);
 
-macro_rules! from_int {
+macro_rules! impl_int {
 	($($ty:ty),+) => ($(
+		impl Add<$ty> for Month {
+			type Output = Self;
+			#[inline]
+			fn add(self, other: $ty) -> Self {
+				Self::from(<$ty>::from(self) + other % 12)
+			}
+		}
+
+		impl AddAssign<$ty> for Month {
+			#[inline]
+			fn add_assign(&mut self, other: $ty) { *self = *self + other; }
+		}
+
 		impl From<$ty> for Month {
 			fn from(src: $ty) -> Self {
 				match src {
@@ -90,10 +109,33 @@ macro_rules! from_int {
 				}
 			}
 		}
+
+		impl Sub<$ty> for Month {
+			type Output = Self;
+
+			#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+			fn sub(self, other: $ty) -> Self {
+				let mut lhs = <$ty>::from(self);
+				let mut rhs = other % 12;
+
+				while rhs > 0 {
+					rhs -= 1;
+					if lhs == 1 { lhs = 12; }
+					else { lhs -= 1; }
+				}
+
+				Self::from(lhs)
+			}
+		}
+
+		impl SubAssign<$ty> for Month {
+			#[inline]
+			fn sub_assign(&mut self, other: $ty) { *self = *self - other; }
+		}
 	)+);
 }
 
-from_int!(u8, u16, u32, u64, usize);
+impl_int!(u8, u16, u32, u64, usize);
 
 impl From<Utc2k> for Month {
 	#[inline]
@@ -149,7 +191,7 @@ impl Month {
 	/// ```
 	/// use utc2k::{Month, Utc2k};
 	///
-	/// assert_eq!(u8::from(Month::now()), Utc2k::now().month());
+	/// assert_eq!(Month::now(), Utc2k::now().month());
 	/// ```
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
@@ -340,6 +382,33 @@ mod tests {
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
 			assert_eq!(months, ALL_MONTHS, "Round #{}", when);
+		}
+	}
+
+	#[test]
+	/// # Test Some Math!
+	fn t_math() {
+		let months: Vec<Month> = std::iter::repeat(ALL_MONTHS)
+			.take(4)
+			.flatten()
+			.copied()
+			.collect();
+
+		// Test additions and subtractions.
+		for idx in 0..12 {
+			for a in 0..36 {
+				// Add and sub.
+				let b = months[idx] + a;
+				assert_eq!(b, months[idx + a]);
+				assert_eq!(b - a, months[idx]);
+
+				// Assigning add and sub.
+				let mut c = months[idx];
+				c += a;
+				assert_eq!(c, b);
+				c -= a;
+				assert_eq!(c, months[idx]);
+			}
 		}
 	}
 
