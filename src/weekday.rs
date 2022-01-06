@@ -11,7 +11,10 @@ use std::{
 	cmp::Ordering,
 	ops::{
 		Add,
+		AddAssign,
 		Deref,
+		Sub,
+		SubAssign,
 	},
 };
 
@@ -37,25 +40,6 @@ pub enum Weekday {
 	Saturday,
 }
 
-impl Add<u8> for Weekday {
-	type Output = Self;
-	#[inline]
-	fn add(self, other: u8) -> Self { Self::from(self.as_u8() + (other % 7)) }
-}
-
-macro_rules! add_bigint {
-	($($ty:ty),+) => ($(
-		impl Add<$ty> for Weekday {
-			type Output = Self;
-			#[allow(clippy::cast_possible_truncation)] // It fits.
-			#[inline]
-			fn add(self, other: $ty) -> Self { Self::from(self.as_u8() + (other % 7) as u8) }
-		}
-	)+);
-}
-
-add_bigint!(u16, u32, u64, usize);
-
 macros::as_ref_borrow_cast!(Weekday: as_str str);
 
 impl Default for Weekday {
@@ -71,8 +55,21 @@ impl Deref for Weekday {
 
 macros::display_str!(as_str Weekday);
 
-macro_rules! from_int {
+macro_rules! impl_int {
 	($($ty:ty),+) => ($(
+		impl Add<$ty> for Weekday {
+			type Output = Self;
+			#[inline]
+			fn add(self, other: $ty) -> Self {
+				Self::from(<$ty>::from(self) + other % 7)
+			}
+		}
+
+		impl AddAssign<$ty> for Weekday {
+			#[inline]
+			fn add_assign(&mut self, other: $ty) { *self = *self + other; }
+		}
+
 		impl From<$ty> for Weekday {
 			fn from(src: $ty) -> Self {
 				match src {
@@ -101,10 +98,33 @@ macro_rules! from_int {
 				}
 			}
 		}
+
+		impl Sub<$ty> for Weekday {
+			type Output = Self;
+
+			#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+			fn sub(self, other: $ty) -> Self {
+				let mut lhs = <$ty>::from(self);
+				let mut rhs = other % 7;
+
+				while rhs > 0 {
+					rhs -= 1;
+					if lhs == 1 { lhs = 7; }
+					else { lhs -= 1; }
+				}
+
+				Self::from(lhs)
+			}
+		}
+
+		impl SubAssign<$ty> for Weekday {
+			#[inline]
+			fn sub_assign(&mut self, other: $ty) { *self = *self - other; }
+		}
 	)+);
 }
 
-from_int!(u8, u16, u32, u64, usize);
+impl_int!(u8, u16, u32, u64, usize);
 
 impl From<Utc2k> for Weekday {
 	#[inline]
@@ -340,6 +360,33 @@ mod tests {
 		for days in many.as_slice().chunks_exact(7) {
 			when += 1;
 			assert_eq!(days, ALL_DAYS, "Round #{}", when);
+		}
+	}
+
+	#[test]
+	/// # Test Some Math!
+	fn t_math() {
+		let days: Vec<Weekday> = std::iter::repeat(ALL_DAYS)
+			.take(6)
+			.flatten()
+			.copied()
+			.collect();
+
+		// Test additions and subtractions.
+		for idx in 0..7 {
+			for a in 0..36 {
+				// Add and sub.
+				let b = days[idx] + a;
+				assert_eq!(b, days[idx + a]);
+				assert_eq!(b - a, days[idx]);
+
+				// Assigning add and sub.
+				let mut c = days[idx];
+				c += a;
+				assert_eq!(c, b);
+				c -= a;
+				assert_eq!(c, days[idx]);
+			}
 		}
 	}
 
