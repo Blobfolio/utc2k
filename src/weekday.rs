@@ -259,6 +259,36 @@ impl Weekday {
 	/// ```
 	pub fn now() -> Self { Utc2k::now().weekday() }
 
+	#[inline]
+	#[must_use]
+	/// # Tomorrow.
+	///
+	/// Create a new instance representing one day from now (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// assert_eq!(Weekday::tomorrow(), Utc2k::tomorrow().weekday());
+	/// ```
+	pub fn tomorrow() -> Self { Utc2k::tomorrow().weekday() }
+
+	#[inline]
+	#[must_use]
+	/// # Yesterday.
+	///
+	/// Create a new instance representing one day ago (present time).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// assert_eq!(Weekday::yesterday(), Utc2k::yesterday().weekday());
+	/// ```
+	pub fn yesterday() -> Self { Utc2k::yesterday().weekday() }
+
 	/// # From Abbreviation Bytes.
 	///
 	/// This matches the first three bytes, case-insensitively, against the
