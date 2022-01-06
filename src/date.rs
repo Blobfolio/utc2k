@@ -508,7 +508,7 @@ impl FmtUtc2k {
 	pub fn to_rfc2822(&self) -> String {
 		let utc = Utc2k::from(self);
 		let weekday = utc.weekday().abbreviation().as_bytes();
-		let month = Month::from_u8(utc.m).abbreviation().as_bytes();
+		let month = utc.month_enum().abbreviation().as_bytes();
 
 		// Working from bytes is ugly, but performs much better than any
 		// string-based operations.
@@ -1134,6 +1134,24 @@ impl Utc2k {
 
 	#[inline]
 	#[must_use]
+	/// # Month (enum).
+	///
+	/// This returns the month value as a [`Month`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Month, Utc2k};
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.month_enum(), Month::May);
+	/// ```
+	pub const fn month_enum(self) -> Month {
+		unsafe { Month::from_u8_unchecked(self.m) }
+	}
+
+	#[inline]
+	#[must_use]
 	/// # Day.
 	///
 	/// This returns the day value.
@@ -1236,7 +1254,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_abbreviation(), "Jun");
 	/// ```
 	pub const fn month_abbreviation(self) -> &'static str {
-		Month::from_u8(self.m).abbreviation()
+		self.month_enum().abbreviation()
 	}
 
 	#[inline]
@@ -1254,7 +1272,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_name(), "June");
 	/// ```
 	pub const fn month_name(self) -> &'static str {
-		Month::from_u8(self.m).as_str()
+		self.month_enum().as_str()
 	}
 
 	#[must_use]
@@ -1276,7 +1294,7 @@ impl Utc2k {
 	/// ```
 	pub const fn month_size(self) -> u8 {
 		if self.m == 2 && self.leap_year() { 29 }
-		else { Month::from_u8(self.m).days() }
+		else { self.month_enum().days() }
 	}
 
 	#[must_use]
@@ -1425,7 +1443,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
 		let weekday = self.weekday().abbreviation().as_bytes();
-		let month = Month::from_u8(self.m).abbreviation().as_bytes();
+		let month = self.month_enum().abbreviation().as_bytes();
 		let d_idx = (self.d << 1) as usize;
 		let y_idx = (self.y << 1) as usize;
 		let hh_idx = (self.hh << 1) as usize;
@@ -1787,7 +1805,7 @@ fn parse_rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
 				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
 				else { None }
 			)?,
-		Month::from_abbreviation(&src[..3])?.as_u8(),
+		Month::from_abbreviation(&src[..3])? as u8,
 		d,
 		parse_u8_str_opt(src[9], src[10])?,
 		parse_u8_str_opt(src[12], src[13])?,

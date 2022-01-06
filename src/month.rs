@@ -21,13 +21,14 @@ use std::{
 
 
 #[allow(missing_docs)]
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// # Month.
 ///
 /// This is a simple enum representing months of the year, useful, perhaps, for
 /// printing month names or abbreviations.
 pub enum Month {
-	January,
+	January = 1_u8,
 	February,
 	March,
 	April,
@@ -39,6 +40,19 @@ pub enum Month {
 	October,
 	November,
 	December,
+}
+
+impl Add<u8> for Month {
+	type Output = Self;
+	#[inline]
+	fn add(self, other: u8) -> Self {
+		Self::from(self as u8 + other % 12)
+	}
+}
+
+impl AddAssign<u8> for Month {
+	#[inline]
+	fn add_assign(&mut self, other: u8) { *self = *self + other; }
 }
 
 macros::as_ref_borrow_cast!(Month: as_str str);
@@ -55,6 +69,21 @@ impl Deref for Month {
 }
 
 macros::display_str!(as_str Month);
+
+impl From<u8> for Month {
+	fn from(src: u8) -> Self {
+		if src > 12 { Self::from(src % 12) }
+		else if src == 0 { Self::December }
+		else {
+			unsafe { std::mem::transmute(src) }
+		}
+	}
+}
+
+impl From<Month> for u8 {
+	#[inline]
+	fn from(src: Month) -> Self { src as Self }
+}
 
 macro_rules! impl_int {
 	($($ty:ty),+) => ($(
@@ -135,7 +164,7 @@ macro_rules! impl_int {
 	)+);
 }
 
-impl_int!(u8, u16, u32, u64, usize);
+impl_int!(u16, u32, u64, usize);
 
 impl From<Utc2k> for Month {
 	#[inline]
@@ -144,14 +173,51 @@ impl From<Utc2k> for Month {
 
 impl Ord for Month {
 	#[inline]
-	fn cmp(&self, other: &Self) -> Ordering { self.as_u8().cmp(&other.as_u8()) }
+	fn cmp(&self, other: &Self) -> Ordering {
+		let a = *self as u8;
+		let b = *other as u8;
+		a.cmp(&b)
+	}
 }
 
-macros::partial_eq_from!(Month: u8, u16, u32, u64, usize);
+impl PartialEq<u8> for Month {
+	#[inline]
+	fn eq(&self, other: &u8) -> bool { (*self as u8).eq(other) }
+}
+
+impl PartialEq<Month> for u8 {
+	#[inline]
+	fn eq(&self, other: &Month) -> bool { (*other as Self).eq(self) }
+}
+
+macros::partial_eq_from!(Month: u16, u32, u64, usize);
 
 impl PartialOrd for Month {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+impl Sub<u8> for Month {
+	type Output = Self;
+
+	#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+	fn sub(self, other: u8) -> Self {
+		let mut lhs = self as u8;
+		let mut rhs = other % 12;
+
+		while rhs > 0 {
+			rhs -= 1;
+			if lhs == 1 { lhs = 12; }
+			else { lhs -= 1; }
+		}
+
+		Self::from(lhs)
+	}
+}
+
+impl SubAssign<u8> for Month {
+	#[inline]
+	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
 impl TryFrom<&str> for Month {
@@ -311,57 +377,15 @@ impl Month {
 		}
 	}
 
-	#[must_use]
-	/// # As U8.
-	///
-	/// Return the month as an integer, starting with January as `1_u8`,
-	/// ending with December as `12_u8`.
-	///
-	/// ## Examples.
-	///
-	/// ```
-	/// use utc2k::Month;
-	///
-	/// assert_eq!(Month::January.as_u8(), 1);
-	/// ```
-	pub const fn as_u8(self) -> u8 {
-		match self {
-			Self::January => 1,
-			Self::February => 2,
-			Self::March => 3,
-			Self::April => 4,
-			Self::May => 5,
-			Self::June => 6,
-			Self::July => 7,
-			Self::August => 8,
-			Self::September => 9,
-			Self::October => 10,
-			Self::November => 11,
-			Self::December => 12,
-		}
-	}
-
 	#[doc(hidden)]
-	/// # From U8.
+	#[inline]
+	/// # From U8 Unchecked.
 	///
-	/// This exists solely for the `const`, which helps us maintain backward
-	/// compatibility with some dependent functions.
-	pub(crate) const fn from_u8(src: u8) -> Self {
-		match src {
-			1 => Self::January,
-			2 => Self::February,
-			3 => Self::March,
-			4 => Self::April,
-			5 => Self::May,
-			6 => Self::June,
-			7 => Self::July,
-			8 => Self::August,
-			9 => Self::September,
-			10 => Self::October,
-			11 => Self::November,
-			0 | 12 => Self::December,
-			_ => Self::from_u8(src % 12),
-		}
+	/// ## Safety
+	///
+	/// The value must be between 1-12 or undefined things will happen!
+	pub(crate) const unsafe fn from_u8_unchecked(src: u8) -> Self {
+		std::mem::transmute(src)
 	}
 }
 
@@ -399,7 +423,7 @@ mod tests {
 	fn t_from() {
 		// There and back again.
 		for i in 1..=12_u8 {
-			assert_eq!(Month::from(i).as_u8(), i);
+			assert_eq!(Month::from(i) as u8, i);
 		}
 		for i in 1..=12_u64 {
 			assert_eq!(u64::from(Month::from(i)), i);

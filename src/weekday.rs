@@ -21,6 +21,7 @@ use std::{
 
 
 #[allow(missing_docs)]
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// # Weekday.
 ///
@@ -31,13 +32,26 @@ use std::{
 ///
 /// Otherwise this is only really used by [`Utc2k::weekday`].
 pub enum Weekday {
-	Sunday,
+	Sunday = 1_u8,
 	Monday,
 	Tuesday,
 	Wednesday,
 	Thursday,
 	Friday,
 	Saturday,
+}
+
+impl Add<u8> for Weekday {
+	type Output = Self;
+	#[inline]
+	fn add(self, other: u8) -> Self {
+		Self::from(self as u8 + other % 7)
+	}
+}
+
+impl AddAssign<u8> for Weekday {
+	#[inline]
+	fn add_assign(&mut self, other: u8) { *self = *self + other; }
 }
 
 macros::as_ref_borrow_cast!(Weekday: as_str str);
@@ -54,6 +68,21 @@ impl Deref for Weekday {
 }
 
 macros::display_str!(as_str Weekday);
+
+impl From<u8> for Weekday {
+	fn from(src: u8) -> Self {
+		if src > 7 { Self::from(src % 7) }
+		else if src == 0 { Self::Saturday }
+		else {
+			unsafe { std::mem::transmute(src) }
+		}
+	}
+}
+
+impl From<Weekday> for u8 {
+	#[inline]
+	fn from(src: Weekday) -> Self { src as Self }
+}
 
 macro_rules! impl_int {
 	($($ty:ty),+) => ($(
@@ -124,7 +153,7 @@ macro_rules! impl_int {
 	)+);
 }
 
-impl_int!(u8, u16, u32, u64, usize);
+impl_int!(u16, u32, u64, usize);
 
 impl From<Utc2k> for Weekday {
 	#[inline]
@@ -133,14 +162,51 @@ impl From<Utc2k> for Weekday {
 
 impl Ord for Weekday {
 	#[inline]
-	fn cmp(&self, other: &Self) -> Ordering { self.as_u8().cmp(&other.as_u8()) }
+	fn cmp(&self, other: &Self) -> Ordering {
+		let a = *self as u8;
+		let b = *other as u8;
+		a.cmp(&b)
+	}
 }
 
-macros::partial_eq_from!(Weekday: u8, u16, u32, u64, usize);
+impl PartialEq<u8> for Weekday {
+	#[inline]
+	fn eq(&self, other: &u8) -> bool { (*self as u8).eq(other) }
+}
+
+impl PartialEq<Weekday> for u8 {
+	#[inline]
+	fn eq(&self, other: &Weekday) -> bool { (*other as Self).eq(self) }
+}
+
+macros::partial_eq_from!(Weekday: u16, u32, u64, usize);
 
 impl PartialOrd for Weekday {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+impl Sub<u8> for Weekday {
+	type Output = Self;
+
+	#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
+	fn sub(self, other: u8) -> Self {
+		let mut lhs = self as u8;
+		let mut rhs = other % 7;
+
+		while rhs > 0 {
+			rhs -= 1;
+			if lhs == 1 { lhs = 7; }
+			else { lhs -= 1; }
+		}
+
+		Self::from(lhs)
+	}
+}
+
+impl SubAssign<u8> for Weekday {
+	#[inline]
+	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
 impl TryFrom<&str> for Weekday {
@@ -218,30 +284,14 @@ impl Weekday {
 		}
 	}
 
+	#[deprecated(since = "0.3.3", note = "Use `Weekday::XYZ as u8` instead.")]
+	#[inline]
 	#[must_use]
 	/// # As U8.
 	///
 	/// Return the weekday as an integer, starting with Sunday as `1_u8`,
 	/// ending with Saturday as `7_u8`.
-	///
-	/// ## Examples.
-	///
-	/// ```
-	/// use utc2k::Weekday;
-	///
-	/// assert_eq!(Weekday::Sunday.as_u8(), 1);
-	/// ```
-	pub const fn as_u8(self) -> u8 {
-		match self {
-			Self::Sunday => 1,
-			Self::Monday => 2,
-			Self::Tuesday => 3,
-			Self::Wednesday => 4,
-			Self::Thursday => 5,
-			Self::Friday => 6,
-			Self::Saturday => 7,
-		}
-	}
+	pub const fn as_u8(self) -> u8 { unsafe { std::mem::transmute(self) } }
 }
 
 impl Weekday {
@@ -374,7 +424,7 @@ mod tests {
 	fn t_from() {
 		// There and back again.
 		for i in 1..=7_u8 {
-			assert_eq!(Weekday::from(i).as_u8(), i);
+			assert_eq!(Weekday::from(i) as u8, i);
 		}
 		for i in 1..=7_u64 {
 			assert_eq!(u64::from(Weekday::from(i)), i);
