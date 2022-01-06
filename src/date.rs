@@ -691,8 +691,72 @@ impl PartialOrd for Utc2k {
 
 impl Sub<u32> for Utc2k {
 	type Output = Self;
+
+	/// # Subtraction.
+	///
+	/// This method returns a new `Utc2k` object reduced by a given number of
+	/// seconds.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::new(2020, 1, 5, 0, 0, 0) - 86_400_u32,
+	///     Utc2k::new(2020, 1, 4, 0, 0, 0),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::new(2020, 1, 5, 0, 0, 0) - 86_399_u32,
+	///     Utc2k::new(2020, 1, 4, 0, 0, 1),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::new(2020, 1, 5, 3, 10, 20) - 14_400_u32,
+	///     Utc2k::new(2020, 1, 4, 23, 10, 20),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::new(2020, 1, 1, 3, 10, 20) - 14_400_u32,
+	///     Utc2k::new(2019, 12, 31, 23, 10, 20),
+	/// );
+	/// ```
 	fn sub(self, other: u32) -> Self {
-		Self::from(self.unixtime().saturating_sub(other))
+		// Count up the "easy" seconds. If we're subtracting less than this
+		// amount, we can handle the subtraction without any month boundary or
+		// leap year shenanigans.
+		let mut easy: u32 =
+			(self.d - 1) as u32 * DAY_IN_SECONDS +
+			self.hh as u32 * HOUR_IN_SECONDS +
+			self.mm as u32 * MINUTE_IN_SECONDS +
+			self.ss as u32;
+
+		if other <= easy {
+			easy -= other;
+			let d: u8 =
+				if easy >= DAY_IN_SECONDS {
+					let d = easy / DAY_IN_SECONDS;
+					easy -= d * DAY_IN_SECONDS;
+					d as u8 + 1
+				}
+				else { 1 };
+
+			let (hh, mm, ss) = parse_time_seconds(easy);
+			Self {
+				y: self.y,
+				m: self.m,
+				d,
+				hh,
+				mm,
+				ss,
+			}
+		}
+		// Otherwise it is best to convert to unixtime, perform the
+		// subtraction, and convert it back.
+		else {
+			Self::from(self.unixtime().saturating_sub(other))
+		}
 	}
 }
 
