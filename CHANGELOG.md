@@ -2,6 +2,14 @@
 
 
 
+## [0.3.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.4) - 2022-02-15
+
+### Fixed
+
+* `FmtUtc2k::to_rfc2822` and `Utc2k::to_rfc2822` now zero-pads days
+
+
+
 ## [0.3.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.3) - 2022-01-06
 
 ### Added
