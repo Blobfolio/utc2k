@@ -466,7 +466,17 @@ impl FmtUtc2k {
 	/// );
 	///
 	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("Tue, 01 Jul 2003 10:52:37 +0000"),
+	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
+	/// );
+	///
+	/// assert_eq!(
 	///     FmtUtc2k::from_rfc2822("1 Jul 2003 10:52:37"),
+	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
+	/// );
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_rfc2822("01 Jul 2003 10:52:37"),
 	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
 	/// );
 	///
@@ -500,7 +510,8 @@ impl FmtUtc2k {
 	/// use utc2k::{FmtUtc2k, Utc2k};
 	///
 	/// let date = FmtUtc2k::from(Utc2k::new(2003, 7, 1, 10, 52, 37));
-	/// assert_eq!(date.to_rfc2822(), "Tue, 1 Jul 2003 10:52:37 +0000");
+	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
+	/// assert_eq!(date.to_rfc2822(), Utc2k::new(2003, 7, 1, 10, 52, 37).to_rfc2822());
 	///
 	/// let date = FmtUtc2k::from(Utc2k::new(2020, 6, 13, 8, 8, 8));
 	/// assert_eq!(date.to_rfc2822(), "Sat, 13 Jun 2020 08:08:08 +0000");
@@ -516,7 +527,7 @@ impl FmtUtc2k {
 			if utc.d < 10 {
 				vec![
 					weekday[0], weekday[1], weekday[2],
-					b',', b' ',
+					b',', b' ', b'0',
 					self.0[9],
 					b' ',
 					month[0], month[1], month[2],
@@ -1436,7 +1447,7 @@ impl Utc2k {
 	/// use utc2k::Utc2k;
 	///
 	/// let date = Utc2k::new(2003, 7, 1, 10, 52, 37);
-	/// assert_eq!(date.to_rfc2822(), "Tue, 1 Jul 2003 10:52:37 +0000");
+	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
 	///
 	/// let date = Utc2k::new(2036, 12, 15, 16, 30, 55);
 	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
@@ -1456,7 +1467,7 @@ impl Utc2k {
 			if self.d < 10 {
 				vec![
 					weekday[0], weekday[1], weekday[2],
-					b',', b' ',
+					b',', b' ', b'0',
 					DD[d_idx + 1],
 					b' ',
 					month[0], month[1], month[2],
@@ -1508,7 +1519,17 @@ impl Utc2k {
 	/// );
 	///
 	/// assert_eq!(
+	///     Utc2k::from_rfc2822("Tue, 01 Jul 2003 10:52:37 +0000"),
+	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
+	/// );
+	///
+	/// assert_eq!(
 	///     Utc2k::from_rfc2822("1 Jul 2003 10:52:37"),
+	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::from_rfc2822("01 Jul 2003 10:52:37"),
 	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
 	/// );
 	///
