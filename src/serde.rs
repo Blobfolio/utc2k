@@ -153,6 +153,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor<'de> {
 
 
 impl<'de> Deserialize<'de> for FmtUtc2k {
+	#[allow(clippy::option_if_let_else)] // That looks bad here.
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
@@ -185,6 +186,7 @@ impl Serialize for FmtUtc2k {
 
 
 impl<'de> Deserialize<'de> for Utc2k {
+	#[allow(clippy::option_if_let_else)] // That looks bad here.
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
