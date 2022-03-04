@@ -2,6 +2,18 @@
 
 
 
+## [0.4.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.0) - 2022-03-03
+
+### Fixed
+
+* Mistaken compiler optimizations can lead to overflow.
+
+### Removed
+
+* `Weekday::as_u8`
+
+
+
 ## [0.3.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.4) - 2022-02-15
 
 ### Fixed

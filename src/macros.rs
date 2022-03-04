@@ -68,7 +68,7 @@ macro_rules! partial_eq_from {
 
 		impl PartialEq<$parent> for $ty {
 			#[inline]
-			fn eq(&self, other: &$parent) -> bool { <$ty>::from(*other).eq(self) }
+			fn eq(&self, other: &$parent) -> bool { Self::from(*other).eq(self) }
 		}
 	)+);
 }
