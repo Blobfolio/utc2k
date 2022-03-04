@@ -283,15 +283,6 @@ impl Weekday {
 			Self::Saturday => "Saturday",
 		}
 	}
-
-	#[deprecated(since = "0.3.3", note = "Use `Weekday::XYZ as u8` instead.")]
-	#[inline]
-	#[must_use]
-	/// # As U8.
-	///
-	/// Return the weekday as an integer, starting with Sunday as `1_u8`,
-	/// ending with Saturday as `7_u8`.
-	pub const fn as_u8(self) -> u8 { unsafe { std::mem::transmute(self) } }
 }
 
 impl Weekday {
