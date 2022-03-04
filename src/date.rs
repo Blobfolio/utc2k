@@ -1712,13 +1712,13 @@ impl From<Utc2k> for u32 {
 /// (Our version is a little simpler as we aren't worried about old times.)
 const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
-	let h = 100 * z - 25;
-	let mut a = h / 3_652_425;
+	let h: u32 = 100 * z - 25;
+	let mut a: u32 = h / 3_652_425;
 	a -= a / 4;
-	let year = (100 * a + h) / 36_525;
-	a += z - 365 * year - year / 4;
-	let month = (5 * a + 456) / 153;
-	let day = (a - (153 * month - 457) / 5) as u8;
+	let year: u32 = (100 * a + h) / 36_525;
+	a = a + z - 365 * year - year / 4;
+	let month: u32 = (5 * a + 456) / 153;
+	let day: u8 = (a - (153 * month - 457) / 5) as u8;
 
 	if month > 12 {
 		((year - 1999) as u8, month as u8 - 12, day)
