@@ -1736,10 +1736,11 @@ fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+			.try_fold(0, |a, &c| {
+				let c = c ^ b'0';
+				if c < 10 { Ok(a * 10 + u16::from(c)) }
 				else { Err(Utc2kError::Invalid) }
-			)?,
+			})?,
 		parse_u8_str(src[5], src[6])?,
 		parse_u8_str(src[8], src[9])?,
 		0, 0, 0
@@ -1756,10 +1757,11 @@ fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
+			.try_fold(0, |a, &c| {
+				let c = c ^ b'0';
+				if c < 10 { Ok(a * 10 + u16::from(c)) }
 				else { Err(Utc2kError::Invalid) }
-			)?,
+			})?,
 		parse_u8_str(src[5], src[6])?,
 		parse_u8_str(src[8], src[9])?,
 		parse_u8_str(src[11], src[12])?,
@@ -1792,17 +1794,21 @@ fn parse_parts_from_fmt(src: &[u8; 19]) -> Utc2k {
 /// parses the month-day component from the string, moves the pointer, and
 /// passes it along to [`parse_rfc2822_datetime`] to finish it up.
 fn parse_rfc2822_day(src: &[u8]) -> Option<Utc2k> {
-	if 19 <= src.len() && src[0].is_ascii_digit() {
-		// Double-digit day.
-		if src[1].is_ascii_digit() {
-			return parse_rfc2822_datetime(
-				&src[3..],
-				(src[0] & 0x0f) * 10 + (src[1] & 0x0f),
-			);
-		}
-		// Single-digit day.
-		else if src[1] == b' ' {
-			return parse_rfc2822_datetime(&src[2..], src[0] & 0x0f);
+	if 19 <= src.len() {
+		let a = src[0] ^ b'0';
+		if a < 10 {
+			if src[1] == b' ' {
+				return parse_rfc2822_datetime(&src[2..], a);
+			}
+			else {
+				let b = src[1] ^ b'0';
+				if b < 10 {
+					return parse_rfc2822_datetime(
+						&src[3..],
+						a * 10 + b,
+					);
+				}
+			}
 		}
 	}
 
@@ -1822,10 +1828,11 @@ fn parse_rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
 		src.iter()
 			.skip(4)
 			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
+			.try_fold(0, |a, &c| {
+				let c = c ^ b'0';
+				if c < 10 { Some(a * 10 + u16::from(c)) }
 				else { None }
-			)?,
+			})?,
 		Month::from_abbreviation(&src[..3])? as u8,
 		d,
 		parse_u8_str_opt(src[9], src[10])?,
@@ -1905,9 +1912,11 @@ const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
 ///
 /// This combines two ASCII `u8` values into a single `u8` integer, or dies
 /// trying (if, i.e., one or both are non-numeric).
-const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
-	if one.is_ascii_digit() && two.is_ascii_digit() {
-		Ok((one & 0x0f) * 10 + (two & 0x0f))
+const fn parse_u8_str(a: u8, b: u8) -> Result<u8, Utc2kError> {
+	let a = a ^ b'0';
+	let b = b ^ b'0';
+	if a < 10 && b < 10 {
+		Ok(a * 10 + b)
 	}
 	else { Err(Utc2kError::Invalid) }
 }
@@ -1916,9 +1925,11 @@ const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
 ///
 /// This combines two ASCII `u8` values into a single `u8` integer, or dies
 /// trying (if, i.e., one or both are non-numeric).
-const fn parse_u8_str_opt(one: u8, two: u8) -> Option<u8> {
-	if one.is_ascii_digit() && two.is_ascii_digit() {
-		Some((one & 0x0f) * 10 + (two & 0x0f))
+const fn parse_u8_str_opt(a: u8, b: u8) -> Option<u8> {
+	let a = a ^ b'0';
+	let b = b ^ b'0';
+	if a < 10 && b < 10 {
+		Some(a * 10 + b)
 	}
 	else { None }
 }
