@@ -58,7 +58,7 @@ pub(super) const fn parse2(a: u8, b: u8) -> Result<u8, Utc2kError> {
 ///
 /// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
 /// slice. Only the numeric ranges are parsed — separators can be whatever.
-pub(super) fn parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
+pub(super) fn parts_from_date(src: [u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
@@ -95,6 +95,16 @@ pub(super) fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 		parse2(src[17], src[18])?,
 	);
 	Ok(Utc2k::from(tmp))
+}
+
+/// # To Array.
+///
+/// ## Safety
+///
+/// The length is verified by the caller beforehand. ;)
+pub(super) fn to_array<const N: usize>(src: &[u8]) -> &[u8; N] {
+	let ptr = src.as_ptr().cast::<[u8; N]>();
+	unsafe { &*ptr }
 }
 
 /// # Parse RFC2822 Day.

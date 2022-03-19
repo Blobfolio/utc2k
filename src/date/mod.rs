@@ -815,6 +815,7 @@ impl TryFrom<&OsStr> for Utc2k {
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -843,15 +844,11 @@ impl TryFrom<&str> for Utc2k {
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
 		let bytes = src.as_bytes();
-		if bytes.len() >= 19 {
-			parse::parts_from_datetime(unsafe {
-				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-			})
+		if let Some(b) = bytes.get(..19) {
+			parse::parts_from_datetime(parse::to_array(b))
 		}
-		else if bytes.len() >= 10 {
-			parse::parts_from_date(unsafe {
-				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-			})
+		else if let Some(b) = bytes.get(..10) {
+			parse::parts_from_date(*parse::to_array(b))
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
@@ -964,6 +961,7 @@ impl Utc2k {
 
 /// ## String Parsing.
 impl Utc2k {
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
@@ -998,15 +996,13 @@ impl Utc2k {
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
 	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
-		let bytes: &[u8] = src.as_bytes();
-		if bytes.len() >= 19 {
-			parse::parts_from_datetime(unsafe {
-				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-			})
+		if let Some(b) = src.as_bytes().get(..19) {
+			parse::parts_from_datetime(parse::to_array(b))
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
 
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
@@ -1044,11 +1040,8 @@ impl Utc2k {
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
 	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
-		let bytes: &[u8] = src.as_bytes();
-		if bytes.len() >= 10 {
-			parse::parts_from_date(unsafe {
-				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-			})
+		if let Some(b) = src.as_bytes().get(..10) {
+			parse::parts_from_date(*parse::to_array(b))
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
