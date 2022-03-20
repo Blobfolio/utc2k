@@ -22,7 +22,7 @@ use std::{
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 /// # Weekday.
 ///
 /// This is a simple enum representing days of the week.

@@ -8,12 +8,13 @@
 
 * `FmtUtc2k::year`
 * `Utc2k::parse_time_str`
+* impl `Hash` for `Month`
+* impl `Hash` for `Weekday`
 
 ### Misc
 
 * Clean up parsing helpers;
 * Improve string parsing performance;
-
 
 
 
