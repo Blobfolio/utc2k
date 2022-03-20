@@ -864,10 +864,10 @@ impl TryFrom<&str> for Utc2k {
 		// Work from bytes.
 		let bytes = src.as_bytes();
 		if let Some(b) = bytes.get(..19) {
-			parse::parts_from_datetime(parse::to_array(b))
+			parse::parts_from_datetime(b)
 		}
 		else if let Some(b) = bytes.get(..10) {
-			parse::parts_from_date(*parse::to_array(b))
+			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
@@ -1016,7 +1016,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
 		if let Some(b) = src.as_bytes().get(..19) {
-			parse::parts_from_datetime(parse::to_array(b))
+			parse::parts_from_datetime(b)
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
@@ -1060,7 +1060,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
 		if let Some(b) = src.as_bytes().get(..10) {
-			parse::parts_from_date(*parse::to_array(b))
+			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
@@ -1092,17 +1092,11 @@ impl Utc2k {
 	///
 	/// This method will return an error if any of the numeric bits are invalid
 	/// or out of range (hours must be < 24, minutes and seconds < 60).
-	pub const fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
-		let src = src.as_bytes();
-		if 8 <= src.len() {
-			if let Ok(hh) = parse::parse2(src[0], src[1]) {
-				if let Ok(mm) = parse::parse2(src[3], src[4]) {
-					if let Ok(ss) = parse::parse2(src[6], src[7]) {
-						if hh < 24 && mm < 60 && ss < 60 {
-							return Ok((hh, mm, ss));
-						}
-					}
-				}
+	pub fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
+		if let Some(b) = src.as_bytes().get(..8) {
+			let (hh, mm, ss) = parse::hms(b)?;
+			if hh < 24 && mm < 60 && ss < 60 {
+				return Ok((hh, mm, ss));
 			}
 		}
 

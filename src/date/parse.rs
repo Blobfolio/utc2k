@@ -41,6 +41,24 @@ pub(super) const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
 	}
 }
 
+/// # HMS.
+///
+/// Parse out the hours, minutes, and seconds from a byte slice like
+/// `HH:MM:SS`.
+pub(super) const fn hms(src: &[u8]) -> Result<(u8, u8, u8), Utc2kError> {
+	assert!(8 <= src.len());
+
+	if let Ok(hh) = parse2(src[0], src[1]) {
+		if let Ok(mm) = parse2(src[3], src[4]) {
+			if let Ok(ss) = parse2(src[6], src[7]) {
+				return Ok((hh, mm, ss));
+			}
+		}
+	}
+
+	Err(Utc2kError::Invalid)
+}
+
 /// # Parse 2 Digits.
 ///
 /// This combines two ASCII `u8` values into a single `u8` integer, or dies
@@ -58,7 +76,9 @@ pub(super) const fn parse2(a: u8, b: u8) -> Result<u8, Utc2kError> {
 ///
 /// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
 /// slice. Only the numeric ranges are parsed — separators can be whatever.
-pub(super) fn parts_from_date(src: [u8; 10]) -> Result<Utc2k, Utc2kError> {
+pub(super) fn parts_from_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
+	assert!(10 <= src.len());
+
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
@@ -79,7 +99,11 @@ pub(super) fn parts_from_date(src: [u8; 10]) -> Result<Utc2k, Utc2kError> {
 /// This attempts to extract the year, month, day, hour, minute and second from
 /// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
 /// separators can be whatever.
-pub(super) fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
+pub(super) fn parts_from_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
+	assert!(19 <= src.len());
+
+	let (src, time) = src.split_at(11);
+	let (hh, mm, ss) = hms(time)?;
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
@@ -90,21 +114,9 @@ pub(super) fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 			})?,
 		parse2(src[5], src[6])?,
 		parse2(src[8], src[9])?,
-		parse2(src[11], src[12])?,
-		parse2(src[14], src[15])?,
-		parse2(src[17], src[18])?,
+		hh, mm, ss,
 	);
 	Ok(Utc2k::from(tmp))
-}
-
-/// # To Array.
-///
-/// ## Safety
-///
-/// The length is verified by the caller beforehand. ;)
-pub(super) fn to_array<const N: usize>(src: &[u8]) -> &[u8; N] {
-	let ptr = src.as_ptr().cast::<[u8; N]>();
-	unsafe { &*ptr }
 }
 
 /// # Parse RFC2822 Day.
@@ -163,19 +175,6 @@ pub(super) const fn time_seconds(mut src: u32) -> (u8, u8, u8) {
 
 
 
-/// # Parse 2 Digits.
-///
-/// This combines two ASCII `u8` values into a single `u8` integer, or dies
-/// trying (if, i.e., one or both are non-numeric).
-const fn parse2_opt(a: u8, b: u8) -> Option<u8> {
-	let a = a ^ b'0';
-	let b = b ^ b'0';
-	if a < 10 && b < 10 {
-		Some(a * 10 + b)
-	}
-	else { None }
-}
-
 /// # Parse RFC2822 Date/Time.
 ///
 /// This method represents the third stage of [`Utc2k::from_rfc2822`]. It
@@ -184,25 +183,27 @@ const fn parse2_opt(a: u8, b: u8) -> Option<u8> {
 fn rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
 	if src.len() < 17 { return None; }
 
-	// Tease out the rest of the date/time components.
+	// Grab the time bits.
+	let (src, time) = src.split_at(9);
+	let (hh, mm, ss) = hms(time).ok()?;
+
+	// Parse out the rest!
+	let (month, src) = src.split_at(4);
 	let tmp = Abacus::new(
 		src.iter()
-			.skip(4)
 			.take(4)
 			.try_fold(0, |a, &c| {
 				let c = c ^ b'0';
 				if c < 10 { Some(a * 10 + u16::from(c)) }
 				else { None }
 			})?,
-		Month::from_abbreviation(&src[..3])? as u8,
+		Month::from_abbreviation(month)? as u8,
 		d,
-		parse2_opt(src[9], src[10])?,
-		parse2_opt(src[12], src[13])?,
-		parse2_opt(src[15], src[16])?,
+		hh, mm, ss,
 	);
 
 	// Apply an offset?
-	if let Some((plus, offset_ss)) = rfc2822_offset(src) {
+	if let Some((plus, offset_ss)) = rfc2822_offset(time) {
 		// The offset is beyond UTC; we need to subtract.
 		if plus { Some(Utc2k::from(tmp) - offset_ss) }
 		// The offset is earlier than UTC; we need to add.
