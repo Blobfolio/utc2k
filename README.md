@@ -90,7 +90,7 @@ Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
 ```
 [dependencies]
-utc2k = "0.3.*"
+utc2k = "0.4.*"
 ```
 
 

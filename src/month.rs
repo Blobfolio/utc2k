@@ -22,7 +22,7 @@ use std::{
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 /// # Month.
 ///
 /// This is a simple enum representing months of the year, useful, perhaps, for
@@ -315,6 +315,26 @@ impl Month {
 		}
 	}
 
+	/// # Abbreviation (bytes).
+	///
+	/// This returns the abbreviation as a fixed-size byte array.
+	pub(crate) const fn abbreviation_bytes(self) -> [u8; 3] {
+		match self {
+			Self::January => *b"Jan",
+			Self::February => *b"Feb",
+			Self::March => *b"Mar",
+			Self::April => *b"Apr",
+			Self::May => *b"May",
+			Self::June => *b"Jun",
+			Self::July => *b"Jul",
+			Self::August => *b"Aug",
+			Self::September => *b"Sep",
+			Self::October => *b"Oct",
+			Self::November => *b"Nov",
+			Self::December => *b"Dec",
+		}
+	}
+
 	#[must_use]
 	/// # Month Size (Days).
 	///
@@ -423,7 +443,9 @@ mod tests {
 	fn t_from() {
 		// There and back again.
 		for i in 1..=12_u8 {
-			assert_eq!(Month::from(i) as u8, i);
+			let month = Month::from(i);
+			assert_eq!(month as u8, i);
+			assert_eq!(month.abbreviation().as_bytes(), month.abbreviation_bytes());
 		}
 		for i in 1..=12_u64 {
 			assert_eq!(u64::from(Month::from(i)), i);

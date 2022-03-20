@@ -2,6 +2,23 @@
 
 
 
+## [0.4.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.1) - 2022-03-20
+
+### Added
+
+* `FmtUtc2k::year`
+* `Utc2k::parse_time_str`
+* impl `Hash` for `Month`
+* impl `Hash` for `Weekday`
+
+### Misc
+
+* Clean up parsing helpers;
+* Improve string parsing performance;
+* Improve `to_rfc2822` performance;
+
+
+
 ## [0.4.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.0) - 2022-03-03
 
 ### Fixed

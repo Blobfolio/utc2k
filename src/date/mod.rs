@@ -4,11 +4,12 @@
 
 #![allow(clippy::shadow_unrelated)]
 
+mod parse;
+
 use crate::{
 	Abacus,
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
-	JULIAN_EPOCH,
 	macros,
 	MINUTE_IN_SECONDS,
 	Month,
@@ -396,6 +397,25 @@ impl FmtUtc2k {
 
 	#[inline]
 	#[must_use]
+	/// # Just the Year Bit.
+	///
+	/// This returns the year as a string slice.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// assert_eq!(fmt.year(), "2099");
+	/// ```
+	pub fn year(&self) -> &str {
+		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
+	}
+
+	#[inline]
+	#[must_use]
 	/// # Just the Time Bits.
 	///
 	/// This returns the time as a string slice in `HH:MM:SS` format.
@@ -518,40 +538,23 @@ impl FmtUtc2k {
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
 		let utc = Utc2k::from(self);
-		let weekday = utc.weekday().abbreviation().as_bytes();
-		let month = utc.month_enum().abbreviation().as_bytes();
+		let weekday: [u8; 3] = utc.weekday().abbreviation_bytes();
+		let month: [u8; 3] = utc.month_enum().abbreviation_bytes();
 
 		// Working from bytes is ugly, but performs much better than any
 		// string-based operations.
-		let out: Vec<u8> =
-			if utc.d < 10 {
-				vec![
-					weekday[0], weekday[1], weekday[2],
-					b',', b' ', b'0',
-					self.0[9],
-					b' ',
-					month[0], month[1], month[2],
-					b' ',
-					b'2', b'0', self.0[2], self.0[3],
-					b' ',
-					self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
-					b' ', b'+', b'0', b'0', b'0', b'0'
-				]
-			}
-			else {
-				vec![
-					weekday[0], weekday[1], weekday[2],
-					b',', b' ',
-					self.0[8], self.0[9],
-					b' ',
-					month[0], month[1], month[2],
-					b' ',
-					b'2', b'0', self.0[2], self.0[3],
-					b' ',
-					self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
-					b' ', b'+', b'0', b'0', b'0', b'0'
-				]
-			};
+		let out: Vec<u8> = vec![
+			weekday[0], weekday[1], weekday[2],
+			b',', b' ',
+			self.0[8], self.0[9],
+			b' ',
+			month[0], month[1], month[2],
+			b' ',
+			b'2', b'0', self.0[2], self.0[3],
+			b' ',
+			self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
+			b' ', b'+', b'0', b'0', b'0', b'0'
+		];
 
 		// The output is ASCII; it's fine.
 		unsafe { String::from_utf8_unchecked(out) }
@@ -648,8 +651,8 @@ impl From<u32> for Utc2k {
 		else if src >= Self::MAX_UNIXTIME { Self::max() }
 		else {
 			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = parse_date_seconds(src / DAY_IN_SECONDS);
-			let (hh, mm, ss) = parse_time_seconds(src % DAY_IN_SECONDS);
+			let (y, m, d) = parse::date_seconds(src / DAY_IN_SECONDS);
+			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
 
 			Self { y, m, d, hh, mm, ss }
 		}
@@ -665,12 +668,20 @@ impl From<Abacus> for Utc2k {
 
 impl From<&FmtUtc2k> for Utc2k {
 	#[inline]
-	fn from(src: &FmtUtc2k) -> Self { parse_parts_from_fmt(&src.0) }
+	fn from(src: &FmtUtc2k) -> Self { Self::from(*src) }
 }
 
 impl From<FmtUtc2k> for Utc2k {
-	#[inline]
-	fn from(src: FmtUtc2k) -> Self { parse_parts_from_fmt(&src.0) }
+	fn from(src: FmtUtc2k) -> Self {
+		Self::new(
+			2000 + u16::from((src.0[2] & 0x0f) * 10 + (src.0[3] & 0x0f)),
+			(src.0[5] & 0x0f) * 10 + (src.0[6] & 0x0f),
+			(src.0[8] & 0x0f) * 10 + (src.0[9] & 0x0f),
+			(src.0[11] & 0x0f) * 10 + (src.0[12] & 0x0f),
+			(src.0[14] & 0x0f) * 10 + (src.0[15] & 0x0f),
+			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
+		)
+	}
 }
 
 impl Ord for Utc2k {
@@ -754,7 +765,7 @@ impl Sub<u32> for Utc2k {
 				}
 				else { 1 };
 
-			let (hh, mm, ss) = parse_time_seconds(easy);
+			let (hh, mm, ss) = parse::time_seconds(easy);
 			Self {
 				y: self.y,
 				m: self.m,
@@ -806,6 +817,7 @@ impl TryFrom<&OsStr> for Utc2k {
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -829,20 +841,16 @@ impl TryFrom<&str> for Utc2k {
 	/// let date = Utc2k::try_from("2021-06-25 13:15:25.0000").unwrap();
 	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
 	///
-	/// assert!(Utc2k::try_from("Applebutter").is_err());
+	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
 		let bytes = src.as_bytes();
-		if bytes.len() >= 19 {
-			parse_parts_from_datetime(unsafe {
-				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-			})
+		if let Some(b) = bytes.get(..19) {
+			parse::parts_from_datetime(b)
 		}
-		else if bytes.len() >= 10 {
-			parse_parts_from_date(unsafe {
-				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-			})
+		else if let Some(b) = bytes.get(..10) {
+			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
@@ -955,6 +963,7 @@ impl Utc2k {
 
 /// ## String Parsing.
 impl Utc2k {
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
@@ -989,15 +998,13 @@ impl Utc2k {
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
 	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
-		let bytes: &[u8] = src.as_bytes();
-		if bytes.len() >= 19 {
-			parse_parts_from_datetime(unsafe {
-				&*(bytes[..19].as_ptr().cast::<[u8; 19]>())
-			})
+		if let Some(b) = src.as_bytes().get(..19) {
+			parse::parts_from_datetime(b)
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
 
+	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
@@ -1035,13 +1042,48 @@ impl Utc2k {
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
 	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
-		let bytes: &[u8] = src.as_bytes();
-		if bytes.len() >= 10 {
-			parse_parts_from_date(unsafe {
-				&*(bytes[..10].as_ptr().cast::<[u8; 10]>())
-			})
+		if let Some(b) = src.as_bytes().get(..10) {
+			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
+	}
+
+	/// # Parse Time.
+	///
+	/// This method attempts to parse a time string in the `HH:MM:SS` format,
+	/// returning the hours, minutes, and seconds as integers.
+	///
+	/// As with other methods in this library, only positions where numbers are
+	/// expected will be looked at. `01:02:03` will parse the same way as
+	/// `01-02-03`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::parse_time_str("15:35:47"),
+	///     Ok((15, 35, 47))
+	/// );
+	///
+	/// // The hours are out of range.
+	/// assert!(Utc2k::parse_time_str("30:35:47").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// This method will return an error if any of the numeric bits are invalid
+	/// or out of range (hours must be < 24, minutes and seconds < 60).
+	pub fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
+		if let Some(b) = src.as_bytes().get(..8) {
+			let (hh, mm, ss) = parse::hms(b)?;
+			if hh < 24 && mm < 60 && ss < 60 {
+				return Ok((hh, mm, ss));
+			}
+		}
+
+		Err(Utc2kError::Invalid)
 	}
 }
 
@@ -1453,8 +1495,9 @@ impl Utc2k {
 	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
-		let weekday = self.weekday().abbreviation().as_bytes();
-		let month = self.month_enum().abbreviation().as_bytes();
+		let weekday: [u8; 3] = self.weekday().abbreviation_bytes();
+		let month: [u8; 3] = self.month_enum().abbreviation_bytes();
+
 		let d_idx = (self.d << 1) as usize;
 		let y_idx = (self.y << 1) as usize;
 		let hh_idx = (self.hh << 1) as usize;
@@ -1463,35 +1506,18 @@ impl Utc2k {
 
 		// Working from bytes is ugly, but performs much better than any
 		// string-based operations.
-		let out: Vec<u8> =
-			if self.d < 10 {
-				vec![
-					weekday[0], weekday[1], weekday[2],
-					b',', b' ', b'0',
-					DD[d_idx + 1],
-					b' ',
-					month[0], month[1], month[2],
-					b' ',
-					b'2', b'0', DD[y_idx], DD[y_idx + 1],
-					b' ',
-					DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
-					b' ', b'+', b'0', b'0', b'0', b'0'
-				]
-			}
-			else {
-				vec![
-					weekday[0], weekday[1], weekday[2],
-					b',', b' ',
-					DD[d_idx], DD[d_idx + 1],
-					b' ',
-					month[0], month[1], month[2],
-					b' ',
-					b'2', b'0', DD[y_idx], DD[y_idx + 1],
-					b' ',
-					DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
-					b' ', b'+', b'0', b'0', b'0', b'0'
-				]
-			};
+		let out: Vec<u8> = vec![
+			weekday[0], weekday[1], weekday[2],
+			b',', b' ',
+			DD[d_idx], DD[d_idx + 1],
+			b' ',
+			month[0], month[1], month[2],
+			b' ',
+			b'2', b'0', DD[y_idx], DD[y_idx + 1],
+			b' ',
+			DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
+			b' ', b'+', b'0', b'0', b'0', b'0'
+		];
 
 		// The output is ASCII; it's fine.
 		unsafe { String::from_utf8_unchecked(out) }
@@ -1549,8 +1575,8 @@ impl Utc2k {
 		if 19 <= src.len() {
 			// Strip off the optional weekday, if any, so we can parse the day
 			// from a predictable starting place.
-			if src[0].is_ascii_alphabetic() { parse_rfc2822_day(&src[5..]) }
-			else { parse_rfc2822_day(src) }
+			if src[0].is_ascii_alphabetic() { parse::rfc2822_day(&src[5..]) }
+			else { parse::rfc2822_day(src) }
 		}
 		else { None }
 	}
@@ -1697,230 +1723,6 @@ impl Utc2k {
 impl From<Utc2k> for u32 {
 	#[inline]
 	fn from(src: Utc2k) -> Self { src.unixtime() }
-}
-
-
-
-#[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)]
-/// # Parse Date From Seconds.
-///
-/// This parses the date portion of a date/time timestamp using the same
-/// approach as [`time`](https://crates.io/crates/time), which is based on
-/// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
-///
-/// (Our version is a little simpler as we aren't worried about old times.)
-const fn parse_date_seconds(mut z: u32) -> (u8, u8, u8) {
-	z += JULIAN_EPOCH - 1_721_119;
-	let h: u32 = 100 * z - 25;
-	let mut a: u32 = h / 3_652_425;
-	a -= a / 4;
-	let year: u32 = (100 * a + h) / 36_525;
-	a = a + z - 365 * year - year / 4;
-	let month: u32 = (5 * a + 456) / 153;
-	let day: u8 = (a - (153 * month - 457) / 5) as u8;
-
-	if month > 12 {
-		((year - 1999) as u8, month as u8 - 12, day)
-	}
-	else {
-		((year - 2000) as u8, month as u8, day)
-	}
-}
-
-/// # Parse Parts From Date.
-///
-/// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
-/// slice. Only the numeric ranges are parsed — separators can be whatever.
-fn parse_parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
-	let tmp = Abacus::new(
-		src.iter()
-			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
-				else { Err(Utc2kError::Invalid) }
-			)?,
-		parse_u8_str(src[5], src[6])?,
-		parse_u8_str(src[8], src[9])?,
-		0, 0, 0
-	);
-	Ok(Utc2k::from(tmp))
-}
-
-/// # Parse Parts From Date/Time.
-///
-/// This attempts to extract the year, month, day, hour, minute and second from
-/// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
-/// separators can be whatever.
-fn parse_parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
-	let tmp = Abacus::new(
-		src.iter()
-			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Ok(a * 10 + u16::from(c & 0x0f)) }
-				else { Err(Utc2kError::Invalid) }
-			)?,
-		parse_u8_str(src[5], src[6])?,
-		parse_u8_str(src[8], src[9])?,
-		parse_u8_str(src[11], src[12])?,
-		parse_u8_str(src[14], src[15])?,
-		parse_u8_str(src[17], src[18])?,
-	);
-	Ok(Utc2k::from(tmp))
-}
-
-/// # Parse Parts From `FmtUtc2k`
-///
-/// This is identical to `parse_parts_from_datetime`, but the input is treated
-/// as trusted, since it is fed directly from a (valid) `FmtUtc2k` object.
-fn parse_parts_from_fmt(src: &[u8; 19]) -> Utc2k {
-	Utc2k::new(
-		src.iter()
-			.take(4)
-			.fold(0, |a, &c| a * 10 + u16::from(c & 0x0f)),
-		(src[5] & 0x0f) * 10 + (src[6] & 0x0f),
-		(src[8] & 0x0f) * 10 + (src[9] & 0x0f),
-		(src[11] & 0x0f) * 10 + (src[12] & 0x0f),
-		(src[14] & 0x0f) * 10 + (src[15] & 0x0f),
-		(src[17] & 0x0f) * 10 + (src[18] & 0x0f),
-	)
-}
-
-/// # Parse RFC2822 Day.
-///
-/// This method represents the second stage of [`Utc2k::from_rfc2822`]. It
-/// parses the month-day component from the string, moves the pointer, and
-/// passes it along to [`parse_rfc2822_datetime`] to finish it up.
-fn parse_rfc2822_day(src: &[u8]) -> Option<Utc2k> {
-	if 19 <= src.len() && src[0].is_ascii_digit() {
-		// Double-digit day.
-		if src[1].is_ascii_digit() {
-			return parse_rfc2822_datetime(
-				&src[3..],
-				(src[0] & 0x0f) * 10 + (src[1] & 0x0f),
-			);
-		}
-		// Single-digit day.
-		else if src[1] == b' ' {
-			return parse_rfc2822_datetime(&src[2..], src[0] & 0x0f);
-		}
-	}
-
-	None
-}
-
-/// # Parse RFC2822 Date/Time.
-///
-/// This method represents the third stage of [`Utc2k::from_rfc2822`]. It
-/// parses the remaining date/time components from the string, applies the
-/// offset (if any), and returns the desired `Utc2k` object.
-fn parse_rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
-	if src.len() < 17 { return None; }
-
-	// Tease out the rest of the date/time components.
-	let tmp = Abacus::new(
-		src.iter()
-			.skip(4)
-			.take(4)
-			.try_fold(0, |a, &c|
-				if c.is_ascii_digit() { Some(a * 10 + u16::from(c & 0x0f)) }
-				else { None }
-			)?,
-		Month::from_abbreviation(&src[..3])? as u8,
-		d,
-		parse_u8_str_opt(src[9], src[10])?,
-		parse_u8_str_opt(src[12], src[13])?,
-		parse_u8_str_opt(src[15], src[16])?,
-	);
-
-	// Apply an offset?
-	if let Some((plus, offset_ss)) = parse_rfc2822_offset(src) {
-		// The offset is beyond UTC; we need to subtract.
-		if plus { Some(Utc2k::from(tmp) - offset_ss) }
-		// The offset is earlier than UTC; we need to add.
-		else { Some(Utc2k::from(tmp + offset_ss)) }
-	}
-	// Pass through as-is!
-	else { Some(Utc2k::from(tmp)) }
-}
-
-/// # Parse RFC2822 Offset.
-///
-/// This tries to tease out the UTC offset from the end of an RFC2822 string.
-/// If present, it returns a bool representing the sign and the offset as
-/// seconds.
-const fn parse_rfc2822_offset(src: &[u8]) -> Option<(bool, u32)> {
-	let len: usize = src.len();
-	if len > 6 && src[len - 6] == b' ' {
-		let plus: bool = match src[len - 5] {
-			b'+' => true,
-			b'-' => false,
-			_ => return None,
-		};
-
-		if let Ok(hh) = parse_u8_str(src[len - 4], src[len - 3]) {
-			if let Ok(mm) = parse_u8_str(src[len - 2], src[len - 1]) {
-				if 0 < hh || 0 < mm {
-					return Some((
-						plus,
-						(hh as u32 * HOUR_IN_SECONDS + mm as u32 * MINUTE_IN_SECONDS)
-					));
-				}
-			}
-		}
-	}
-
-	None
-}
-
-#[allow(clippy::cast_possible_truncation)] // It fits.
-/// # Parse Time From Seconds.
-///
-/// This parses the time portion of a date/time timestamp. It works the same
-/// way a naive div/mod approach would, except it uses multiplication and bit
-/// shifts to avoid actually having to div/mod.
-///
-/// (This only works because time values stop at 23 or 59; rounding errors
-/// would creep in if the full u8 range was used.)
-const fn parse_time_seconds(mut src: u32) -> (u8, u8, u8) {
-	let hh =
-		if src >= HOUR_IN_SECONDS {
-			let hh = ((src * 0x91A3) >> 27) as u8;
-			src -= hh as u32 * HOUR_IN_SECONDS;
-			hh
-		}
-		else { 0 };
-
-	if src >= MINUTE_IN_SECONDS {
-		let mm = ((src * 0x889) >> 17) as u8;
-		src -= mm as u32 * MINUTE_IN_SECONDS;
-		(hh, mm, src as u8)
-	}
-	else {
-		(hh, 0, src as u8)
-	}
-}
-
-/// # Parse 2 Digits.
-///
-/// This combines two ASCII `u8` values into a single `u8` integer, or dies
-/// trying (if, i.e., one or both are non-numeric).
-const fn parse_u8_str(one: u8, two: u8) -> Result<u8, Utc2kError> {
-	if one.is_ascii_digit() && two.is_ascii_digit() {
-		Ok((one & 0x0f) * 10 + (two & 0x0f))
-	}
-	else { Err(Utc2kError::Invalid) }
-}
-
-/// # Parse 2 Digits.
-///
-/// This combines two ASCII `u8` values into a single `u8` integer, or dies
-/// trying (if, i.e., one or both are non-numeric).
-const fn parse_u8_str_opt(one: u8, two: u8) -> Option<u8> {
-	if one.is_ascii_digit() && two.is_ascii_digit() {
-		Some((one & 0x0f) * 10 + (two & 0x0f))
-	}
-	else { None }
 }
 
 
