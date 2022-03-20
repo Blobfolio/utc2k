@@ -7,6 +7,7 @@
 ### Added
 
 * `FmtUtc2k::year`
+* `Utc2k::parse_time_str`
 
 ### Misc
 

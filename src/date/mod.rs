@@ -1064,6 +1064,50 @@ impl Utc2k {
 		}
 		else { Err(Utc2kError::Invalid) }
 	}
+
+	/// # Parse Time.
+	///
+	/// This method attempts to parse a time string in the `HH:MM:SS` format,
+	/// returning the hours, minutes, and seconds as integers.
+	///
+	/// As with other methods in this library, only positions where numbers are
+	/// expected will be looked at. `01:02:03` will parse the same way as
+	/// `01-02-03`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::parse_time_str("15:35:47"),
+	///     Ok((15, 35, 47))
+	/// );
+	///
+	/// // The hours are out of range.
+	/// assert!(Utc2k::parse_time_str("30:35:47").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// This method will return an error if any of the numeric bits are invalid
+	/// or out of range (hours must be < 24, minutes and seconds < 60).
+	pub const fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
+		let src = src.as_bytes();
+		if 8 <= src.len() {
+			if let Ok(hh) = parse::parse2(src[0], src[1]) {
+				if let Ok(mm) = parse::parse2(src[3], src[4]) {
+					if let Ok(ss) = parse::parse2(src[6], src[7]) {
+						if hh < 24 && mm < 60 && ss < 60 {
+							return Ok((hh, mm, ss));
+						}
+					}
+				}
+			}
+		}
+
+		Err(Utc2kError::Invalid)
+	}
 }
 
 /// ## Get Parts.
