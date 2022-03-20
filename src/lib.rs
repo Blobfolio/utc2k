@@ -75,7 +75,6 @@ let s: &str = fmt.borrow();
 ## Optional Crate Features
 
 * `serde`: Enables serialization/deserialization support.
-```
 */
 
 #![warn(clippy::filetype_is_file)]
