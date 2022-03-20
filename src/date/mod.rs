@@ -397,6 +397,25 @@ impl FmtUtc2k {
 
 	#[inline]
 	#[must_use]
+	/// # Just the Year Bit.
+	///
+	/// This returns the year as a string slice.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(Utc2k::MAX_UNIXTIME);
+	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	/// assert_eq!(fmt.year(), "2099");
+	/// ```
+	pub fn year(&self) -> &str {
+		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
+	}
+
+	#[inline]
+	#[must_use]
 	/// # Just the Time Bits.
 	///
 	/// This returns the time as a string slice in `HH:MM:SS` format.
