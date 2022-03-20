@@ -91,6 +91,7 @@ pub(super) fn parts_from_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 		parse2(src[8], src[9])?,
 		0, 0, 0
 	);
+
 	Ok(Utc2k::from(tmp))
 }
 
@@ -116,6 +117,7 @@ pub(super) fn parts_from_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 		parse2(src[8], src[9])?,
 		hh, mm, ss,
 	);
+
 	Ok(Utc2k::from(tmp))
 }
 
