@@ -15,6 +15,7 @@
 
 * Clean up parsing helpers;
 * Improve string parsing performance;
+* Improve `to_rfc2822` performance;
 
 
 
