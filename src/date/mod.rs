@@ -839,7 +839,7 @@ impl TryFrom<&str> for Utc2k {
 	/// let date = Utc2k::try_from("2021-06-25 13:15:25.0000").unwrap();
 	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
 	///
-	/// assert!(Utc2k::try_from("Applebutter").is_err());
+	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		// Work from bytes.
