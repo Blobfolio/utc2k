@@ -23,8 +23,12 @@ benches!(
 	Bench::new("utc2k::Utc2k", "from(FmtUtc2k)")
 		.with_setup(FmtUtc2k::try_from("2019-04-10 18:18:55").unwrap(), Utc2k::from),
 
+	Bench::spacer(),
+
 	Bench::new("utc2k::Utc2k", "unixtime()")
 		.with_setup(Utc2k::from(1_624_593_661_u32), Utc2k::unixtime),
+
+	Bench::spacer(),
 
 	Bench::new("utc2k::Utc2k", "to_rfc2822()")
 		.with_setup(Utc2k::from(Utc2k::MAX_UNIXTIME), |u| u.to_rfc2822()),
