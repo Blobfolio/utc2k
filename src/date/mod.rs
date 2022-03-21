@@ -302,6 +302,8 @@ impl FmtUtc2k {
 		let src = DD.as_ptr();
 		let dst = self.0.as_mut_ptr();
 
+		// Safety: Abacus will have already normalized all ranges, so the
+		// indices will be present in DD.
 		unsafe {
 			copy_nonoverlapping(src.add((y << 1) as usize), dst.add(2), 2);
 			copy_nonoverlapping(src.add((m << 1) as usize), dst.add(5), 2);
@@ -373,6 +375,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
 	pub const fn as_str(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
@@ -392,6 +395,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
 	pub fn date(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
@@ -411,6 +415,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
 	pub fn year(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
@@ -430,6 +435,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
 	pub fn time(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
 	}
 }
@@ -556,7 +562,7 @@ impl FmtUtc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// The output is ASCII; it's fine.
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 }
@@ -1200,6 +1206,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_enum(), Month::May);
 	/// ```
 	pub const fn month_enum(self) -> Month {
+		// Safety: the month is validated during construction.
 		unsafe { Month::from_u8_unchecked(self.m) }
 	}
 
@@ -1519,7 +1526,7 @@ impl Utc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// The output is ASCII; it's fine.
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 
