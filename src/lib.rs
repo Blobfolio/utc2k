@@ -75,7 +75,6 @@ let s: &str = fmt.borrow();
 ## Optional Crate Features
 
 * `serde`: Enables serialization/deserialization support.
-```
 */
 
 #![warn(clippy::filetype_is_file)]
@@ -164,4 +163,26 @@ pub fn unixtime() -> u32 {
 		Utc2k::MIN_UNIXTIME,
 		|n| n.as_secs().min(4_102_444_799) as u32
 	)
+}
+
+#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::integer_division)] // We want it.
+#[must_use]
+/// # Now (Current Year).
+///
+/// This returns the current year as a `u16`.
+///
+/// See [`unixtime`] for notes about system clock error recovery.
+///
+/// ## Examples
+///
+/// ```
+/// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
+/// ```
+pub fn year() -> u16 {
+	let z = unixtime() / DAY_IN_SECONDS + (JULIAN_EPOCH - 1_721_119);
+	let h: u32 = 100 * z - 25;
+	let mut a: u32 = h / 3_652_425;
+	a -= a >> 2;
+	((100 * a + h) / 36_525) as u16
 }

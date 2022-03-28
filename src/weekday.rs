@@ -74,6 +74,8 @@ impl From<u8> for Weekday {
 		if src > 7 { Self::from(src % 7) }
 		else if src == 0 { Self::Saturday }
 		else {
+			// Safety: values 1..=7 correspond directly to members of this
+			// enum.
 			unsafe { std::mem::transmute(src) }
 		}
 	}

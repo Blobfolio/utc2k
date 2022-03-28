@@ -178,6 +178,15 @@ impl TryFrom<&OsStr> for FmtUtc2k {
 	}
 }
 
+impl TryFrom<&[u8]> for FmtUtc2k {
+	type Error = Utc2kError;
+
+	#[inline]
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Utc2k::try_from(src).map(Self::from)
+	}
+}
+
 impl TryFrom<&str> for FmtUtc2k {
 	type Error = Utc2kError;
 
@@ -302,6 +311,8 @@ impl FmtUtc2k {
 		let src = DD.as_ptr();
 		let dst = self.0.as_mut_ptr();
 
+		// Safety: Abacus will have already normalized all ranges, so the
+		// indices will be present in DD.
 		unsafe {
 			copy_nonoverlapping(src.add((y << 1) as usize), dst.add(2), 2);
 			copy_nonoverlapping(src.add((m << 1) as usize), dst.add(5), 2);
@@ -373,6 +384,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
 	pub const fn as_str(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
@@ -392,6 +404,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
 	pub fn date(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
@@ -411,6 +424,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
 	pub fn year(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
@@ -430,6 +444,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
 	pub fn time(&self) -> &str {
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
 	}
 }
@@ -556,7 +571,7 @@ impl FmtUtc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// The output is ASCII; it's fine.
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 }
@@ -814,10 +829,43 @@ impl TryFrom<&OsStr> for Utc2k {
 	}
 }
 
-impl TryFrom<&str> for Utc2k {
+impl TryFrom<&[u8]> for Utc2k {
 	type Error = Utc2kError;
 
 	#[allow(clippy::option_if_let_else)] // No.
+	/// # Parse Slice.
+	///
+	/// This will attempt to construct a [`Utc2k`] from a date/time or date
+	/// slice. See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
+	/// information.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::try_from(&b"2021/06/25"[..]).unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// let date = Utc2k::try_from(&b"2021-06-25 13:15:25.0000"[..]).unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// assert!(Utc2k::try_from(&b"2021-06-applesauces"[..]).is_err());
+	/// ```
+	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+		if let Some(b) = bytes.get(..19) {
+			parse::parts_from_datetime(b)
+		}
+		else if let Some(b) = bytes.get(..10) {
+			parse::parts_from_date(b)
+		}
+		else { Err(Utc2kError::Invalid) }
+	}
+}
+
+impl TryFrom<&str> for Utc2k {
+	type Error = Utc2kError;
+
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -844,15 +892,7 @@ impl TryFrom<&str> for Utc2k {
 	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		// Work from bytes.
-		let bytes = src.as_bytes();
-		if let Some(b) = bytes.get(..19) {
-			parse::parts_from_datetime(b)
-		}
-		else if let Some(b) = bytes.get(..10) {
-			parse::parts_from_date(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		Self::try_from(src.as_bytes())
 	}
 }
 
@@ -997,8 +1037,9 @@ impl Utc2k {
 	///
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
-	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..19) {
+	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..19) {
 			parse::parts_from_datetime(b)
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -1041,8 +1082,9 @@ impl Utc2k {
 	///
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
-	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..10) {
+	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..10) {
 			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -1075,8 +1117,9 @@ impl Utc2k {
 	///
 	/// This method will return an error if any of the numeric bits are invalid
 	/// or out of range (hours must be < 24, minutes and seconds < 60).
-	pub fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..8) {
+	pub fn parse_time_str<B>(src: B) -> Result<(u8, u8, u8), Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..8) {
 			let (hh, mm, ss) = parse::hms(b)?;
 			if hh < 24 && mm < 60 && ss < 60 {
 				return Ok((hh, mm, ss));
@@ -1200,6 +1243,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_enum(), Month::May);
 	/// ```
 	pub const fn month_enum(self) -> Month {
+		// Safety: the month is validated during construction.
 		unsafe { Month::from_u8_unchecked(self.m) }
 	}
 
@@ -1519,7 +1563,7 @@ impl Utc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// The output is ASCII; it's fine.
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 

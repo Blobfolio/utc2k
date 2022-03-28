@@ -75,6 +75,8 @@ impl From<u8> for Month {
 		if src > 12 { Self::from(src % 12) }
 		else if src == 0 { Self::December }
 		else {
+			// Safety: values 1..=12 correspond directly to members of this
+			// enum.
 			unsafe { std::mem::transmute(src) }
 		}
 	}
