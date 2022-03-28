@@ -1037,8 +1037,9 @@ impl Utc2k {
 	///
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
-	pub fn from_datetime_str(src: &str) -> Result<Self, Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..19) {
+	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..19) {
 			parse::parts_from_datetime(b)
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -1081,8 +1082,9 @@ impl Utc2k {
 	///
 	/// If any of the digits fail to parse, or if the string is insufficiently
 	/// sized, an error will be returned.
-	pub fn from_date_str(src: &str) -> Result<Self, Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..10) {
+	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..10) {
 			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
