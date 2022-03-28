@@ -8,8 +8,6 @@
 
 * `utc2k::year` (fetch current year)
 
-
-
 ### Changed
 
 * `Utc2k::parse_time_str` now accepts any `AsRef<[u8]>`
