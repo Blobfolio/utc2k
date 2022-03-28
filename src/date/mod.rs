@@ -178,6 +178,15 @@ impl TryFrom<&OsStr> for FmtUtc2k {
 	}
 }
 
+impl TryFrom<&[u8]> for FmtUtc2k {
+	type Error = Utc2kError;
+
+	#[inline]
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Utc2k::try_from(src).map(Self::from)
+	}
+}
+
 impl TryFrom<&str> for FmtUtc2k {
 	type Error = Utc2kError;
 
@@ -820,10 +829,43 @@ impl TryFrom<&OsStr> for Utc2k {
 	}
 }
 
-impl TryFrom<&str> for Utc2k {
+impl TryFrom<&[u8]> for Utc2k {
 	type Error = Utc2kError;
 
 	#[allow(clippy::option_if_let_else)] // No.
+	/// # Parse Slice.
+	///
+	/// This will attempt to construct a [`Utc2k`] from a date/time or date
+	/// slice. See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
+	/// information.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::try_from(&b"2021/06/25"[..]).unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// let date = Utc2k::try_from(&b"2021-06-25 13:15:25.0000"[..]).unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// assert!(Utc2k::try_from(&b"2021-06-applesauces"[..]).is_err());
+	/// ```
+	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+		if let Some(b) = bytes.get(..19) {
+			parse::parts_from_datetime(b)
+		}
+		else if let Some(b) = bytes.get(..10) {
+			parse::parts_from_date(b)
+		}
+		else { Err(Utc2kError::Invalid) }
+	}
+}
+
+impl TryFrom<&str> for Utc2k {
+	type Error = Utc2kError;
+
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -850,15 +892,7 @@ impl TryFrom<&str> for Utc2k {
 	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		// Work from bytes.
-		let bytes = src.as_bytes();
-		if let Some(b) = bytes.get(..19) {
-			parse::parts_from_datetime(b)
-		}
-		else if let Some(b) = bytes.get(..10) {
-			parse::parts_from_date(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		Self::try_from(src.as_bytes())
 	}
 }
 

@@ -7,6 +7,7 @@
 ### Changed
 
 * `Utc2k::parse_time_str` now accepts any `AsRef<[u8]>` source
+* impl `TryFrom<&[u8]>` for `Utc2k` and `FmtUtc2k`
 
 
 
