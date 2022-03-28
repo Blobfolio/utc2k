@@ -1081,8 +1081,9 @@ impl Utc2k {
 	///
 	/// This method will return an error if any of the numeric bits are invalid
 	/// or out of range (hours must be < 24, minutes and seconds < 60).
-	pub fn parse_time_str(src: &str) -> Result<(u8, u8, u8), Utc2kError> {
-		if let Some(b) = src.as_bytes().get(..8) {
+	pub fn parse_time_str<B>(src: B) -> Result<(u8, u8, u8), Utc2kError>
+	where B: AsRef<[u8]> {
+		if let Some(b) = src.as_ref().get(..8) {
 			let (hh, mm, ss) = parse::hms(b)?;
 			if hh < 24 && mm < 60 && ss < 60 {
 				return Ok((hh, mm, ss));

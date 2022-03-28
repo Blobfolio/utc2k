@@ -2,6 +2,14 @@
 
 
 
+## [0.4.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.2) - TBD
+
+### Changed
+
+* `Utc2k::parse_time_str` now accepts any `AsRef<[u8]>` source
+
+
+
 ## [0.4.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.1) - 2022-03-20
 
 ### Added
