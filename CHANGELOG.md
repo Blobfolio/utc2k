@@ -4,6 +4,12 @@
 
 ## [0.4.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.2) - TBD
 
+### Added
+
+* `utc2k::year` (fetch current year)
+
+
+
 ### Changed
 
 * `Utc2k::parse_time_str` now accepts any `AsRef<[u8]>`
