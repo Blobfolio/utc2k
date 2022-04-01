@@ -21,8 +21,6 @@ pkg_name    := "UTC2K"
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"
 
-rustflags   := "-C link-arg=-s"
-
 
 
 # Bench it!
@@ -31,13 +29,13 @@ bench BENCH="":
 
 	clear
 	if [ -z "{{ BENCH }}" ]; then
-		RUSTFLAGS="{{ rustflags }}" cargo bench \
+		cargo bench \
 			--benches \
 			--all-features \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
-		RUSTFLAGS="{{ rustflags }}" cargo bench \
+		cargo bench \
 			--bench "{{ BENCH }}" \
 			--all-features \
 			--target x86_64-unknown-linux-gnu \
@@ -49,7 +47,7 @@ bench BENCH="":
 # Check Release!
 @check:
 	# First let's build the Rust bit.
-	RUSTFLAGS="{{ rustflags }}" cargo check \
+	cargo check \
 		--release \
 		--target x86_64-unknown-linux-gnu \
 		--all-features \
@@ -71,7 +69,7 @@ bench BENCH="":
 # Clippy.
 @clippy:
 	clear
-	RUSTFLAGS="{{ rustflags }}" cargo clippy \
+	cargo clippy \
 		--release \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \
