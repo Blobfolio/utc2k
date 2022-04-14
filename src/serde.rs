@@ -229,7 +229,10 @@ mod tests {
 		const DATENUM: &str = "1625743996";
 		const DATESTR_Q: &str = "\"2021-07-08 11:33:16\"";
 
+		#[cfg(target_arch = "x86_64")]
 		const YSERIALNUM: &str = "---\n1625743996\n";
+
+		#[cfg(target_arch = "x86_64")]
 		const YSERIALSTR: &str = "---\n\"2021-07-08 11:33:16\"\n";
 
 		{
@@ -248,28 +251,32 @@ mod tests {
 				.expect("FmtUtc2k deserialization (u32) failed.");
 			assert_eq!(date, date2);
 
-			// Try it with serde_yaml, which is a bit stricter.
-			date2 = serde_yaml::from_str(&serial)
-				.expect("FmtUtc2k deserialization (str) failed.");
-			assert_eq!(date, date2);
+			// serde_yaml doesn't compile for e.g. mips64.
+			#[cfg(target_arch = "x86_64")]
+			{
+				// Try it with serde_yaml, which is a bit stricter.
+				date2 = serde_yaml::from_str(&serial)
+					.expect("FmtUtc2k deserialization (str) failed.");
+				assert_eq!(date, date2);
 
-			date2 = serde_yaml::from_str(DATENUM)
-				.expect("FmtUtc2k deserialization (u32) failed.");
-			assert_eq!(date, date2);
+				date2 = serde_yaml::from_str(DATENUM)
+					.expect("FmtUtc2k deserialization (u32) failed.");
+				assert_eq!(date, date2);
 
-			// Serialize it with serde_yaml too.
-			let serial2 = serde_yaml::to_string(&date)
-				.expect("FmtUtc2k serialization failed.");
-			assert_eq!(serial2, YSERIALSTR);
+				// Serialize it with serde_yaml too.
+				let serial2 = serde_yaml::to_string(&date)
+					.expect("FmtUtc2k serialization failed.");
+				assert_eq!(serial2, YSERIALSTR);
 
-			// And make sure deserialization from YAML format works.
-			date2 = serde_yaml::from_str(YSERIALSTR)
-				.expect("FmtUtc2k deserialization (str) failed.");
-			assert_eq!(date, date2);
+				// And make sure deserialization from YAML format works.
+				date2 = serde_yaml::from_str(YSERIALSTR)
+					.expect("FmtUtc2k deserialization (str) failed.");
+				assert_eq!(date, date2);
 
-			date2 = serde_yaml::from_str(YSERIALNUM)
-				.expect("FmtUtc2k deserialization (u32) failed.");
-			assert_eq!(date, date2);
+				date2 = serde_yaml::from_str(YSERIALNUM)
+					.expect("FmtUtc2k deserialization (u32) failed.");
+				assert_eq!(date, date2);
+			}
 		}
 
 		{
@@ -288,27 +295,31 @@ mod tests {
 				.expect("Utc2k deserialization (str) failed.");
 			assert_eq!(date, date2);
 
-			// Again, retry with serde_yaml.
-			date2 = serde_yaml::from_str(&serial)
-				.expect("Utc2k deserialization (u32) failed.");
-			assert_eq!(date, date2);
+			// serde_yaml doesn't compile for e.g. mips64.
+			#[cfg(target_arch = "x86_64")]
+			{
+				// Again, retry with serde_yaml.
+				date2 = serde_yaml::from_str(&serial)
+					.expect("Utc2k deserialization (u32) failed.");
+				assert_eq!(date, date2);
 
-			// We should also be able to deserialize from a datetime string.
-			date2 = serde_yaml::from_str(DATESTR_Q)
-				.expect("Utc2k deserialization (str) failed.");
-			assert_eq!(date, date2);
+				// We should also be able to deserialize from a datetime string.
+				date2 = serde_yaml::from_str(DATESTR_Q)
+					.expect("Utc2k deserialization (str) failed.");
+				assert_eq!(date, date2);
 
-			let serial2 = serde_yaml::to_string(&date)
-				.expect("Utc2k serialization failed.");
-			assert_eq!(serial2, YSERIALNUM);
+				let serial2 = serde_yaml::to_string(&date)
+					.expect("Utc2k serialization failed.");
+				assert_eq!(serial2, YSERIALNUM);
 
-			date2 = serde_yaml::from_str(YSERIALSTR)
-				.expect("Utc2k deserialization (str) failed.");
-			assert_eq!(date, date2);
+				date2 = serde_yaml::from_str(YSERIALSTR)
+					.expect("Utc2k deserialization (str) failed.");
+				assert_eq!(date, date2);
 
-			date2 = serde_yaml::from_str(YSERIALNUM)
-				.expect("Utc2k deserialization (u32) failed.");
-			assert_eq!(date, date2);
+				date2 = serde_yaml::from_str(YSERIALNUM)
+					.expect("Utc2k deserialization (u32) failed.");
+				assert_eq!(date, date2);
+			}
 		}
 	}
 }

@@ -1775,11 +1775,15 @@ impl From<Utc2k> for u32 {
 mod tests {
 	use super::*;
 	use brunch as _;
-	use rand::{
-		distributions::Uniform,
-		Rng,
-	};
 	use time::OffsetDateTime;
+
+
+
+	#[cfg(not(miri))]
+	const SAMPLE_SIZE: usize = 1_000_000;
+
+	#[cfg(miri)]
+	const SAMPLE_SIZE: usize = 1000; // Miri runs way too slow for a million tests.
 
 
 
@@ -1853,11 +1857,12 @@ mod tests {
 	/// This provides reasonable coverage in reasonable time.
 	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
-		let set = Uniform::new_inclusive(Utc2k::MIN_UNIXTIME, Utc2k::MAX_UNIXTIME);
 		let format = time::format_description::parse(
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
-		for i in rand::thread_rng().sample_iter(set).take(5_000_000) {
+
+		let rng = fastrand::Rng::new();
+		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
 			range_test!(buf, i, format);
 		}
 	}
