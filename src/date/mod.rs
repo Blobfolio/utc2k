@@ -299,6 +299,7 @@ impl FmtUtc2k {
 		self.set_parts_unchecked(y, m, d, hh, mm, ss);
 	}
 
+	#[allow(unsafe_code)]
 	/// # Set Parts (Unchecked).
 	///
 	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
@@ -366,6 +367,7 @@ impl FmtUtc2k {
 	/// ```
 	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # As Str.
@@ -388,6 +390,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -408,6 +411,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -428,6 +432,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
@@ -530,6 +535,7 @@ impl FmtUtc2k {
 		Utc2k::from_rfc2822(src).map(Self::from)
 	}
 
+	#[allow(unsafe_code)]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -1228,6 +1234,7 @@ impl Utc2k {
 	/// ```
 	pub const fn month(self) -> u8 { self.m }
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Month (enum).
@@ -1518,6 +1525,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
 
+	#[allow(unsafe_code)]
 	#[must_use]
 	/// # To RFC2822.
 	///

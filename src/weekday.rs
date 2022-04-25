@@ -70,6 +70,7 @@ impl Deref for Weekday {
 macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
+	#[allow(unsafe_code)]
 	fn from(src: u8) -> Self {
 		if src > 7 { Self::from(src % 7) }
 		else if src == 0 { Self::Saturday }

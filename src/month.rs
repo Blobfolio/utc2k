@@ -71,6 +71,7 @@ impl Deref for Month {
 macros::display_str!(as_str Month);
 
 impl From<u8> for Month {
+	#[allow(unsafe_code)]
 	fn from(src: u8) -> Self {
 		if src > 12 { Self::from(src % 12) }
 		else if src == 0 { Self::December }
@@ -399,6 +400,7 @@ impl Month {
 		}
 	}
 
+	#[allow(unsafe_code)]
 	#[doc(hidden)]
 	#[inline]
 	/// # From U8 Unchecked.
