@@ -996,7 +996,7 @@ impl Utc2k {
 	/// # Now (Local).
 	///
 	/// This returns an instance using the current, local time as the seed. If
-	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
+	/// no local offset can be determined, this is equivalent to [`Utc2k::now`].
 	///
 	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
 	/// limitations.
