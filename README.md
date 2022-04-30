@@ -80,6 +80,7 @@ let s: &str = fmt.borrow();
 
 ## Optional Crate Features
 
+* `local`: Enables the `LocalOffset` struct. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
 
 

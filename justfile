@@ -18,10 +18,10 @@
 pkg_id      := "utc2k"
 pkg_name    := "UTC2K"
 
+features    := "local,serde"
+
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"
-
-rustflags   := "-C link-arg=-s"
 
 
 
@@ -31,15 +31,15 @@ bench BENCH="":
 
 	clear
 	if [ -z "{{ BENCH }}" ]; then
-		RUSTFLAGS="{{ rustflags }}" cargo bench \
+		cargo bench \
 			--benches \
-			--all-features \
+			--features "{{ features }}" \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
-		RUSTFLAGS="{{ rustflags }}" cargo bench \
+		cargo bench \
 			--bench "{{ BENCH }}" \
-			--all-features \
+			--features "{{ features }}" \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	fi
@@ -49,10 +49,10 @@ bench BENCH="":
 # Check Release!
 @check:
 	# First let's build the Rust bit.
-	RUSTFLAGS="{{ rustflags }}" cargo check \
+	cargo check \
 		--release \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
-		--all-features \
 		--target-dir "{{ cargo_dir }}"
 
 
@@ -71,9 +71,9 @@ bench BENCH="":
 # Clippy.
 @clippy:
 	clear
-	RUSTFLAGS="{{ rustflags }}" cargo clippy \
+	cargo clippy \
 		--release \
-		--all-features \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -90,8 +90,9 @@ bench BENCH="":
 	# env RUSTUP_PERMIT_COPY_RENAME=true rustup install nightly
 
 	# Make the docs.
-	cargo doc \
+	cargo +nightly doc \
 		--release \
+		--features "docsrs,{{ features }}" \
 		--no-deps \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
@@ -102,12 +103,27 @@ bench BENCH="":
 	just _fix-chown "{{ doc_dir }}"
 
 
+# Miri tests!
+@miri:
+	# Pre-clean.
+	[ ! -d "{{ justfile_directory() }}/target" ] || rm -rf "{{ justfile_directory() }}/target"
+
+	fyi task "Testing native/default target."
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
+
+	fyi task "Testing mps64 (big endian) target."
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --target mips64-unknown-linux-gnuabi64
+
+	# Post-clean.
+	[ ! -d "{{ justfile_directory() }}/target" ] || rm -rf "{{ justfile_directory() }}/target"
+
+
 # Unit tests!
 @test:
 	clear
 	cargo test \
 		--release \
-		--all-features \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 

@@ -246,6 +246,20 @@ impl FmtUtc2k {
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
+	#[cfg(feature = "local")]
+	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[must_use]
+	/// # Now (Local).
+	///
+	/// This returns an instance using the current, local time as the seed. If
+	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
+	///
+	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
+	/// limitations.
+	pub fn now_local() -> Self {
+		Self::from(crate::LocalOffset::now())
+	}
+
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Set Date/Time.
 	///
@@ -299,6 +313,7 @@ impl FmtUtc2k {
 		self.set_parts_unchecked(y, m, d, hh, mm, ss);
 	}
 
+	#[allow(unsafe_code)]
 	/// # Set Parts (Unchecked).
 	///
 	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
@@ -366,6 +381,7 @@ impl FmtUtc2k {
 	/// ```
 	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # As Str.
@@ -388,6 +404,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -408,6 +425,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -428,6 +446,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
@@ -530,6 +549,7 @@ impl FmtUtc2k {
 		Utc2k::from_rfc2822(src).map(Self::from)
 	}
 
+	#[allow(unsafe_code)]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -970,6 +990,20 @@ impl Utc2k {
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from(unixtime()) }
 
+	#[cfg(feature = "local")]
+	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[must_use]
+	/// # Now (Local).
+	///
+	/// This returns an instance using the current, local time as the seed. If
+	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
+	///
+	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
+	/// limitations.
+	pub fn now_local() -> Self {
+		Self::from(crate::LocalOffset::now())
+	}
+
 	#[inline]
 	#[must_use]
 	/// # Tomorrow.
@@ -1228,6 +1262,7 @@ impl Utc2k {
 	/// ```
 	pub const fn month(self) -> u8 { self.m }
 
+	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Month (enum).
@@ -1518,6 +1553,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
 
+	#[allow(unsafe_code)]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -1775,11 +1811,15 @@ impl From<Utc2k> for u32 {
 mod tests {
 	use super::*;
 	use brunch as _;
-	use rand::{
-		distributions::Uniform,
-		Rng,
-	};
 	use time::OffsetDateTime;
+
+
+
+	#[cfg(not(miri))]
+	const SAMPLE_SIZE: usize = 1_000_000;
+
+	#[cfg(miri)]
+	const SAMPLE_SIZE: usize = 1000; // Miri runs way too slow for a million tests.
 
 
 
@@ -1853,11 +1893,12 @@ mod tests {
 	/// This provides reasonable coverage in reasonable time.
 	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
-		let set = Uniform::new_inclusive(Utc2k::MIN_UNIXTIME, Utc2k::MAX_UNIXTIME);
 		let format = time::format_description::parse(
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
-		for i in rand::thread_rng().sample_iter(set).take(5_000_000) {
+
+		let rng = fastrand::Rng::new();
+		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
 			range_test!(buf, i, format);
 		}
 	}

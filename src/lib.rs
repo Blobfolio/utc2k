@@ -74,8 +74,11 @@ let s: &str = fmt.borrow();
 
 ## Optional Crate Features
 
+* `local`: Enables the [`LocalOffset`] struct. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
 */
+
+#![deny(unsafe_code)]
 
 #![warn(clippy::filetype_is_file)]
 #![warn(clippy::integer_division)]
@@ -99,6 +102,8 @@ let s: &str = fmt.borrow();
 
 #![allow(clippy::module_name_repetitions)]
 
+#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
+
 
 
 mod abacus;
@@ -109,7 +114,11 @@ mod weekday;
 
 pub(crate) mod macros;
 
-#[cfg(any(test, feature = "serde"))] mod serde;
+#[cfg(feature = "local")]
+mod local;
+
+#[cfg(any(test, feature = "serde"))]
+mod serde;
 
 
 
@@ -121,6 +130,10 @@ pub use date::{
 pub use error::Utc2kError;
 pub use month::Month;
 pub use weekday::Weekday;
+
+#[cfg(feature = "local")]
+#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+pub use local::LocalOffset;
 
 
 
