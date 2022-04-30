@@ -246,6 +246,20 @@ impl FmtUtc2k {
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
+	#[cfg(feature = "local")]
+	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[must_use]
+	/// # Now (Local).
+	///
+	/// This returns an instance using the current, local time as the seed. If
+	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
+	///
+	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
+	/// limitations.
+	pub fn now_local() -> Self {
+		Self::from(crate::LocalOffset::now())
+	}
+
 	#[allow(clippy::cast_possible_truncation)] // It fits.
 	/// # Set Date/Time.
 	///
@@ -975,6 +989,20 @@ impl Utc2k {
 	///
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from(unixtime()) }
+
+	#[cfg(feature = "local")]
+	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[must_use]
+	/// # Now (Local).
+	///
+	/// This returns an instance using the current, local time as the seed. If
+	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
+	///
+	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
+	/// limitations.
+	pub fn now_local() -> Self {
+		Self::from(crate::LocalOffset::now())
+	}
 
 	#[inline]
 	#[must_use]

@@ -18,7 +18,7 @@
 pkg_id      := "utc2k"
 pkg_name    := "UTC2K"
 
-features    := "serde"
+features    := "local,serde"
 
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"
@@ -33,11 +33,13 @@ bench BENCH="":
 	if [ -z "{{ BENCH }}" ]; then
 		cargo bench \
 			--benches \
+			--features "{{ features }}" \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
 		cargo bench \
 			--bench "{{ BENCH }}" \
+			--features "{{ features }}" \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	fi
@@ -49,6 +51,7 @@ bench BENCH="":
 	# First let's build the Rust bit.
 	cargo check \
 		--release \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -70,6 +73,7 @@ bench BENCH="":
 	clear
 	cargo clippy \
 		--release \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -119,6 +123,7 @@ bench BENCH="":
 	clear
 	cargo test \
 		--release \
+		--features "{{ features }}" \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 

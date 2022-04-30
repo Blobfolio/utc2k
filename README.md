@@ -76,51 +76,11 @@ let s: &str = fmt.as_str();
 let s: &str = fmt.borrow();
 ```
 
-`Utc2k` does not include any timezone or localization support, however you can trick it into displaying local datetimes with the help of a third-party crate like [tz-rs](https://crates.io/crates/tz-rs).
-
-If you think about it, all a timezone does is add or subtract some number of seconds from the One True Time (UTC).
-
-Obtain an offset, combine it with a Unix timestamp, et voilà, local time!
-
-The following is an example of how you could go about obtaining a `Utc2k` object with the current, local time, using `tz-rs` to calculate the offset:
-
-```rust
-use std::cmp::Ordering;
-use tz::timezone::{
-	LocalTimeType,
-	TimeZone,
-};
-use utc2k::Utc2k;
-
-/// # Local Now!
-///
-/// Construct a [`Utc2k`] instance using "local" time instead of UTC time.
-///
-/// If no local offset can be determined, the result will be identical to
-/// [`Utc2k::now`].
-fn local_now() -> Utc2k {
-	let now = utc2k::unixtime();
-	let offset: i32 = TimeZone::local()
-		.and_then(|x| x.find_current_local_time_type().map(LocalTimeType::ut_offset))
-		.unwrap_or(0);
-
-	match offset.cmp(&0) {
-		// Local time is past time.
-		Ordering::Less => Utc2k::from(now - offset.abs() as u32),
-		// Local time is UTC.
-		Ordering::Equal => Utc2k::from(now),
-		// Local time is future time.
-		Ordering::Greater => Utc2k::from(now + offset as u32),
-	}
-}
-```
-
-The only thing to keep in mind is that if you use this trick, you should avoid the `Utc2k::to_rfc3339` and `Utc2k::to_rfc2822` formatting methods, as their responses always include a UTC suffix.
-
 
 
 ## Optional Crate Features
 
+* `local`: Enables the `LocalOffset` struct. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
 
 

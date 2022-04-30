@@ -2,6 +2,20 @@
 
 
 
+## [0.4.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.3) - 2022-04-30
+
+### Added
+
+* Non-default crate feature `local`
+* `LocalOffset` (for obtaining local UTC offset)
+
+### Changed
+
+* Bump MSRV to `1.57`
+* Various doc and lint tweaks
+
+
+
 ## [0.4.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.2) - 2022-03-27
 
 ### Added
