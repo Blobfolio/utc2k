@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.57"
@@ -34,13 +34,13 @@ fastrand = "1.7.*"
 serde = "1.0.*"
 serde_json = "1.0.*"
 
-[target.'cfg(target_arch = "x86_64")'.dev-dependencies]
-serde_yaml = "0.8.*, >=0.8.4"
-
 [dev-dependencies.time]
 version = "0.3.*"
 default-features = false
 features = [ "std", "formatting" ]
+
+[target.'cfg(target_arch = "x86_64")'.dev-dependencies]
+serde_yaml = "0.8.*, >=0.8.4"
 
 [dependencies.serde]
 version = "1.0.*"
