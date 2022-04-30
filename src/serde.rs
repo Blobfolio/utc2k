@@ -152,6 +152,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor<'de> {
 
 
 
+#[cfg_attr(feature = "docsrs", doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for FmtUtc2k {
 	#[allow(clippy::option_if_let_else)] // That looks bad here.
 	/// # Deserialize.
@@ -172,6 +173,7 @@ impl<'de> Deserialize<'de> for FmtUtc2k {
 	}
 }
 
+#[cfg_attr(feature = "docsrs", doc(cfg(feature = "serde")))]
 impl Serialize for FmtUtc2k {
 	#[inline]
 	/// # Serialize.
@@ -185,6 +187,7 @@ impl Serialize for FmtUtc2k {
 
 
 
+#[cfg_attr(feature = "docsrs", doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for Utc2k {
 	#[allow(clippy::option_if_let_else)] // That looks bad here.
 	/// # Deserialize.
@@ -205,6 +208,7 @@ impl<'de> Deserialize<'de> for Utc2k {
 	}
 }
 
+#[cfg_attr(feature = "docsrs", doc(cfg(feature = "serde")))]
 impl Serialize for Utc2k {
 	#[inline]
 	/// # Serialize.

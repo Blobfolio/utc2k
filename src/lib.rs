@@ -142,6 +142,8 @@ The only thing to keep in mind is that if you use this trick, you should avoid t
 
 #![allow(clippy::module_name_repetitions)]
 
+#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
+
 
 
 mod abacus;

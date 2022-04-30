@@ -18,6 +18,8 @@
 pkg_id      := "utc2k"
 pkg_name    := "UTC2K"
 
+features    := "serde"
+
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"
 
@@ -84,8 +86,9 @@ bench BENCH="":
 	# env RUSTUP_PERMIT_COPY_RENAME=true rustup install nightly
 
 	# Make the docs.
-	cargo doc \
+	cargo +nightly doc \
 		--release \
+		--features "docsrs,{{ features }}" \
 		--no-deps \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
