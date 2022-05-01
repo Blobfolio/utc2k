@@ -2,6 +2,14 @@
 
 
 
+## [0.4.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.4) - TBD
+
+### Added
+
+* Non-default crate feature `local_cache`
+
+
+
 ## [0.4.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.3) - 2022-04-30
 
 ### Added

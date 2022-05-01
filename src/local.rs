@@ -150,12 +150,27 @@ impl From<LocalOffset> for Utc2k {
 
 
 
+#[cfg(not(feature = "local_cache"))]
 /// # Offset From Time.
 fn offset(now: u32) -> i32 {
 	if let Ok(x) = TimeZone::local() {
 		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
 	}
 	else { 0 }
+}
+
+#[cfg(feature = "local_cache")]
+/// # Offset From Time.
+///
+/// This version caches the parsed timezone information, allowing for much
+/// faster repeated use.
+fn offset(now: u32) -> i32 {
+	use once_cell::sync::Lazy;
+	static TZ: Lazy<Option<TimeZone>> = Lazy::new(|| TimeZone::local().ok());
+
+	TZ.as_ref().map_or(0, |x|
+		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
+	)
 }
 
 

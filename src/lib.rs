@@ -75,6 +75,7 @@ let s: &str = fmt.borrow();
 ## Optional Crate Features
 
 * `local`: Enables the [`LocalOffset`] struct. Refer to the documentation for important caveats and limitations.
+* `local_cache`: This enables caching of the parsed timezone information. When combined with `local`, it allows for much faster _repeated_ instantiation of [`LocalOffset`].
 * `serde`: Enables serialization/deserialization support.
 */
 
