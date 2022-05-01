@@ -75,3 +75,8 @@ harness = false
 [[bench]]
 name = "d_fmtutc2k"
 harness = false
+
+[[bench]]
+name = "d_local"
+harness = false
+required-features = [ "local" ]
