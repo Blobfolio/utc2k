@@ -6,10 +6,7 @@ use crate::{
 	FmtUtc2k,
 	Utc2k,
 };
-use std::{
-	num::NonZeroU32,
-	ops::Neg,
-};
+use std::ops::Neg;
 use tz::timezone::{
 	LocalTimeType,
 	TimeZone,
@@ -83,19 +80,15 @@ use tz::timezone::{
 /// let utc = Utc2k::from(-offset);
 /// ```
 pub struct LocalOffset {
-	unixtime: Option<NonZeroU32>,
+	unixtime: u32,
 	offset: i32,
 }
 
 impl From<u32> for LocalOffset {
-	fn from(src: u32) -> Self {
-		NonZeroU32::new(src).map_or_else(
-			Self::default,
-			|unixtime| Self {
-				unixtime: Some(unixtime),
-				offset: offset(src),
-			}
-		)
+	#[inline]
+	fn from(unixtime: u32) -> Self {
+		let offset = offset(unixtime);
+		Self { unixtime, offset }
 	}
 }
 
@@ -109,7 +102,6 @@ impl Neg for LocalOffset {
 				offset: i32::MAX,
 			}
 		}
-		else if self.offset == 0 { self }
 		else {
 			Self {
 				unixtime: self.unixtime,
@@ -132,14 +124,7 @@ impl LocalOffset {
 	/// ```
 	/// let now = utc2k::LocalOffset::now();
 	/// ```
-	pub fn now() -> Self {
-		Self {
-			unixtime: None,
-			offset: TimeZone::local()
-				.and_then(|x| x.find_current_local_time_type().map(LocalTimeType::ut_offset))
-				.unwrap_or(0),
-		}
-	}
+	pub fn now() -> Self { Self::from(crate::unixtime()) }
 
 	#[inline]
 	#[must_use]
@@ -156,11 +141,10 @@ impl From<LocalOffset> for FmtUtc2k {
 
 impl From<LocalOffset> for Utc2k {
 	fn from(src: LocalOffset) -> Self {
-		let now = src.unixtime.map_or_else(crate::unixtime, NonZeroU32::get);
 		let abs = src.offset.abs() as u32;
 
-		if src.offset < 0 { Self::from(now.saturating_sub(abs)) }
-		else { Self::from(now.saturating_add(abs)) }
+		if src.offset < 0 { Self::from(src.unixtime.saturating_sub(abs)) }
+		else { Self::from(src.unixtime.saturating_add(abs)) }
 	}
 }
 
