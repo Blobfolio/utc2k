@@ -61,12 +61,7 @@ default = []
 # This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
 # and FmtUtc2k into holding a local datetime rather than a UTC one. This only
 # works on unix, but won't break non-unix builds.
-local = [ "tz-rs" ]
-
-# This enables caching of the parsed timezone information. This should be
-# enabled with "local" in cases where a library needs to instantiate
-# LocalOffset more than once. It has no effect when "local" is disabled.
-local_cache = [ "once_cell" ]
+local = [ "once_cell", "tz-rs" ]
 
 # The feature "serde" can be enabled to provide (de)/serialize support for
 # Utc2k and FmtUtc2k. We can't write it here because the name matches the

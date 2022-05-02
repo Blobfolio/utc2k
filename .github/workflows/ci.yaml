@@ -60,10 +60,8 @@ jobs:
       run: |
         cargo clippy --release --target ${{ matrix.target }}
         cargo clippy --release --features "local,serde" --target ${{ matrix.target }}
-        cargo clippy --release --features "local,local_cache" --target ${{ matrix.target }}
 
     - name: Tests
       run: |
         cargo test --release --target ${{ matrix.target }}
         cargo test --release --features "local,serde" --target ${{ matrix.target }}
-        cargo test --release --features "local,local_cache" --target ${{ matrix.target }}

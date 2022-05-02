@@ -18,7 +18,7 @@
 pkg_id      := "utc2k"
 pkg_name    := "UTC2K"
 
-features    := "local,local_cache,serde"
+features    := "local,serde"
 
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"

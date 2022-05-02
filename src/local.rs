@@ -6,6 +6,7 @@ use crate::{
 	FmtUtc2k,
 	Utc2k,
 };
+use once_cell::sync::Lazy;
 use std::ops::Neg;
 use tz::timezone::{
 	LocalTimeType,
@@ -25,12 +26,6 @@ use tz::timezone::{
 ///
 /// If the platform isn't supported or no offset can be determined, the
 /// "offset" will simply be zero (i.e. as if it were UTC).
-///
-/// Parsing local timezone rules (to eventually determine an offset) is a
-/// relatively costly endeavor. If you anticipate needing to construct more
-/// than one [`LocalOffset`] object during the program's execution, consider
-/// enabling the `local_cache` crate feature to significantly reduce that
-/// overhead.
 ///
 /// ## Examples
 ///
@@ -169,7 +164,17 @@ impl LocalOffset {
 	#[must_use]
 	/// # Unixtime.
 	///
-	/// Return the unix timestamp this instance applies to.
+	/// Return the unix timestamp this instance applies to (i.e. the value it
+	/// was seeded with).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::LocalOffset;
+	///
+	/// let offset = LocalOffset::from(946_684_800_u32);
+	/// assert_eq!(offset.unixtime(), 946_684_800_u32);
+	/// ```
 	pub const fn unixtime(self) -> u32 { self.unixtime }
 }
 
@@ -188,22 +193,11 @@ impl From<LocalOffset> for Utc2k {
 
 
 
-#[cfg(not(feature = "local_cache"))]
-/// # Offset From Unixtime.
-fn offset(now: u32) -> i32 {
-	if let Ok(x) = TimeZone::local() {
-		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
-	}
-	else { 0 }
-}
-
-#[cfg(feature = "local_cache")]
 /// # Offset From Unixtime.
 ///
-/// This version caches the parsed timezone information, allowing for much
-/// faster repeated use.
+/// The local timezone details are cached on the first run; subsequent method
+/// calls will perform much faster.
 fn offset(now: u32) -> i32 {
-	use once_cell::sync::Lazy;
 	static TZ: Lazy<TimeZone> = Lazy::new(||
 		TimeZone::local().unwrap_or_else(|_| TimeZone::utc())
 	);
