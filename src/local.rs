@@ -19,10 +19,18 @@ use tz::timezone::{
 /// # Local Offset.
 ///
 /// This struct attempts to determine the appropriate UTC offset for the local
-/// timezone in a thread-safe manner.
+/// timezone in a thread-safe manner, but **only for unix systems**.
 ///
-/// This currently **only works for unix systems**. For everybody else, it will act
-/// as if there is no local offset (i.e. as if it were UTC).
+/// Instantiation will never fail, though.
+///
+/// If the platform isn't supported or no offset can be determined, the
+/// "offset" will simply be zero (i.e. as if it were UTC).
+///
+/// Parsing local timezone rules (to eventually determine an offset) is a
+/// relatively costly endeavor. If you anticipate needing to construct more
+/// than one [`LocalOffset`] object during the program's execution, consider
+/// enabling the `local_cache` crate feature to significantly reduce that
+/// overhead.
 ///
 /// ## Examples
 ///
@@ -151,7 +159,7 @@ impl From<LocalOffset> for Utc2k {
 
 
 #[cfg(not(feature = "local_cache"))]
-/// # Offset From Time.
+/// # Offset From Unixtime.
 fn offset(now: u32) -> i32 {
 	if let Ok(x) = TimeZone::local() {
 		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
@@ -160,7 +168,7 @@ fn offset(now: u32) -> i32 {
 }
 
 #[cfg(feature = "local_cache")]
-/// # Offset From Time.
+/// # Offset From Unixtime.
 ///
 /// This version caches the parsed timezone information, allowing for much
 /// faster repeated use.
