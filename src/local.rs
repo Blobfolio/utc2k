@@ -166,11 +166,11 @@ fn offset(now: u32) -> i32 {
 /// faster repeated use.
 fn offset(now: u32) -> i32 {
 	use once_cell::sync::Lazy;
-	static TZ: Lazy<Option<TimeZone>> = Lazy::new(|| TimeZone::local().ok());
+	static TZ: Lazy<TimeZone> = Lazy::new(||
+		TimeZone::local().unwrap_or_else(|_| TimeZone::utc())
+	);
 
-	TZ.as_ref().map_or(0, |x|
-		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
-	)
+	TZ.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
 }
 
 
