@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.4.3"
+version = "0.4.4"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.57"
@@ -42,12 +42,16 @@ features = [ "std", "formatting" ]
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies]
 serde_yaml = "0.8.*, >=0.8.4"
 
+[dependencies.once_cell]
+version = "1.10.*"
+optional = true
+
 [dependencies.serde]
 version = "1.0.*"
 optional = true
 
 [dependencies.tz-rs]
-version = "0.6.*"
+version = "=0.6.9"
 features = [ "const" ]
 optional = true
 
@@ -57,7 +61,7 @@ default = []
 # This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
 # and FmtUtc2k into holding a local datetime rather than a UTC one. This only
 # works on unix, but won't break non-unix builds.
-local = [ "tz-rs" ]
+local = [ "once_cell", "tz-rs" ]
 
 # The feature "serde" can be enabled to provide (de)/serialize support for
 # Utc2k and FmtUtc2k. We can't write it here because the name matches the
@@ -75,3 +79,8 @@ harness = false
 [[bench]]
 name = "d_fmtutc2k"
 harness = false
+
+[[bench]]
+name = "d_local"
+harness = false
+required-features = [ "local" ]

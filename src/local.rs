@@ -6,10 +6,8 @@ use crate::{
 	FmtUtc2k,
 	Utc2k,
 };
-use std::{
-	num::NonZeroU32,
-	ops::Neg,
-};
+use once_cell::sync::Lazy;
+use std::ops::Neg;
 use tz::timezone::{
 	LocalTimeType,
 	TimeZone,
@@ -22,10 +20,12 @@ use tz::timezone::{
 /// # Local Offset.
 ///
 /// This struct attempts to determine the appropriate UTC offset for the local
-/// timezone in a thread-safe manner.
+/// timezone in a thread-safe manner, but **only for unix systems**.
 ///
-/// This currently **only works for unix systems**. For everybody else, it will act
-/// as if there is no local offset (i.e. as if it were UTC).
+/// Instantiation will never fail, though.
+///
+/// If the platform isn't supported or no offset can be determined, the
+/// "offset" will simply be zero (i.e. as if it were UTC).
 ///
 /// ## Examples
 ///
@@ -83,20 +83,26 @@ use tz::timezone::{
 /// let utc = Utc2k::from(-offset);
 /// ```
 pub struct LocalOffset {
-	unixtime: Option<NonZeroU32>,
+	unixtime: u32,
 	offset: i32,
 }
 
 impl From<u32> for LocalOffset {
-	fn from(src: u32) -> Self {
-		NonZeroU32::new(src).map_or_else(
-			Self::default,
-			|unixtime| Self {
-				unixtime: Some(unixtime),
-				offset: offset(src),
-			}
-		)
+	#[inline]
+	fn from(unixtime: u32) -> Self {
+		let offset = offset(unixtime);
+		Self { unixtime, offset }
 	}
+}
+
+impl From<Utc2k> for LocalOffset {
+	#[inline]
+	/// # From `Utc2k`
+	///
+	/// Warning: this should only be used for `Utc2k` instances holding honest
+	/// UTC datetimes. If you call this on a tricked/local instance, the offset
+	/// will get applied twice!
+	fn from(src: Utc2k) -> Self { Self::from(src.unixtime()) }
 }
 
 impl Neg for LocalOffset {
@@ -109,7 +115,6 @@ impl Neg for LocalOffset {
 				offset: i32::MAX,
 			}
 		}
-		else if self.offset == 0 { self }
 		else {
 			Self {
 				unixtime: self.unixtime,
@@ -132,12 +137,18 @@ impl LocalOffset {
 	/// ```
 	/// let now = utc2k::LocalOffset::now();
 	/// ```
-	pub fn now() -> Self {
-		Self {
-			unixtime: None,
-			offset: TimeZone::local()
-				.and_then(|x| x.find_current_local_time_type().map(LocalTimeType::ut_offset))
-				.unwrap_or(0),
+	pub fn now() -> Self { Self::from(crate::unixtime()) }
+
+	#[must_use]
+	/// # Local Timestamp.
+	///
+	/// Return the sum of the unix timestamp and the offset.
+	pub const fn localtime(self) -> u32 {
+		if self.offset < 0 {
+			self.unixtime.saturating_sub(self.offset.abs() as u32)
+		}
+		else {
+			self.unixtime.saturating_add(self.offset.abs() as u32)
 		}
 	}
 
@@ -148,6 +159,27 @@ impl LocalOffset {
 	/// Return the local offset (in seconds). Zero is returned if there is no
 	/// offset, or no offset could be determined.
 	pub const fn offset(self) -> i32 { self.offset }
+
+	#[inline]
+	#[must_use]
+	/// # Unixtime.
+	///
+	/// Return the unix timestamp this instance applies to (i.e. the value it
+	/// was seeded with).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::LocalOffset;
+	///
+	/// let offset = LocalOffset::from(946_684_800_u32);
+	/// assert_eq!(offset.unixtime(), 946_684_800_u32);
+	/// ```
+	pub const fn unixtime(self) -> u32 { self.unixtime }
+}
+
+impl From<LocalOffset> for i32 {
+	fn from(src: LocalOffset) -> Self { src.offset }
 }
 
 impl From<LocalOffset> for FmtUtc2k {
@@ -155,23 +187,22 @@ impl From<LocalOffset> for FmtUtc2k {
 }
 
 impl From<LocalOffset> for Utc2k {
-	fn from(src: LocalOffset) -> Self {
-		let now = src.unixtime.map_or_else(crate::unixtime, NonZeroU32::get);
-		let abs = src.offset.abs() as u32;
-
-		if src.offset < 0 { Self::from(now.saturating_sub(abs)) }
-		else { Self::from(now.saturating_add(abs)) }
-	}
+	#[inline]
+	fn from(src: LocalOffset) -> Self { Self::from(src.localtime()) }
 }
 
 
 
-/// # Offset From Time.
+/// # Offset From Unixtime.
+///
+/// The local timezone details are cached on the first run; subsequent method
+/// calls will perform much faster.
 fn offset(now: u32) -> i32 {
-	if let Ok(x) = TimeZone::local() {
-		x.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
-	}
-	else { 0 }
+	static TZ: Lazy<TimeZone> = Lazy::new(||
+		TimeZone::local().unwrap_or_else(|_| TimeZone::utc())
+	);
+
+	TZ.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
 }
 
 

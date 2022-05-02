@@ -2,11 +2,24 @@
 
 
 
+## [0.4.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.4) - 2022-05-02
+
+### Added
+
+* `LocalOffset::unixtime` (for returning the unix timestamp the offset applies to)
+* `LocalOffset::localtime` (for returning the adjusted timestamp)
+
+### Changed
+
+* Timezone details are now statically cached after parsing, improving performance when multiple `LocalOffset` objects are created
+
+
+
 ## [0.4.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.3) - 2022-04-30
 
 ### Added
 
-* Non-default crate feature `local`
+* Optional crate feature `local`
 * `LocalOffset` (for obtaining local UTC offset)
 
 ### Changed
