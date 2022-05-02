@@ -7,6 +7,8 @@
 ### Added
 
 * Non-default crate feature `local_cache`
+* `LocalOffset::unixtime` (for returning the unix timestamp the offset applies to)
+* `LocalOffset::localtime` (for returning the adjusted timestamp)
 
 
 

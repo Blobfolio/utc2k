@@ -100,6 +100,16 @@ impl From<u32> for LocalOffset {
 	}
 }
 
+impl From<Utc2k> for LocalOffset {
+	#[inline]
+	/// # From `Utc2k`
+	///
+	/// Warning: this should only be used for `Utc2k` instances holding honest
+	/// UTC datetimes. If you call this on a tricked/local instance, the offset
+	/// will get applied twice!
+	fn from(src: Utc2k) -> Self { Self::from(src.unixtime()) }
+}
+
 impl Neg for LocalOffset {
 	type Output = Self;
 
@@ -134,6 +144,19 @@ impl LocalOffset {
 	/// ```
 	pub fn now() -> Self { Self::from(crate::unixtime()) }
 
+	#[must_use]
+	/// # Local Timestamp.
+	///
+	/// Return the sum of the unix timestamp and the offset.
+	pub const fn localtime(self) -> u32 {
+		if self.offset < 0 {
+			self.unixtime.saturating_sub(self.offset.abs() as u32)
+		}
+		else {
+			self.unixtime.saturating_add(self.offset.abs() as u32)
+		}
+	}
+
 	#[inline]
 	#[must_use]
 	/// # Offset.
@@ -141,6 +164,17 @@ impl LocalOffset {
 	/// Return the local offset (in seconds). Zero is returned if there is no
 	/// offset, or no offset could be determined.
 	pub const fn offset(self) -> i32 { self.offset }
+
+	#[inline]
+	#[must_use]
+	/// # Unixtime.
+	///
+	/// Return the unix timestamp this instance applies to.
+	pub const fn unixtime(self) -> u32 { self.unixtime }
+}
+
+impl From<LocalOffset> for i32 {
+	fn from(src: LocalOffset) -> Self { src.offset }
 }
 
 impl From<LocalOffset> for FmtUtc2k {
@@ -148,12 +182,8 @@ impl From<LocalOffset> for FmtUtc2k {
 }
 
 impl From<LocalOffset> for Utc2k {
-	fn from(src: LocalOffset) -> Self {
-		let abs = src.offset.abs() as u32;
-
-		if src.offset < 0 { Self::from(src.unixtime.saturating_sub(abs)) }
-		else { Self::from(src.unixtime.saturating_add(abs)) }
-	}
+	#[inline]
+	fn from(src: LocalOffset) -> Self { Self::from(src.localtime()) }
 }
 
 
