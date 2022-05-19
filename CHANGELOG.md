@@ -2,6 +2,14 @@
 
 
 
+## [0.4.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.5) - 2022-05-19
+
+### Changed
+
+* Lock third-party dependency versions
+
+
+
 ## [0.4.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.4) - 2022-05-02
 
 ### Added
