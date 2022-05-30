@@ -6,7 +6,7 @@ use crate::{
 	FmtUtc2k,
 	Utc2k,
 };
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use std::ops::Neg;
 use tz::timezone::{
 	LocalTimeType,
@@ -193,16 +193,17 @@ impl From<LocalOffset> for Utc2k {
 
 
 
+/// # Parsed Timezone Details.
+static TZ: OnceCell<TimeZone> = OnceCell::new();
+
 /// # Offset From Unixtime.
 ///
 /// The local timezone details are cached on the first run; subsequent method
 /// calls will perform much faster.
 fn offset(now: u32) -> i32 {
-	static TZ: Lazy<TimeZone> = Lazy::new(||
-		TimeZone::local().unwrap_or_else(|_| TimeZone::utc())
-	);
-
-	TZ.find_local_time_type(i64::from(now)).map_or(0, LocalTimeType::ut_offset)
+	TZ.get_or_init(|| TimeZone::local().unwrap_or_else(|_| TimeZone::utc()))
+		.find_local_time_type(i64::from(now))
+		.map_or(0, LocalTimeType::ut_offset)
 }
 
 

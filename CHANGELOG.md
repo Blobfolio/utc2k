@@ -2,6 +2,15 @@
 
 
 
+## [0.5.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.0) - 2022-05-30
+
+### Changed
+
+* Bump once_cell to `=1.12.0`.
+* Minor localization cache performance improvements.
+
+
+
 ## [0.4.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.5) - 2022-05-19
 
 ### Changed
