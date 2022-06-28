@@ -159,7 +159,7 @@ pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
 
 
 
-#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::cast_lossless, clippy::cast_possible_truncation)] // It fits.
 #[must_use]
 /// # Now (Current Unixtime).
 ///
@@ -174,7 +174,7 @@ pub fn unixtime() -> u32 {
 
 	SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map_or(
 		Utc2k::MIN_UNIXTIME,
-		|n| n.as_secs().min(4_102_444_799) as u32
+		|n| n.as_secs().min(Utc2k::MAX_UNIXTIME as u64) as u32
 	)
 }
 
