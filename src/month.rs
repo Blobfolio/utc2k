@@ -22,13 +22,15 @@ use std::{
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Month.
 ///
 /// This is a simple enum representing months of the year, useful, perhaps, for
 /// printing month names or abbreviations.
 pub enum Month {
+	#[default]
 	January = 1_u8,
+
 	February,
 	March,
 	April,
@@ -56,11 +58,6 @@ impl AddAssign<u8> for Month {
 }
 
 macros::as_ref_borrow_cast!(Month: as_str str);
-
-impl Default for Month {
-	#[inline]
-	fn default() -> Self { Self::January }
-}
 
 impl Deref for Month {
 	type Target = str;
