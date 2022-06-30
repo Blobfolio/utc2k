@@ -2,6 +2,14 @@
 
 
 
+## [0.5.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.2) - TBD
+
+### Changed
+
+* Bump MSRV `1.62`.
+
+
+
 ## [0.5.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.1) - 2022-06-27
 
 ### Changed
