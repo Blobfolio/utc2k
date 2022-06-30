@@ -100,7 +100,10 @@ let s: &str = fmt.borrow();
 #![warn(unused_extern_crates)]
 #![warn(unused_import_braces)]
 
-#![allow(clippy::module_name_repetitions)]
+#![allow(
+	clippy::module_name_repetitions,
+	clippy::redundant_pub_crate,
+)]
 
 #![cfg_attr(feature = "docsrs", feature(doc_cfg))]
 
