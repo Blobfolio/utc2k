@@ -1,9 +1,9 @@
 [package]
 name = "utc2k"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.62"
 description = "A fast and lean UTC date/time library concerned only with happenings in this century (2000-2099)."
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/utc2k"
@@ -43,7 +43,7 @@ features = [ "std", "formatting" ]
 serde_yaml = "0.8.*, >=0.8.4"
 
 [dependencies.once_cell]
-version = "=1.12.0"
+version = "=1.12.1"
 optional = true
 
 [dependencies.serde]
@@ -51,7 +51,7 @@ version = "1.0.*"
 optional = true
 
 [dependencies.tz-rs]
-version = "=0.6.10"
+version = "=0.6.11"
 features = [ "const" ]
 optional = true
 

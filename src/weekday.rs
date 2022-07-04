@@ -22,7 +22,7 @@ use std::{
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Weekday.
 ///
 /// This is a simple enum representing days of the week.
@@ -32,7 +32,9 @@ use std::{
 ///
 /// Otherwise this is only really used by [`Utc2k::weekday`].
 pub enum Weekday {
+	#[default]
 	Sunday = 1_u8,
+
 	Monday,
 	Tuesday,
 	Wednesday,
@@ -55,11 +57,6 @@ impl AddAssign<u8> for Weekday {
 }
 
 macros::as_ref_borrow_cast!(Weekday: as_str str);
-
-impl Default for Weekday {
-	#[inline]
-	fn default() -> Self { Self::Sunday }
-}
 
 impl Deref for Weekday {
 	type Target = str;

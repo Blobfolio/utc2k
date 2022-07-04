@@ -145,10 +145,10 @@ impl LocalOffset {
 	/// Return the sum of the unix timestamp and the offset.
 	pub const fn localtime(self) -> u32 {
 		if self.offset < 0 {
-			self.unixtime.saturating_sub(self.offset.abs() as u32)
+			self.unixtime.saturating_sub(self.offset.unsigned_abs())
 		}
 		else {
-			self.unixtime.saturating_add(self.offset.abs() as u32)
+			self.unixtime.saturating_add(self.offset.unsigned_abs())
 		}
 	}
 
