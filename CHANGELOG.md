@@ -2,11 +2,13 @@
 
 
 
-## [0.5.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.2) - TBD
+## [0.5.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.2) - 2022-07-04
 
 ### Changed
 
 * Bump MSRV `1.62`.
+* Bump tz-rs `=0.6.11`
+* Bump once_cell `=1.12.1`
 
 
 
