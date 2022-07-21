@@ -1041,7 +1041,6 @@ impl Utc2k {
 
 /// ## String Parsing.
 impl Utc2k {
-	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
@@ -1077,14 +1076,47 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..19) {
-			parse::parts_from_datetime(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		src.as_ref().get(..19)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_datetime)
 	}
 
-	#[allow(clippy::option_if_let_else)] // No.
-	/// # From Date/Time.
+	/// # From Date/Time (Smooshed).
+	///
+	/// This is just like [`Utc2k::from_datetime_str`] for "smooshed" datetime
+	/// strings, i.e. `YYYYMMDDHHMMSS` (no separators).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This isn't long enough.
+	/// assert!(Utc2k::from_smooshed_datetime_str("20210625").is_err());
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_smooshed_datetime_str("20210625131525").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// // This *won't* work because there are separators in the way.
+	/// assert!(Utc2k::from_smooshed_datetime_str("2021-06-25 13:15:25").is_err());
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_smooshed_datetime_str("Applebutterful").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_smooshed_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		src.as_ref().get(..14)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_smooshed_datetime)
+	}
+
+	/// # From Date.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
 	/// operation is naive and only looks at the positions where numbers are
@@ -1122,10 +1154,45 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..10) {
-			parse::parts_from_date(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		src.as_ref().get(..10)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_date)
+	}
+
+	/// # From Date (Smooshed).
+	///
+	/// This is just like [`Utc2k::from_date_str`] for "smooshed" date strings,
+	/// i.e. `YYYYMMDD` (no separators).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_smooshed_date_str("20210625").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This is fine, but the time will be ignored.
+	/// let date = Utc2k::from_smooshed_date_str("20210625131525").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This *won't* work because it has dashes in the way.
+	/// assert!(Utc2k::from_smooshed_date_str("2021-06-25").is_err());
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_smooshed_date_str("Applebutter").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_smooshed_date_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		src.as_ref().get(..8)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_smooshed_date)
 	}
 
 	/// # Parse Time.

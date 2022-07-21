@@ -8,6 +8,8 @@
 
 * `Utc2k::cmp_date`
 * `Utc2k::cmp_time`
+* `Utc2k::from_smooshed_date_str`
+* `Utc2k::from_smooshed_datetime_str`
 
 
 
