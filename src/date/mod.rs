@@ -1872,6 +1872,34 @@ impl Utc2k {
 /// # Comparison.
 impl Utc2k {
 	#[must_use]
+	/// # Absolute Difference.
+	///
+	/// This returns the (absolute) number of seconds between two datetimes.
+	///
+	/// ## Examples.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2022, 10, 15, 11, 30, 0);
+	/// let date2 = Utc2k::new(2022, 10, 15, 11, 31, 0);
+	///
+	/// // ABS means the ordering does not matter.
+	/// assert_eq!(date1.abs_diff(date2), 60);
+	/// assert_eq!(date2.abs_diff(date1), 60);
+	///
+	/// // If the dates are equal, the difference is zero.
+	/// assert_eq!(date1.abs_diff(date1), 0);
+	///
+	/// // Because we're only dealing with a single century, there is an
+	/// // upper limit to the possible return values…
+	/// assert_eq!(Utc2k::min().abs_diff(Utc2k::max()), 3_155_759_999);
+	/// ```
+	pub fn abs_diff(self, other: Self) -> u32 {
+		self.unixtime().abs_diff(other.unixtime())
+	}
+
+	#[must_use]
 	/// # Compare (Only) Dates.
 	///
 	/// Compare `self` to another `Utc2k` instance, ignoring the time

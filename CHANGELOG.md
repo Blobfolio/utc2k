@@ -6,6 +6,7 @@
 
 ### Added
 
+* `Utc2k::abs_diff`
 * `Utc2k::cmp_date`
 * `Utc2k::cmp_time`
 * `Utc2k::from_smooshed_date_str`
