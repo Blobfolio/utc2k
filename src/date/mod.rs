@@ -720,23 +720,27 @@ impl From<FmtUtc2k> for Utc2k {
 }
 
 impl Ord for Utc2k {
+	/// # Compare.
+	///
+	/// Compare two dates.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2020, 10, 15, 20, 25, 30);
+	/// let date2 = Utc2k::new(2020, 10, 15, 0, 0, 0);
+	/// let date3 = Utc2k::new(2022, 10, 15, 0, 0, 0);
+	///
+	/// assert!(date1 > date2);
+	/// assert!(date1 < date3);
+	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
-		// Work our way down until there's a difference!
-		match self.y.cmp(&other.y) {
-			Ordering::Equal => match self.m.cmp(&other.m) {
-				Ordering::Equal => match self.d.cmp(&other.d) {
-					Ordering::Equal => match self.hh.cmp(&other.hh) {
-						Ordering::Equal => match self.mm.cmp(&other.mm) {
-							Ordering::Equal => self.ss.cmp(&other.ss),
-							x => x,
-						},
-						x => x,
-					},
-					x => x,
-				},
-				x => x,
-			},
-			x => x,
+		let other = *other;
+		match self.cmp_date(other) {
+			Ordering::Equal => self.cmp_time(other),
+			cmp => cmp,
 		}
 	}
 }
@@ -1795,6 +1799,71 @@ impl Utc2k {
 		self.unixtime().checked_sub(secs)
 			.filter(|s| s >= &Self::MIN_UNIXTIME)
 			.map(Self::from)
+	}
+}
+
+/// # Comparison.
+impl Utc2k {
+	#[must_use]
+	/// # Compare (Only) Dates.
+	///
+	/// Compare `self` to another `Utc2k` instance, ignoring the time
+	/// components of each.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::cmp::Ordering;
+	///
+	/// // The times are different, but the dates match.
+	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
+	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
+	/// assert_eq!(date1.cmp_date(date2), Ordering::Equal);
+	///
+	/// // If the dates don't match, it's what you'd expect.
+	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
+	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
+	/// ```
+	pub fn cmp_date(self, other: Self) -> Ordering {
+		match self.y.cmp(&other.y) {
+			Ordering::Equal => match self.m.cmp(&other.m) {
+				Ordering::Equal => self.d.cmp(&other.d),
+				cmp => cmp,
+			},
+			cmp => cmp,
+		}
+	}
+
+	#[must_use]
+	/// # Compare (Only) Times.
+	///
+	/// Compare `self` to another `Utc2k` instance, ignoring the date
+	/// components of each.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::cmp::Ordering;
+	///
+	/// // The dates match, but the times are different.
+	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
+	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
+	/// assert_eq!(date1.cmp_time(date2), Ordering::Less);
+	///
+	/// // If the times match, it's what you'd expect.
+	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
+	/// assert_eq!(date1.cmp_time(date3), Ordering::Equal);
+	/// ```
+	pub fn cmp_time(self, other: Self) -> Ordering {
+		match self.hh.cmp(&other.hh) {
+			Ordering::Equal => match self.mm.cmp(&other.mm) {
+				Ordering::Equal => self.ss.cmp(&other.ss),
+				cmp => cmp,
+			},
+			cmp => cmp,
+		}
 	}
 }
 
