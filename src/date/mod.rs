@@ -1733,6 +1733,31 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # To Midnight.
+	///
+	/// Return a new instance with zeroed-out time pieces, i.e. truncated to
+	/// the date's midnight.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2022, 7, 22, 20, 52, 41);
+	/// assert_eq!(date1.to_midnight(), date1.with_time(0, 0, 0));
+	/// ```
+	pub const fn to_midnight(self) -> Self {
+		Self {
+			y: self.y,
+			m: self.m,
+			d: self.d,
+			hh: 0,
+			mm: 0,
+			ss: 0,
+		}
+	}
+
+	#[must_use]
 	/// # Unix Timestamp.
 	///
 	/// Return the unix timestamp for this object.
