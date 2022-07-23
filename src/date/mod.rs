@@ -720,23 +720,27 @@ impl From<FmtUtc2k> for Utc2k {
 }
 
 impl Ord for Utc2k {
+	/// # Compare.
+	///
+	/// Compare two dates.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2020, 10, 15, 20, 25, 30);
+	/// let date2 = Utc2k::new(2020, 10, 15, 0, 0, 0);
+	/// let date3 = Utc2k::new(2022, 10, 15, 0, 0, 0);
+	///
+	/// assert!(date1 > date2);
+	/// assert!(date1 < date3);
+	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
-		// Work our way down until there's a difference!
-		match self.y.cmp(&other.y) {
-			Ordering::Equal => match self.m.cmp(&other.m) {
-				Ordering::Equal => match self.d.cmp(&other.d) {
-					Ordering::Equal => match self.hh.cmp(&other.hh) {
-						Ordering::Equal => match self.mm.cmp(&other.mm) {
-							Ordering::Equal => self.ss.cmp(&other.ss),
-							x => x,
-						},
-						x => x,
-					},
-					x => x,
-				},
-				x => x,
-			},
-			x => x,
+		let other = *other;
+		match self.cmp_date(other) {
+			Ordering::Equal => self.cmp_time(other),
+			cmp => cmp,
 		}
 	}
 }
@@ -1037,7 +1041,6 @@ impl Utc2k {
 
 /// ## String Parsing.
 impl Utc2k {
-	#[allow(clippy::option_if_let_else)] // No.
 	/// # From Date/Time.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
@@ -1073,14 +1076,47 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..19) {
-			parse::parts_from_datetime(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		src.as_ref().get(..19)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_datetime)
 	}
 
-	#[allow(clippy::option_if_let_else)] // No.
-	/// # From Date/Time.
+	/// # From Date/Time (Smooshed).
+	///
+	/// This is just like [`Utc2k::from_datetime_str`] for "smooshed" datetime
+	/// strings, i.e. `YYYYMMDDHHMMSS` (no separators).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This isn't long enough.
+	/// assert!(Utc2k::from_smooshed_datetime_str("20210625").is_err());
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_smooshed_datetime_str("20210625131525").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
+	///
+	/// // This *won't* work because there are separators in the way.
+	/// assert!(Utc2k::from_smooshed_datetime_str("2021-06-25 13:15:25").is_err());
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_smooshed_datetime_str("Applebutterful").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_smooshed_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		src.as_ref().get(..14)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_smooshed_datetime)
+	}
+
+	/// # From Date.
 	///
 	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
 	/// operation is naive and only looks at the positions where numbers are
@@ -1118,10 +1154,45 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..10) {
-			parse::parts_from_date(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+		src.as_ref().get(..10)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_date)
+	}
+
+	/// # From Date (Smooshed).
+	///
+	/// This is just like [`Utc2k::from_date_str`] for "smooshed" date strings,
+	/// i.e. `YYYYMMDD` (no separators).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This is fine.
+	/// let date = Utc2k::from_smooshed_date_str("20210625").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This is fine, but the time will be ignored.
+	/// let date = Utc2k::from_smooshed_date_str("20210625131525").unwrap();
+	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
+	///
+	/// // This *won't* work because it has dashes in the way.
+	/// assert!(Utc2k::from_smooshed_date_str("2021-06-25").is_err());
+	///
+	/// // This is all wrong.
+	/// assert!(Utc2k::from_smooshed_date_str("Applebutter").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// If any of the digits fail to parse, or if the string is insufficiently
+	/// sized, an error will be returned.
+	pub fn from_smooshed_date_str<B>(src: B) -> Result<Self, Utc2kError>
+	where B: AsRef<[u8]> {
+		src.as_ref().get(..8)
+			.ok_or(Utc2kError::Invalid)
+			.and_then(parse::parts_from_smooshed_date)
 	}
 
 	/// # Parse Time.
@@ -1662,6 +1733,31 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # To Midnight.
+	///
+	/// Return a new instance with zeroed-out time pieces, i.e. truncated to
+	/// the date's midnight.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2022, 7, 22, 20, 52, 41);
+	/// assert_eq!(date1.to_midnight(), date1.with_time(0, 0, 0));
+	/// ```
+	pub const fn to_midnight(self) -> Self {
+		Self {
+			y: self.y,
+			m: self.m,
+			d: self.d,
+			hh: 0,
+			mm: 0,
+			ss: 0,
+		}
+	}
+
+	#[must_use]
 	/// # Unix Timestamp.
 	///
 	/// Return the unix timestamp for this object.
@@ -1795,6 +1891,99 @@ impl Utc2k {
 		self.unixtime().checked_sub(secs)
 			.filter(|s| s >= &Self::MIN_UNIXTIME)
 			.map(Self::from)
+	}
+}
+
+/// # Comparison.
+impl Utc2k {
+	#[must_use]
+	/// # Absolute Difference.
+	///
+	/// This returns the (absolute) number of seconds between two datetimes.
+	///
+	/// ## Examples.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2022, 10, 15, 11, 30, 0);
+	/// let date2 = Utc2k::new(2022, 10, 15, 11, 31, 0);
+	///
+	/// // ABS means the ordering does not matter.
+	/// assert_eq!(date1.abs_diff(date2), 60);
+	/// assert_eq!(date2.abs_diff(date1), 60);
+	///
+	/// // If the dates are equal, the difference is zero.
+	/// assert_eq!(date1.abs_diff(date1), 0);
+	///
+	/// // Because we're only dealing with a single century, there is an
+	/// // upper limit to the possible return values…
+	/// assert_eq!(Utc2k::min().abs_diff(Utc2k::max()), 3_155_759_999);
+	/// ```
+	pub fn abs_diff(self, other: Self) -> u32 {
+		self.unixtime().abs_diff(other.unixtime())
+	}
+
+	#[must_use]
+	/// # Compare (Only) Dates.
+	///
+	/// Compare `self` to another `Utc2k` instance, ignoring the time
+	/// components of each.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::cmp::Ordering;
+	///
+	/// // The times are different, but the dates match.
+	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
+	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
+	/// assert_eq!(date1.cmp_date(date2), Ordering::Equal);
+	///
+	/// // If the dates don't match, it's what you'd expect.
+	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
+	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
+	/// ```
+	pub fn cmp_date(self, other: Self) -> Ordering {
+		match self.y.cmp(&other.y) {
+			Ordering::Equal => match self.m.cmp(&other.m) {
+				Ordering::Equal => self.d.cmp(&other.d),
+				cmp => cmp,
+			},
+			cmp => cmp,
+		}
+	}
+
+	#[must_use]
+	/// # Compare (Only) Times.
+	///
+	/// Compare `self` to another `Utc2k` instance, ignoring the date
+	/// components of each.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	/// use std::cmp::Ordering;
+	///
+	/// // The dates match, but the times are different.
+	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
+	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
+	/// assert_eq!(date1.cmp_time(date2), Ordering::Less);
+	///
+	/// // If the times match, it's what you'd expect.
+	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
+	/// assert_eq!(date1.cmp_time(date3), Ordering::Equal);
+	/// ```
+	pub fn cmp_time(self, other: Self) -> Ordering {
+		match self.hh.cmp(&other.hh) {
+			Ordering::Equal => match self.mm.cmp(&other.mm) {
+				Ordering::Equal => self.ss.cmp(&other.ss),
+				cmp => cmp,
+			},
+			cmp => cmp,
+		}
 	}
 }
 

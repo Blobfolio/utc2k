@@ -95,6 +95,29 @@ pub(super) fn parts_from_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 	Ok(Utc2k::from(tmp))
 }
 
+/// # Parse Parts From Date.
+///
+/// This attempts to extract the year, month, and day from a `YYYYMMDD` byte
+/// slice.
+pub(super) fn parts_from_smooshed_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
+	assert!(8 <= src.len());
+
+	let tmp = Abacus::new(
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c| {
+				let c = c ^ b'0';
+				if c < 10 { Ok(a * 10 + u16::from(c)) }
+				else { Err(Utc2kError::Invalid) }
+			})?,
+		parse2(src[4], src[5])?,
+		parse2(src[6], src[7])?,
+		0, 0, 0
+	);
+
+	Ok(Utc2k::from(tmp))
+}
+
 /// # Parse Parts From Date/Time.
 ///
 /// This attempts to extract the year, month, day, hour, minute and second from
@@ -116,6 +139,31 @@ pub(super) fn parts_from_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 		parse2(src[5], src[6])?,
 		parse2(src[8], src[9])?,
 		hh, mm, ss,
+	);
+
+	Ok(Utc2k::from(tmp))
+}
+
+/// # Parse Parts From Date/Time.
+///
+/// This attempts to extract the year, month, day, hour, minute and second from
+/// a `YYYYMMDDHHMMSS` byte slice.
+pub(super) fn parts_from_smooshed_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
+	assert!(14 <= src.len());
+
+	let tmp = Abacus::new(
+		src.iter()
+			.take(4)
+			.try_fold(0, |a, &c| {
+				let c = c ^ b'0';
+				if c < 10 { Ok(a * 10 + u16::from(c)) }
+				else { Err(Utc2kError::Invalid) }
+			})?,
+		parse2(src[4], src[5])?,
+		parse2(src[6], src[7])?,
+		parse2(src[8], src[9])?,
+		parse2(src[10], src[11])?,
+		parse2(src[12], src[13])?,
 	);
 
 	Ok(Utc2k::from(tmp))

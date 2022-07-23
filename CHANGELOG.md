@@ -2,6 +2,19 @@
 
 
 
+## [0.5.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.4) - TBD
+
+### Added
+
+* `Utc2k::abs_diff`
+* `Utc2k::cmp_date`
+* `Utc2k::cmp_time`
+* `Utc2k::from_smooshed_date_str`
+* `Utc2k::from_smooshed_datetime_str`
+* `Utc2k::to_midnight`
+
+
+
 ## [0.5.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.3) - 2022-07-14
 
 ### Changed
