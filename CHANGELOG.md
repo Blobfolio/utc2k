@@ -2,7 +2,7 @@
 
 
 
-## [0.5.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.4) - TBD
+## [0.5.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.4) - 2022-07-22
 
 ### Added
 
