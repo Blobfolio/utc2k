@@ -2,6 +2,16 @@
 
 
 
+## [0.5.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.5) - 2022-08-11
+
+### Changed
+
+* Bump tz-rs `=0.6.12`
+* Bump fastrand `1.8.0`
+* Remove `serde_yaml` dev dependency
+
+
+
 ## [0.5.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.4) - 2022-07-22
 
 ### Added
