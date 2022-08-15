@@ -2,6 +2,14 @@
 
 
 
+## [0.5.6](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.6) - 2022-08-14
+
+### Changed
+
+* Bump tz-rs `=0.6.14`
+
+
+
 ## [0.5.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.5) - 2022-08-11
 
 ### Changed
