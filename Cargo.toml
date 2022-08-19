@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.5.6"
+version = "0.5.7"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.62"
@@ -40,7 +40,7 @@ default-features = false
 features = [ "std", "formatting" ]
 
 [dependencies.once_cell]
-version = "=1.13.0"
+version = "1.13.*"
 optional = true
 
 [dependencies.serde]
