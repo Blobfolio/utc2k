@@ -1,6 +1,7 @@
 # UTC2K
 
 [![Documentation](https://docs.rs/utc2k/badge.svg)](https://docs.rs/utc2k/)
+[![Changelog](https://img.shields.io/crates/v/utc2k.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/utc2k/blob/master/CHANGELOG.md)
 [![crates.io](https://img.shields.io/crates/v/utc2k.svg)](https://crates.io/crates/utc2k)
 [![Build Status](https://github.com/Blobfolio/utc2k/workflows/Build/badge.svg)](https://github.com/Blobfolio/utc2k/actions)
 [![Dependency Status](https://deps.rs/repo/github/blobfolio/utc2k/status.svg)](https://deps.rs/repo/github/blobfolio/utc2k)

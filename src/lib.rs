@@ -1,6 +1,11 @@
 /*!
 # UTC2K
 
+[![Documentation](https://docs.rs/utc2k/badge.svg)](https://docs.rs/utc2k/)
+[![Changelog](https://img.shields.io/crates/v/utc2k.svg?label=Changelog&color=9cf)](https://github.com/Blobfolio/utc2k/blob/master/CHANGELOG.md)
+[![crates.io](https://img.shields.io/crates/v/utc2k.svg)](https://crates.io/crates/utc2k)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/Blobfolio/utc2k)
+
 UTC2K is a fast and lean date/time library that only cares about UTC happenings in _this century_ (between `2000-01-01 00:00:00` and `2099-12-31 23:59:59`).
 
 With that very significant constraint in mind, UTC2K can:
