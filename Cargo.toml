@@ -40,7 +40,7 @@ default-features = false
 features = [ "std", "formatting" ]
 
 [dependencies.once_cell]
-version = ">= 1.13.1, < 1.15.0"
+version = ">= 1.13.1, < 1.16.0"
 optional = true
 
 [dependencies.serde]
