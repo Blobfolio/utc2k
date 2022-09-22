@@ -2,6 +2,15 @@
 
 
 
+## [0.5.9](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.9) - 2022-09-22
+
+### Changed
+
+* Update dependencies
+* Improve docs
+
+
+
 ## [0.5.8](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.8) - 2022-09-02
 
 ### Changed
