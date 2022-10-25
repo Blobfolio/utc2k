@@ -23,7 +23,7 @@
 
 ### Changed
 
-* Lower once_cell version specificy
+* Lower once_cell version specificity
 
 
 
