@@ -2,6 +2,14 @@
 
 
 
+## [0.5.10](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.10) - 2022-11-03
+
+### Changed
+
+* Bump once_cell
+
+
+
 ## [0.5.9](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.9) - 2022-09-22
 
 ### Changed
@@ -23,7 +31,7 @@
 
 ### Changed
 
-* Lower once_cell version specificy
+* Lower once_cell version specificity
 
 
 
