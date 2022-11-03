@@ -1,6 +1,6 @@
 # Project Dependencies
     Package:   utc2k
-    Version:   0.5.9
-    Generated: 2022-09-22 18:24:26 UTC
+    Version:   0.5.10
+    Generated: 2022-11-03 15:00:58 UTC
 
 This package has no dependencies.
