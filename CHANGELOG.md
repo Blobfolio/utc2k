@@ -7,6 +7,7 @@
 ### Changed
 
 * Bump once_cell
+* Update ci badge syntax (docs)
 
 
 
