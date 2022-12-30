@@ -2,6 +2,15 @@
 
 
 
+## [0.5.11](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.11) - 2022-12-29
+
+### Changed
+
+* Bump once_cell
+* Update ci badge syntax (docs)
+
+
+
 ## [0.5.10](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.10) - 2022-11-03
 
 ### Changed
