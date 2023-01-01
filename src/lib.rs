@@ -205,5 +205,5 @@ pub fn unixtime() -> u32 {
 /// ```
 pub fn year() -> u16 {
 	let (y, _, _) = date::parse::date_seconds(unixtime() / DAY_IN_SECONDS);
-	y as u16 + 2000
+	u16::from(y) + 2000
 }
