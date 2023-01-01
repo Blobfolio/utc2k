@@ -4,7 +4,7 @@
 
 #![allow(clippy::shadow_unrelated)]
 
-mod parse;
+pub(super) mod parse;
 
 use crate::{
 	Abacus,

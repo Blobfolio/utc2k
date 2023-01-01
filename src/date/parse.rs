@@ -23,7 +23,7 @@ use crate::{
 /// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
 ///
 /// (Our version is a little simpler as we aren't worried about old times.)
-pub(super) const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
+pub(crate) const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
 	let h: u32 = 100 * z - 25;
 	let mut a: u32 = h / 3_652_425;

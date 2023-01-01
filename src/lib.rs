@@ -204,9 +204,6 @@ pub fn unixtime() -> u32 {
 /// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
 /// ```
 pub fn year() -> u16 {
-	let z = unixtime() / DAY_IN_SECONDS + (JULIAN_EPOCH - 1_721_119);
-	let h: u32 = 100 * z - 25;
-	let mut a: u32 = h / 3_652_425;
-	a -= a >> 2;
-	((100 * a + h) / 36_525) as u16
+	let (y, _, _) = date::parse::date_seconds(unixtime() / DAY_IN_SECONDS);
+	y as u16 + 2000
 }

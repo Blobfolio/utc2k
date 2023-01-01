@@ -2,6 +2,14 @@
 
 
 
+## [0.5.12](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.12) - 2023-01-01
+
+### Fixed
+
+* `utc2k::year` sometimes off by one!
+
+
+
 ## [0.5.11](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.11) - 2022-12-29
 
 ### Changed
