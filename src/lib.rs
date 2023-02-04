@@ -113,7 +113,7 @@ let s: &str = fmt.borrow();
 	clippy::redundant_pub_crate,
 )]
 
-#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 
 
@@ -143,7 +143,7 @@ pub use month::Month;
 pub use weekday::Weekday;
 
 #[cfg(feature = "local")]
-#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 pub use local::LocalOffset;
 
 

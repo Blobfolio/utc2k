@@ -15,7 +15,7 @@ use tz::timezone::{
 
 
 
-#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Local Offset.
 ///
