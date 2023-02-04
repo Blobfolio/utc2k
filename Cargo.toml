@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.5.13"
+version = "0.5.14"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.62"
