@@ -18,8 +18,6 @@
 pkg_id      := "utc2k"
 pkg_name    := "UTC2K"
 
-features    := "local,serde"
-
 cargo_dir   := "/tmp/" + pkg_id + "-cargo"
 doc_dir     := justfile_directory() + "/doc"
 
@@ -33,13 +31,13 @@ bench BENCH="":
 	if [ -z "{{ BENCH }}" ]; then
 		cargo bench \
 			--benches \
-			--features "{{ features }}" \
+			--all-features \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
 		cargo bench \
 			--bench "{{ BENCH }}" \
-			--features "{{ features }}" \
+			--all-features \
 			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	fi
@@ -51,7 +49,7 @@ bench BENCH="":
 	# First let's build the Rust bit.
 	cargo check \
 		--release \
-		--features "{{ features }}" \
+		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -73,7 +71,7 @@ bench BENCH="":
 	clear
 	cargo clippy \
 		--release \
-		--features "{{ features }}" \
+		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
@@ -90,12 +88,11 @@ bench BENCH="":
 	# env RUSTUP_PERMIT_COPY_RENAME=true rustup install nightly
 
 	# Make the docs.
-	cargo +nightly doc \
+	cargo +nightly rustdoc \
 		--release \
-		--features "docsrs,{{ features }}" \
-		--no-deps \
+		--all-features \
 		--target x86_64-unknown-linux-gnu \
-		--target-dir "{{ cargo_dir }}"
+		--target-dir "{{ cargo_dir }}" -- --cfg docsrs
 
 	# Move the docs and clean up ownership.
 	[ ! -d "{{ doc_dir }}" ] || rm -rf "{{ doc_dir }}"
@@ -123,7 +120,7 @@ bench BENCH="":
 	clear
 	cargo test \
 		--release \
-		--features "{{ features }}" \
+		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 

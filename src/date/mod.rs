@@ -247,7 +247,7 @@ impl FmtUtc2k {
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
 
 	#[cfg(feature = "local")]
-	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 	#[must_use]
 	/// # Now (Local).
 	///
@@ -995,7 +995,7 @@ impl Utc2k {
 	pub fn now() -> Self { Self::from(unixtime()) }
 
 	#[cfg(feature = "local")]
-	#[cfg_attr(feature = "docsrs", doc(cfg(feature = "local")))]
+	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 	#[must_use]
 	/// # Now (Local).
 	///

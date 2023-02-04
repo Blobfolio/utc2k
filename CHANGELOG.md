@@ -2,6 +2,15 @@
 
 
 
+## [0.5.14](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.14) - 2023-02-04
+
+### Changed
+
+* Improve docs.rs environment detection
+* Declare "serde" feature explicitly
+
+
+
 ## [0.5.13](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.13) - 2023-01-26
 
 ### Changed

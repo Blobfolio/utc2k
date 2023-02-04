@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.5.13"
+version = "0.5.14"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.62"
@@ -19,7 +19,9 @@ exclude = [
 ]
 
 [package.metadata.docs.rs]
-features = [ "docsrs", "local", "serde" ]
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+features = [ "local", "serde" ]
 default-target = "x86_64-unknown-linux-gnu"
 
 [package.metadata.bashman]
@@ -60,14 +62,8 @@ default = []
 # works on unix, but won't break non-unix builds.
 local = [ "once_cell", "tz-rs" ]
 
-# The feature "serde" can be enabled to provide (de)/serialize support for
-# Utc2k and FmtUtc2k. We can't write it here because the name matches the
-# dependency, but it works!
-# serde = []
-
-# This is just a workaround for Docs.rs; don't enable this if you're a human!
-docsrs = []
-
+# This enables (de)/serialize support for Utc2k and FmtUtc2k.
+serde = [ "dep:serde" ]
 
 [[bench]]
 name = "d_utc2k"
