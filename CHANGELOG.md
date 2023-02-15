@@ -2,6 +2,14 @@
 
 
 
+## [0.5.15](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.15) - TBD
+
+### Changed
+
+* Improve `Deserialize` handling
+
+
+
 ## [0.5.14](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.14) - 2023-02-04
 
 ### Changed
