@@ -28,6 +28,7 @@ use std::{
 		Sub,
 		SubAssign,
 	},
+	str::FromStr,
 };
 
 
@@ -139,6 +140,11 @@ impl From<Utc2k> for FmtUtc2k {
 		out.set_datetime(src);
 		out
 	}
+}
+
+impl FromStr for FmtUtc2k {
+	type Err = Utc2kError;
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
 impl Ord for FmtUtc2k {
@@ -608,7 +614,7 @@ impl FmtUtc2k {
 /// [`Utc2k::checked_from_unixtime`].
 ///
 /// To instantiate from a UTC unix timestamp, use `From<u32>`. To try to parse
-/// from a `YYYY-MM-DD HH:MM:SS` string, use `TryFrom<&str>`.
+/// from a `YYYY-MM-DD HH:MM:SS` string, use `TryFrom<&str>` or `FromStr`.
 ///
 /// To manually construct from individual parts, you can just call [`Utc2k::new`].
 ///
@@ -717,6 +723,11 @@ impl From<FmtUtc2k> for Utc2k {
 			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
 		)
 	}
+}
+
+impl FromStr for Utc2k {
+	type Err = Utc2kError;
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
 impl Ord for Utc2k {
@@ -913,6 +924,12 @@ impl TryFrom<&str> for Utc2k {
 	/// let date = Utc2k::try_from("2021-06-25 13:15:25.0000").unwrap();
 	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
 	///
+	/// // The `FromStr` impl is an alias of `TryFrom<&str>` so can be used to
+	/// // the same end:
+	/// let date2 = "2021-06-25 13:15:25.0000".parse::<Utc2k>().unwrap();
+	/// assert_eq!(date, date2);
+	///
+	/// // Really bad strings won't parse.
 	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {

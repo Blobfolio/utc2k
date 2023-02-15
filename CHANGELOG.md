@@ -8,6 +8,11 @@
 
 * Improve `Deserialize` handling
 
+### New
+
+* impl `FromStr` for `Utc2k` (same as `TryFrom<&str>`)
+* impl `FromStr` for `FmtUtc2k` (same as `TryFrom<&str>`)
+
 
 
 ## [0.5.14](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.14) - 2023-02-04
