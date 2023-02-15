@@ -52,13 +52,10 @@ impl<'de> Deserialize<'de> for Utc2k {
 		struct Visitor;
 
 		macro_rules! invalid {
-			($fn:ident, $ty1:ty, $ty2:ident) => (
-				fn $fn<S>(self, src: $ty1) -> Result<Self::Value, S>
+			($fn:ident, $ty:ty) => (
+				fn $fn<S>(self, _src: $ty) -> Result<Self::Value, S>
 				where S: de::Error {
-					Err(de::Error::invalid_type(
-						de::Unexpected::$ty2(src.into()),
-						&self
-					))
+					Err(de::Error::custom(concat!(stringify!($ty), " is unsupported")))
 				}
 			);
 		}
@@ -103,18 +100,15 @@ impl<'de> Deserialize<'de> for Utc2k {
 			where S: de::Error {
 				// Return the max value on failure because it's too big,
 				// otherwise parse as normal.
-				Ok(u32::try_from(src).map_or_else(
-					|_| Utc2k::max(),
-					Utc2k::from,
-				))
+				Ok(u32::try_from(src).map_or_else(|_| Utc2k::max(), Utc2k::from))
 			}
 
 			// Too small to hold an in-range value.
-			invalid!(visit_char, char, Char);
-			invalid!(visit_i8, i8, Signed);
-			invalid!(visit_i16, i16, Signed);
-			invalid!(visit_u8, u8, Unsigned);
-			invalid!(visit_u16, u16, Unsigned);
+			invalid!(visit_char, char);
+			invalid!(visit_i8, i8);
+			invalid!(visit_i16, i16);
+			invalid!(visit_u8, u8);
+			invalid!(visit_u16, u16);
 		}
 
 		deserializer.deserialize_any(Visitor)
