@@ -51,6 +51,7 @@ jobs:
 
     - name: Build
       run: |
+        cargo build --target ${{ matrix.target }}
         cargo build --release --target ${{ matrix.target }}
 
     - name: Clippy
@@ -60,7 +61,14 @@ jobs:
         cargo clippy --release --features "serde" --target ${{ matrix.target }}
         cargo clippy --release --all-features --target ${{ matrix.target }}
 
-    - name: Tests
+    - name: Tests (Debug)
+      run: |
+        cargo test --target ${{ matrix.target }}
+        cargo test --features "local" --target ${{ matrix.target }}
+        cargo test --features "serde" --target ${{ matrix.target }}
+        cargo test --all-features --target ${{ matrix.target }}
+
+    - name: Tests (Release)
       run: |
         cargo test --release --target ${{ matrix.target }}
         cargo test --release --features "local" --target ${{ matrix.target }}
