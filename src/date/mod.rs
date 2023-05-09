@@ -348,6 +348,9 @@ impl FmtUtc2k {
 			copy_nonoverlapping(src.add((mm << 1) as usize), dst.add(14), 2);
 			copy_nonoverlapping(src.add((ss << 1) as usize), dst.add(17), 2);
 		}
+
+		// Additionally make sure the result is ASCII.
+		debug_assert!(self.0.is_ascii(), "Bug: Datetime is not ASCII.");
 	}
 
 	#[inline]
