@@ -30,7 +30,6 @@ use std::{
 pub enum Month {
 	#[default]
 	January = 1_u8,
-
 	February,
 	March,
 	April,
@@ -68,16 +67,7 @@ impl Deref for Month {
 macros::display_str!(as_str Month);
 
 impl From<u8> for Month {
-	#[allow(unsafe_code)]
-	fn from(src: u8) -> Self {
-		if src > 12 { Self::from(src % 12) }
-		else if src == 0 { Self::December }
-		else {
-			// Safety: values 1..=12 correspond directly to members of this
-			// enum.
-			unsafe { std::mem::transmute(src) }
-		}
-	}
+	fn from(src: u8) -> Self { Self::from_u8(src) }
 }
 
 impl From<Month> for u8 {
@@ -102,21 +92,8 @@ macro_rules! impl_int {
 
 		impl From<$ty> for Month {
 			fn from(src: $ty) -> Self {
-				match src {
-					1 => Self::January,
-					2 => Self::February,
-					3 => Self::March,
-					4 => Self::April,
-					5 => Self::May,
-					6 => Self::June,
-					7 => Self::July,
-					8 => Self::August,
-					9 => Self::September,
-					10 => Self::October,
-					11 => Self::November,
-					0 | 12 => Self::December,
-					_ => Self::from(src % 12),
-				}
+				if src <= 12 { Self::from_u8(src as u8) }
+				else { Self::from_u8((src % 12) as u8) }
 			}
 		}
 
@@ -397,16 +374,26 @@ impl Month {
 		}
 	}
 
-	#[allow(unsafe_code)]
-	#[doc(hidden)]
 	#[inline]
 	/// # From U8 Unchecked.
 	///
-	/// ## Safety
-	///
-	/// The value must be between 1-12 or undefined things will happen!
-	pub(crate) const unsafe fn from_u8_unchecked(src: u8) -> Self {
-		std::mem::transmute(src)
+	/// This is the same as From, but const.
+	pub(crate) const fn from_u8(src: u8) -> Self {
+		match src {
+			1  => Self::January,
+			2  => Self::February,
+			3  => Self::March,
+			4  => Self::April,
+			5  => Self::May,
+			6  => Self::June,
+			7  => Self::July,
+			8  => Self::August,
+			9  => Self::September,
+			10 => Self::October,
+			11 => Self::November,
+			0 | 12 => Self::December,
+			_ => Self::from_u8(src % 12),
+		}
 	}
 }
 

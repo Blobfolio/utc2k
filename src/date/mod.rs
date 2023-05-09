@@ -1360,7 +1360,6 @@ impl Utc2k {
 	/// ```
 	pub const fn month(self) -> u8 { self.m }
 
-	#[allow(unsafe_code)]
 	#[inline]
 	#[must_use]
 	/// # Month (enum).
@@ -1375,10 +1374,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.month_enum(), Month::May);
 	/// ```
-	pub const fn month_enum(self) -> Month {
-		// Safety: the month is validated during construction.
-		unsafe { Month::from_u8_unchecked(self.m) }
-	}
+	pub const fn month_enum(self) -> Month { Month::from_u8(self.m) }
 
 	#[inline]
 	#[must_use]
