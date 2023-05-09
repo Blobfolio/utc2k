@@ -334,6 +334,12 @@ impl FmtUtc2k {
 
 		// Safety: Abacus will have already normalized all ranges, so the
 		// indices will be present in DD.
+		debug_assert!(usize::from(y << 1) + 1 < DD.len(), "Bug: Year out of range.");
+		debug_assert!(usize::from(m << 1) + 1 < DD.len(), "Bug: Month out of range.");
+		debug_assert!(usize::from(d << 1) + 1 < DD.len(), "Bug: Day out of range.");
+		debug_assert!(usize::from(hh << 1) + 1 < DD.len(), "Bug: Hours out of range.");
+		debug_assert!(usize::from(mm << 1) + 1 < DD.len(), "Bug: Minutes out of range.");
+		debug_assert!(usize::from(ss << 1) + 1 < DD.len(), "Bug: Seconds out of range.");
 		unsafe {
 			copy_nonoverlapping(src.add((y << 1) as usize), dst.add(2), 2);
 			copy_nonoverlapping(src.add((m << 1) as usize), dst.add(5), 2);
@@ -428,6 +434,7 @@ impl FmtUtc2k {
 	/// ```
 	pub fn date(&self) -> &str {
 		// Safety: datetimes are valid ASCII.
+		debug_assert!(self.0[..10].is_ascii(), "Bug: Date is not ASCII.");
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
@@ -449,6 +456,7 @@ impl FmtUtc2k {
 	/// ```
 	pub fn year(&self) -> &str {
 		// Safety: datetimes are valid ASCII.
+		debug_assert!(self.0.iter().take(4).all(u8::is_ascii_digit), "Bug: Year is not numeric.");
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
@@ -470,6 +478,7 @@ impl FmtUtc2k {
 	/// ```
 	pub fn time(&self) -> &str {
 		// Safety: datetimes are valid ASCII.
+		debug_assert!(self.0[11..].is_ascii(), "Bug: Time is not ASCII.");
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
 	}
 }
@@ -598,6 +607,7 @@ impl FmtUtc2k {
 		];
 
 		// Safety: datetimes are valid ASCII.
+		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 }
@@ -1688,6 +1698,7 @@ impl Utc2k {
 		];
 
 		// Safety: datetimes are valid ASCII.
+		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 
