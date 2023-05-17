@@ -106,13 +106,27 @@ bench BENCH="":
 
 
 # Unit tests!
-@test:
+@test IGNORED="":
 	clear
-	cargo test \
+	fyi task "Debug Mode"
+	[ -z "{{ IGNORED }}" ] || cargo test \
+		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}" \
+		-- --include-ignored
+	[ ! -z "{{ IGNORED }}" ] || cargo test \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
-	cargo test \
+
+	fyi task "Release Mode"
+	[ -z "{{ IGNORED }}" ] || cargo test \
+		--release \
+		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}" \
+		-- --include-ignored
+	[ ! -z "{{ IGNORED }}" ] || cargo test \
 		--release \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \

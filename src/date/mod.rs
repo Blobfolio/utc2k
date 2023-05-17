@@ -34,12 +34,18 @@ use std::{
 
 
 /// # Double-Digit ASCII.
-const DD: &[u8; 200] = b"\
-	0001020304050607080910111213141516171819\
-	2021222324252627282930313233343536373839\
-	4041424344454647484950515253545556575859\
-	6061626364656667686970717273747576777879\
-	8081828384858687888990919293949596979899";
+static DD: [[u8; 2]; 100] = [
+	[48, 48], [48, 49], [48, 50], [48, 51], [48, 52], [48, 53], [48, 54], [48, 55], [48, 56], [48, 57],
+	[49, 48], [49, 49], [49, 50], [49, 51], [49, 52], [49, 53], [49, 54], [49, 55], [49, 56], [49, 57],
+	[50, 48], [50, 49], [50, 50], [50, 51], [50, 52], [50, 53], [50, 54], [50, 55], [50, 56], [50, 57],
+	[51, 48], [51, 49], [51, 50], [51, 51], [51, 52], [51, 53], [51, 54], [51, 55], [51, 56], [51, 57],
+	[52, 48], [52, 49], [52, 50], [52, 51], [52, 52], [52, 53], [52, 54], [52, 55], [52, 56], [52, 57],
+	[53, 48], [53, 49], [53, 50], [53, 51], [53, 52], [53, 53], [53, 54], [53, 55], [53, 56], [53, 57],
+	[54, 48], [54, 49], [54, 50], [54, 51], [54, 52], [54, 53], [54, 54], [54, 55], [54, 56], [54, 57],
+	[55, 48], [55, 49], [55, 50], [55, 51], [55, 52], [55, 53], [55, 54], [55, 55], [55, 56], [55, 57],
+	[56, 48], [56, 49], [56, 50], [56, 51], [56, 52], [56, 53], [56, 54], [56, 55], [56, 56], [56, 57],
+	[57, 48], [57, 49], [57, 50], [57, 51], [57, 52], [57, 53], [57, 54], [57, 55], [57, 56], [57, 57]
+];
 
 
 
@@ -319,7 +325,6 @@ impl FmtUtc2k {
 		self.set_parts_unchecked(y, m, d, hh, mm, ss);
 	}
 
-	#[allow(unsafe_code)]
 	/// # Set Parts (Unchecked).
 	///
 	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
@@ -327,26 +332,8 @@ impl FmtUtc2k {
 	///
 	/// From here, it's just straight ASCII-writing.
 	fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		use std::ptr::copy_nonoverlapping;
-
-		let src = DD.as_ptr();
-		let dst = self.0.as_mut_ptr();
-
-		// Safety: Abacus will have already normalized all ranges, so the
-		// indices will be present in DD.
-		debug_assert!(usize::from(y << 1) + 1 < DD.len(), "Bug: Year out of range.");
-		debug_assert!(usize::from(m << 1) + 1 < DD.len(), "Bug: Month out of range.");
-		debug_assert!(usize::from(d << 1) + 1 < DD.len(), "Bug: Day out of range.");
-		debug_assert!(usize::from(hh << 1) + 1 < DD.len(), "Bug: Hours out of range.");
-		debug_assert!(usize::from(mm << 1) + 1 < DD.len(), "Bug: Minutes out of range.");
-		debug_assert!(usize::from(ss << 1) + 1 < DD.len(), "Bug: Seconds out of range.");
-		unsafe {
-			copy_nonoverlapping(src.add((y << 1) as usize), dst.add(2), 2);
-			copy_nonoverlapping(src.add((m << 1) as usize), dst.add(5), 2);
-			copy_nonoverlapping(src.add((d << 1) as usize), dst.add(8), 2);
-			copy_nonoverlapping(src.add((hh << 1) as usize), dst.add(11), 2);
-			copy_nonoverlapping(src.add((mm << 1) as usize), dst.add(14), 2);
-			copy_nonoverlapping(src.add((ss << 1) as usize), dst.add(17), 2);
+		for (chunk, v) in self.0[1..].chunks_exact_mut(3).zip([y, m, d, hh, mm, ss]) {
+			chunk[1..].copy_from_slice(DD[usize::from(v)].as_slice());
 		}
 
 		// Additionally make sure the result is ASCII.
@@ -1675,24 +1662,24 @@ impl Utc2k {
 		let weekday: [u8; 3] = self.weekday().abbreviation_bytes();
 		let month: [u8; 3] = self.month_enum().abbreviation_bytes();
 
-		let d_idx = (self.d << 1) as usize;
-		let y_idx = (self.y << 1) as usize;
-		let hh_idx = (self.hh << 1) as usize;
-		let mm_idx = (self.mm << 1) as usize;
-		let ss_idx = (self.ss << 1) as usize;
+		let day = DD[usize::from(self.d)];
+		let year = DD[usize::from(self.y)];
+		let hh = DD[usize::from(self.hh)];
+		let mm = DD[usize::from(self.mm)];
+		let ss = DD[usize::from(self.ss)];
 
 		// Working from bytes is ugly, but performs much better than any
 		// string-based operations.
 		let out: Vec<u8> = vec![
 			weekday[0], weekday[1], weekday[2],
 			b',', b' ',
-			DD[d_idx], DD[d_idx + 1],
+			day[0], day[1],
 			b' ',
 			month[0], month[1], month[2],
 			b' ',
-			b'2', b'0', DD[y_idx], DD[y_idx + 1],
+			b'2', b'0', year[0], year[1],
 			b' ',
-			DD[hh_idx], DD[hh_idx + 1], b':', DD[mm_idx], DD[mm_idx + 1], b':', DD[ss_idx], DD[ss_idx + 1],
+			hh[0], hh[1], b':', mm[0], mm[1], b':', ss[0], ss[1],
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
@@ -2078,35 +2065,60 @@ mod tests {
 		);
 	}
 
+	#[cfg(not(debug_assertions))]
+	macro_rules! century_test {
+		($rem:literal) => (
+			let mut buf = FmtUtc2k::default();
+			let format = time::format_description::parse(
+				"[year]-[month]-[day] [hour]:[minute]:[second]",
+			).expect("Unable to parse datetime format.");
+			for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
+				if $rem == i % 4 { range_test!(buf, i, format); }
+			}
+		);
+	}
 
 
+
+	#[cfg(not(debug_assertions))]
 	#[test]
-	#[ignore]
-	/// # Full Range Unixtime Test.
+	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
+	/// # 1/4 Full Range Unixtime Test.
 	///
-	/// This compares our objects against `chrono` to ensure conversions line
+	/// This compares our objects against `time` to ensure conversions line
 	/// up as expected for the supported unixtime range.
 	///
-	/// With billions of seconds to check, this takes a very long time to
-	/// complete.
-	fn full_unixtime() {
-		let mut buf = FmtUtc2k::default();
-		let format = time::format_description::parse(
-			"[year]-[month]-[day] [hour]:[minute]:[second]",
-		).expect("Unable to parse datetime format.");
-		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-			range_test!(buf, i, format);
-		}
-	}
+	/// There are a lot of seconds in a century, so this test is split into
+	/// four to allow for possible parallelized execution.
+	fn full_unixtime_0() { century_test!(0); }
+
+	#[cfg(not(debug_assertions))]
+	#[test]
+	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
+	/// # 1/4 Full Range Unixtime Test.
+	fn full_unixtime_1() { century_test!(1); }
+
+	#[cfg(not(debug_assertions))]
+	#[test]
+	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
+	/// # 1/4 Full Range Unixtime Test.
+	fn full_unixtime_2() { century_test!(2); }
+
+	#[cfg(not(debug_assertions))]
+	#[test]
+	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
+	/// # 1/4 Full Range Unixtime Test.
+	fn full_unixtime_3() { century_test!(3); }
 
 	#[test]
 	/// # Limited Range Unixtime Test.
 	///
-	/// This performs the same tests as [`full_unixtime`], but applies them
-	/// against 5 million random entries from the range rather than the whole
-	/// thing.
+	/// This performs the same tests as `full_unixtime`, but only covers a
+	/// random subset of the possible values — five million of them — to keep
+	/// the runtime within the realm of reason.
 	///
-	/// This provides reasonable coverage in reasonable time.
+	/// (Testing every single second takes _forever_, so is disabled by
+	/// default.)
 	fn limited_unixtime() {
 		let mut buf = FmtUtc2k::default();
 		let format = time::format_description::parse(
