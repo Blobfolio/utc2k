@@ -3,7 +3,7 @@ name = "utc2k"
 version = "0.5.15"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
-rust-version = "1.62"
+rust-version = "1.70"
 description = "A fast and lean UTC date/time library concerned only with happenings in this century (2000-2099)."
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/utc2k"
@@ -41,10 +41,6 @@ version = "0.3.*"
 default-features = false
 features = [ "std", "formatting" ]
 
-[dependencies.once_cell]
-version = ">= 1.13.1, < 1.18.0"
-optional = true
-
 [dependencies.serde]
 version = "1.0.*"
 optional = true
@@ -60,7 +56,7 @@ default = []
 # This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
 # and FmtUtc2k into holding a local datetime rather than a UTC one. This only
 # works on unix, but won't break non-unix builds.
-local = [ "once_cell", "tz-rs" ]
+local = [ "tz-rs" ]
 
 # This enables (de)/serialize support for Utc2k and FmtUtc2k.
 serde = [ "dep:serde" ]
