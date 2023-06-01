@@ -34,7 +34,6 @@ use std::{
 pub enum Weekday {
 	#[default]
 	Sunday = 1_u8,
-
 	Monday,
 	Tuesday,
 	Wednesday,
@@ -67,14 +66,16 @@ impl Deref for Weekday {
 macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
-	#[allow(unsafe_code)]
 	fn from(src: u8) -> Self {
-		if src > 7 { Self::from(src % 7) }
-		else if src == 0 { Self::Saturday }
-		else {
-			// Safety: values 1..=7 correspond directly to members of this
-			// enum.
-			unsafe { std::mem::transmute(src) }
+		match src {
+			1 => Self::Sunday,
+			2 => Self::Monday,
+			3 => Self::Tuesday,
+			4 => Self::Wednesday,
+			5 => Self::Thursday,
+			6 => Self::Friday,
+			0 | 7 => Self::Saturday,
+			_ => Self::from(src % 7),
 		}
 	}
 }
@@ -101,16 +102,8 @@ macro_rules! impl_int {
 
 		impl From<$ty> for Weekday {
 			fn from(src: $ty) -> Self {
-				match src {
-					1 => Self::Sunday,
-					2 => Self::Monday,
-					3 => Self::Tuesday,
-					4 => Self::Wednesday,
-					5 => Self::Thursday,
-					6 => Self::Friday,
-					0 | 7 => Self::Saturday,
-					_ => Self::from(src % 7),
-				}
+				if src <= 7 { Self::from(src as u8) }
+				else { Self::from((src % 7) as u8) }
 			}
 		}
 

@@ -2,6 +2,19 @@
 
 
 
+## [0.6.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.0) - 2023-06-01
+
+### Changed
+
+* Bump MSRV `1.70`
+* Drop `once_cell` (in favor of new built-in types)
+* Replace various `unsafe` blocks with safe alternatives
+* Add debug/assertions for logical redundancy
+* CI: test in debug and release modes
+* CI: test MSRV
+
+
+
 ## [0.5.15](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.15) - 2023-02-15
 
 ### Changed

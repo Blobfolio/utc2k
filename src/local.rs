@@ -6,8 +6,10 @@ use crate::{
 	FmtUtc2k,
 	Utc2k,
 };
-use once_cell::sync::OnceCell;
-use std::ops::Neg;
+use std::{
+	ops::Neg,
+	sync::OnceLock,
+};
 use tz::timezone::{
 	LocalTimeType,
 	TimeZone,
@@ -194,7 +196,7 @@ impl From<LocalOffset> for Utc2k {
 
 
 /// # Parsed Timezone Details.
-static TZ: OnceCell<TimeZone> = OnceCell::new();
+static TZ: OnceLock<TimeZone> = OnceLock::new();
 
 /// # Offset From Unixtime.
 ///

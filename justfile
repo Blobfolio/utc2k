@@ -44,16 +44,6 @@ bench BENCH="":
 	exit 0
 
 
-# Check Release!
-@check:
-	# First let's build the Rust bit.
-	cargo check \
-		--release \
-		--all-features \
-		--target x86_64-unknown-linux-gnu \
-		--target-dir "{{ cargo_dir }}"
-
-
 # Clean Cargo crap.
 @clean:
 	# Most things go here.
@@ -116,9 +106,27 @@ bench BENCH="":
 
 
 # Unit tests!
-@test:
+@test IGNORED="":
 	clear
-	cargo test \
+	fyi task "Debug Mode"
+	[ -z "{{ IGNORED }}" ] || cargo test \
+		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}" \
+		-- --include-ignored
+	[ ! -z "{{ IGNORED }}" ] || cargo test \
+		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}"
+
+	fyi task "Release Mode"
+	[ -z "{{ IGNORED }}" ] || cargo test \
+		--release \
+		--all-features \
+		--target x86_64-unknown-linux-gnu \
+		--target-dir "{{ cargo_dir }}" \
+		-- --include-ignored
+	[ ! -z "{{ IGNORED }}" ] || cargo test \
 		--release \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \
