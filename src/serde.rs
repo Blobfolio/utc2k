@@ -183,7 +183,7 @@ mod tests {
 
 	#[test]
 	fn t_serde_fmtutc2k_rng() {
-		let rng = fastrand::Rng::new();
+		let mut rng = fastrand::Rng::new();
 		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
 			let date = FmtUtc2k::from(i);
 
@@ -200,7 +200,7 @@ mod tests {
 
 	#[test]
 	fn t_serde_utc2k_rng() {
-		let rng = fastrand::Rng::new();
+		let mut rng = fastrand::Rng::new();
 		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
 			let date = Utc2k::from(i);
 
