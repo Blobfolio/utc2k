@@ -2125,7 +2125,7 @@ mod tests {
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
 
-		let rng = fastrand::Rng::new();
+		let mut rng = fastrand::Rng::new();
 		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
 			range_test!(buf, i, format);
 		}
