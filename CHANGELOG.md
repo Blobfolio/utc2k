@@ -2,6 +2,14 @@
 
 
 
+## [0.6.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.1) - 2023-07-13
+
+### Changed
+
+* Update dev dependencies
+
+
+
 ## [0.6.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.0) - 2023-06-01
 
 ### Changed
