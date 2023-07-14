@@ -114,7 +114,7 @@ bench BENCH="":
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}" \
 		-- --include-ignored
-	[ ! -z "{{ IGNORED }}" ] || cargo test \
+	[ -n "{{ IGNORED }}" ] || cargo test \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
@@ -126,7 +126,7 @@ bench BENCH="":
 		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}" \
 		-- --include-ignored
-	[ ! -z "{{ IGNORED }}" ] || cargo test \
+	[ -n "{{ IGNORED }}" ] || cargo test \
 		--release \
 		--all-features \
 		--target x86_64-unknown-linux-gnu \
