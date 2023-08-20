@@ -381,10 +381,6 @@ impl Weekday {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use time::{
-		Date,
-		Month,
-	};
 
 	const ALL_DAYS: &[Weekday] = &[
 		Weekday::Sunday,
@@ -400,7 +396,7 @@ mod tests {
 	/// # Test First of Year.
 	fn t_year_start() {
 		for y in 2000..=2099 {
-			let c = Date::from_calendar_date(y, Month::January, 1)
+			let c = time::Date::from_calendar_date(y, time::Month::January, 1)
 				.expect("Unable to create time::Date.");
 			assert_eq!(
 				Weekday::year_begins_on((y - 2000) as u8).as_ref(),
