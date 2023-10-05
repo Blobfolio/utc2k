@@ -2,6 +2,16 @@
 
 
 
+## [0.7.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.7.0) - 2023-10-05
+
+### New
+
+* `Weekday::first_in_month`
+* `Weekday::last_in_month`
+* `Weekday::nth_in_month`
+
+
+
 ## [0.6.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.1) - 2023-07-13
 
 ### Changed
