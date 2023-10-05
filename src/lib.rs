@@ -189,8 +189,6 @@ pub fn unixtime() -> u32 {
 	)
 }
 
-#[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)] // We want it.
 #[must_use]
 /// # Now (Current Year).
 ///
@@ -204,6 +202,6 @@ pub fn unixtime() -> u32 {
 /// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
 /// ```
 pub fn year() -> u16 {
-	let (y, _, _) = date::parse::date_seconds(unixtime() / DAY_IN_SECONDS);
+	let (y, _, _) = date::parse::date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
 	u16::from(y) + 2000
 }

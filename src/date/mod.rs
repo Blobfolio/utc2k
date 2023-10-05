@@ -673,7 +673,6 @@ impl fmt::Display for Utc2k {
 }
 
 impl From<u32> for Utc2k {
-	#[allow(clippy::integer_division)]
 	/// # From Timestamp.
 	///
 	/// Note, this will saturate to [`Utc2k::MIN_UNIXTIME`] and
@@ -692,7 +691,7 @@ impl From<u32> for Utc2k {
 		else if src >= Self::MAX_UNIXTIME { Self::max() }
 		else {
 			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = parse::date_seconds(src / DAY_IN_SECONDS);
+			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
 			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
 
 			Self { y, m, d, hh, mm, ss }

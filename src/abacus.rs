@@ -2,8 +2,6 @@
 # UTC2K - Abacus
 */
 
-#![allow(clippy::integer_division)]
-
 use crate::{
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
@@ -141,7 +139,7 @@ impl Abacus {
 	/// The bitshift wizardry was inspired by [this post](https://johnnylee-sde.github.io/Fast-unsigned-integer-to-time-string/).
 	fn rebalance_ss(&mut self) {
 		if self.ss >= DAY_IN_SECONDS {
-			let div = self.ss / DAY_IN_SECONDS;
+			let div = self.ss.wrapping_div(DAY_IN_SECONDS);
 			self.d += div;
 			self.ss -= div * DAY_IN_SECONDS;
 		}
@@ -173,7 +171,7 @@ impl Abacus {
 	/// This moves overflowing hours to days.
 	fn rebalance_hh(&mut self) {
 		if self.hh > 23 {
-			let div = self.hh / 24;
+			let div = self.hh.wrapping_div(24);
 			self.d += div;
 			self.hh -= div * 24;
 		}
@@ -206,7 +204,7 @@ impl Abacus {
 		}
 		// Carry excess months over to years.
 		else if 12 < self.m {
-			let div = (self.m - 1) / 12;
+			let div = (self.m - 1).wrapping_div(12);
 			self.y += div;
 			self.m -= div * 12;
 		}
