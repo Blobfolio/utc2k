@@ -15,7 +15,6 @@ use crate::{
 
 
 #[allow(clippy::cast_possible_truncation)] // It fits.
-#[allow(clippy::integer_division)]
 /// # Parse Date From Seconds.
 ///
 /// This parses the date portion of a date/time timestamp using the same
@@ -26,12 +25,12 @@ use crate::{
 pub(crate) const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
 	let h: u32 = 100 * z - 25;
-	let mut a: u32 = h / 3_652_425;
+	let mut a: u32 = h.wrapping_div(3_652_425);
 	a -= a >> 2;
-	let year: u32 = (100 * a + h) / 36_525;
+	let year: u32 = (100 * a + h).wrapping_div(36_525);
 	a = a + z - 365 * year - (year >> 2);
-	let month: u32 = (5 * a + 456) / 153;
-	let day: u8 = (a - (153 * month - 457) / 5) as u8;
+	let month: u32 = (5 * a + 456).wrapping_div(153);
+	let day: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
 
 	if month > 12 {
 		((year - 1999) as u8, month as u8 - 12, day)
