@@ -2,6 +2,18 @@
 
 
 
+## [0.8.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.0) - 2024-02-08
+
+### Removed
+
+* `Borrow<[u8]>` for `FmtUtc2k`
+
+### Other
+
+* Miscellaneous doc/script cleanup
+
+
+
 ## [0.7.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.7.0) - 2023-10-05
 
 ### New

@@ -94,14 +94,14 @@ Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
 ```
 [dependencies]
-utc2k = "0.7.*"
+utc2k = "0.8.*"
 ```
 
 
 
 ## License
 
-Copyright © 2023 [Blobfolio, LLC](https://blobfolio.com) &lt;hello@blobfolio.com&gt;
+Copyright © 2024 [Blobfolio, LLC](https://blobfolio.com) &lt;hello@blobfolio.com&gt;
 
 This work is free. You can redistribute it and/or modify it under the terms of the Do What The Fuck You Want To Public License, Version 2.
 

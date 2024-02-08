@@ -32,13 +32,11 @@ bench BENCH="":
 		cargo bench \
 			--benches \
 			--all-features \
-			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	else
 		cargo bench \
 			--bench "{{ BENCH }}" \
 			--all-features \
-			--target x86_64-unknown-linux-gnu \
 			--target-dir "{{ cargo_dir }}"
 	fi
 	exit 0
@@ -62,7 +60,6 @@ bench BENCH="":
 	cargo clippy \
 		--release \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
 
@@ -81,12 +78,11 @@ bench BENCH="":
 	cargo +nightly rustdoc \
 		--release \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}" -- --cfg docsrs
 
 	# Move the docs and clean up ownership.
 	[ ! -d "{{ doc_dir }}" ] || rm -rf "{{ doc_dir }}"
-	mv "{{ cargo_dir }}/x86_64-unknown-linux-gnu/doc" "{{ justfile_directory() }}"
+	mv "{{ cargo_dir }}/doc" "{{ justfile_directory() }}"
 	just _fix-chown "{{ doc_dir }}"
 
 
@@ -111,25 +107,21 @@ bench BENCH="":
 	fyi task "Debug Mode"
 	[ -z "{{ IGNORED }}" ] || cargo test \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}" \
 		-- --include-ignored
 	[ -n "{{ IGNORED }}" ] || cargo test \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
 	fyi task "Release Mode"
 	[ -z "{{ IGNORED }}" ] || cargo test \
 		--release \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}" \
 		-- --include-ignored
 	[ -n "{{ IGNORED }}" ] || cargo test \
 		--release \
 		--all-features \
-		--target x86_64-unknown-linux-gnu \
 		--target-dir "{{ cargo_dir }}"
 
 
