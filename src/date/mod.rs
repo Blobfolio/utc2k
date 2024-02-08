@@ -111,11 +111,11 @@ macro_rules! try_from_unixtime {
 /// ```
 pub struct FmtUtc2k([u8; 19]);
 
-macros::as_ref_borrow_cast!(
-	FmtUtc2k:
-		as_bytes [u8],
-		as_str str,
-);
+impl AsRef<[u8]> for FmtUtc2k {
+	fn as_ref(&self) -> &[u8] { self.as_bytes() }
+}
+
+macros::as_ref_borrow_cast!(FmtUtc2k: as_str str);
 
 impl Default for FmtUtc2k {
 	#[inline]
