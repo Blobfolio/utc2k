@@ -2,6 +2,14 @@
 
 
 
+## [0.8.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.1) - 2024-07-25
+
+### Changed
+
+* Miscellaneous code lints
+
+
+
 ## [0.8.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.0) - 2024-02-08
 
 ### Removed
