@@ -91,6 +91,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Month {
+			#[allow(clippy::cast_possible_truncation)]
 			fn from(src: $ty) -> Self {
 				if src <= 12 { Self::from_u8(src as u8) }
 				else { Self::from_u8((src % 12) as u8) }

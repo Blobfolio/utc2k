@@ -101,6 +101,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Weekday {
+			#[allow(clippy::cast_possible_truncation)]
 			fn from(src: $ty) -> Self {
 				if src <= 7 { Self::from(src as u8) }
 				else { Self::from((src % 7) as u8) }
