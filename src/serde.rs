@@ -4,6 +4,7 @@
 
 use crate::{
 	FmtUtc2k,
+	Month,
 	Utc2k,
 	Weekday,
 };
@@ -121,6 +122,69 @@ impl Serialize for Utc2k {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: ser::Serializer { serializer.serialize_u32(self.unixtime()) }
+}
+
+
+
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+impl<'de> Deserialize<'de> for Month {
+	/// # Deserialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where D: de::Deserializer<'de> {
+		struct Visitor;
+
+		macro_rules! invalid {
+			($fn:ident, $ty:ty) => (
+				fn $fn<S>(self, _src: $ty) -> Result<Self::Value, S>
+				where S: de::Error {
+					Err(de::Error::custom(concat!(stringify!($ty), " is unsupported")))
+				}
+			);
+		}
+
+		impl<'de> de::Visitor<'de> for Visitor {
+			type Value = Month;
+
+			fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+				f.write_str("a string representation like 'jan' or 'January'")
+			}
+
+			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
+			where S: de::Error {
+				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
+			}
+
+			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
+			where S: de::Error {
+				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
+			}
+
+			// Too small to hold an in-range value.
+			invalid!(visit_i32, i32);
+			invalid!(visit_i64, i64);
+			invalid!(visit_u32, u32);
+			invalid!(visit_u64, u64);
+			invalid!(visit_char, char);
+			invalid!(visit_i8, i8);
+			invalid!(visit_i16, i16);
+			invalid!(visit_u8, u8);
+			invalid!(visit_u16, u16);
+		}
+
+		deserializer.deserialize_any(Visitor)
+	}
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+impl Serialize for Month {
+	#[inline]
+	/// # Serialize.
+	///
+	/// Use the optional `serde` crate feature to enable serialization support.
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: ser::Serializer { serializer.serialize_str(self.as_str()) }
 }
 
 
@@ -274,6 +338,22 @@ mod tests {
 	}
 
 	#[test]
+	fn t_serde_month() {
+		for month in Month::all() {
+			let s = serde_json::to_string(&month).expect("Serialization failed.");
+			assert_eq!(s, format!("\"{}\"", month.as_str()));
+
+			let d = serde_json::from_str::<Month>(&s).expect("Deserialization failed.");
+			assert_eq!(d, month);
+
+			// From abbreviation.
+			let d = serde_json::from_str::<Month>(&format!("\"{}\"", month.abbreviation()))
+				.expect("Deserialization (abbr) failed.");
+			assert_eq!(d, month);
+		}
+	}
+
+	#[test]
 	fn t_serde_weekday() {
 		for day in Weekday::all() {
 			let s = serde_json::to_string(&day).expect("Serialization failed.");
@@ -282,6 +362,7 @@ mod tests {
 			let d = serde_json::from_str::<Weekday>(&s).expect("Deserialization failed.");
 			assert_eq!(d, day);
 
+			// From abbreviation.
 			let d = serde_json::from_str::<Weekday>(&format!("\"{}\"", day.abbreviation()))
 				.expect("Deserialization (abbr) failed.");
 			assert_eq!(d, day);

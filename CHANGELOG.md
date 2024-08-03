@@ -6,8 +6,11 @@
 
 ### New
 
+* `Month::all`
+* Enable `Deserialize`/`Serialize` for `Month` (`serde` crate feature)
+* impl `TryFrom<&[u8]>` for `Month`
 * `Weekday::all`
-* Enable `Deserialize`/`Serialize` for `Weekday`
+* Enable `Deserialize`/`Serialize` for `Weekday` (`serde` crate feature)
 * impl `TryFrom<&[u8]>` for `Weekday`
 
 ### Breaking
