@@ -1735,7 +1735,7 @@ impl Utc2k {
 	/// ```
 	pub fn from_rfc2822<S>(src: S) -> Option<Self>
 	where S: AsRef<str> {
-		let src: &[u8] = src.as_ref().trim().as_bytes();
+		let src: &[u8] = src.as_ref().as_bytes().trim_ascii();
 		if 19 <= src.len() {
 			// Strip off the optional weekday, if any, so we can parse the day
 			// from a predictable starting place.
