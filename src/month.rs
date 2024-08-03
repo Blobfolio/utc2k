@@ -327,6 +327,27 @@ impl Month {
 	}
 
 	#[must_use]
+	/// # All Months.
+	///
+	/// Return an array containing all possible months, in order.
+	pub const fn all() -> [Self; 12] {
+		[
+			Self::January,
+			Self::February,
+			Self::March,
+			Self::April,
+			Self::May,
+			Self::June,
+			Self::July,
+			Self::August,
+			Self::September,
+			Self::October,
+			Self::November,
+			Self::December,
+		]
+	}
+
+	#[must_use]
 	/// # Month Size (Days).
 	///
 	/// This returns the total number of days this month could hold, or put
