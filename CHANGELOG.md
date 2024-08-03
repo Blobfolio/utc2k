@@ -2,6 +2,20 @@
 
 
 
+## [0.9.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.0) - TBD
+
+### New
+
+* `Weekday::all`
+* Enable `Deserialize`/`Serialize` for `Weekday`
+* impl `TryFrom<&[u8]>` for `Weekday`
+
+### Breaking
+
+* Bump MSRV to `1.80`
+
+
+
 ## [0.8.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.1) - 2024-07-25
 
 ### Changed

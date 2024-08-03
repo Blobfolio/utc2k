@@ -203,6 +203,18 @@ impl SubAssign<u8> for Weekday {
 	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
+impl TryFrom<&[u8]> for Weekday {
+	type Error = Utc2kError;
+
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim_ascii()).ok_or(Utc2kError::Invalid)
+	}
+}
+
 impl TryFrom<&str> for Weekday {
 	type Error = Utc2kError;
 
@@ -211,8 +223,7 @@ impl TryFrom<&str> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.trim().as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -224,8 +235,7 @@ impl TryFrom<String> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.trim().as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -272,7 +282,7 @@ impl Weekday {
 	#[must_use]
 	/// # All Weekdays.
 	///
-	/// Return an array containing all possible weekdays in order.
+	/// Return an array containing all possible weekdays, in order.
 	pub const fn all() -> [Self; 7] {
 		[
 			Self::Sunday,
