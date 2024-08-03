@@ -128,21 +128,13 @@ impl Serialize for Utc2k {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for Month {
+	#[inline]
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: de::Deserializer<'de> {
 		struct Visitor;
-
-		macro_rules! invalid {
-			($fn:ident, $ty:ty) => (
-				fn $fn<S>(self, _src: $ty) -> Result<Self::Value, S>
-				where S: de::Error {
-					Err(de::Error::custom(concat!(stringify!($ty), " is unsupported")))
-				}
-			);
-		}
 
 		impl<'de> de::Visitor<'de> for Visitor {
 			type Value = Month;
@@ -151,29 +143,14 @@ impl<'de> Deserialize<'de> for Month {
 				f.write_str("a string representation like 'jan' or 'January'")
 			}
 
+			#[inline]
 			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
 			where S: de::Error {
 				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
 			}
-
-			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
-			where S: de::Error {
-				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
-			}
-
-			// Too small to hold an in-range value.
-			invalid!(visit_i32, i32);
-			invalid!(visit_i64, i64);
-			invalid!(visit_u32, u32);
-			invalid!(visit_u64, u64);
-			invalid!(visit_char, char);
-			invalid!(visit_i8, i8);
-			invalid!(visit_i16, i16);
-			invalid!(visit_u8, u8);
-			invalid!(visit_u16, u16);
 		}
 
-		deserializer.deserialize_any(Visitor)
+		deserializer.deserialize_str(Visitor)
 	}
 }
 
@@ -191,21 +168,13 @@ impl Serialize for Month {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for Weekday {
+	#[inline]
 	/// # Deserialize.
 	///
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: de::Deserializer<'de> {
 		struct Visitor;
-
-		macro_rules! invalid {
-			($fn:ident, $ty:ty) => (
-				fn $fn<S>(self, _src: $ty) -> Result<Self::Value, S>
-				where S: de::Error {
-					Err(de::Error::custom(concat!(stringify!($ty), " is unsupported")))
-				}
-			);
-		}
 
 		impl<'de> de::Visitor<'de> for Visitor {
 			type Value = Weekday;
@@ -214,29 +183,14 @@ impl<'de> Deserialize<'de> for Weekday {
 				f.write_str("a string representation like 'mon' or 'Monday'")
 			}
 
+			#[inline]
 			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
 			where S: de::Error {
 				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
 			}
-
-			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
-			where S: de::Error {
-				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
-			}
-
-			// Too small to hold an in-range value.
-			invalid!(visit_i32, i32);
-			invalid!(visit_i64, i64);
-			invalid!(visit_u32, u32);
-			invalid!(visit_u64, u64);
-			invalid!(visit_char, char);
-			invalid!(visit_i8, i8);
-			invalid!(visit_i16, i16);
-			invalid!(visit_u8, u8);
-			invalid!(visit_u16, u16);
 		}
 
-		deserializer.deserialize_any(Visitor)
+		deserializer.deserialize_str(Visitor)
 	}
 }
 
