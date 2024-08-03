@@ -225,7 +225,7 @@ impl TryFrom<&[u8]> for Month {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim_ascii()).ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -238,7 +238,7 @@ impl TryFrom<&str> for Month {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::try_from(src.as_bytes())
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -251,7 +251,7 @@ impl TryFrom<String> for Month {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::try_from(src.as_bytes())
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -272,25 +272,27 @@ impl Month {
 
 	/// # From Abbreviation Bytes.
 	///
-	/// This matches the first three bytes, case-insensitively, against the
-	/// `Month` abbreviations.
-	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		let src = src.get(..3)?;
-		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
-			b"jan" => Some(Self::January),
-			b"feb" => Some(Self::February),
-			b"mar" => Some(Self::March),
-			b"apr" => Some(Self::April),
-			b"may" => Some(Self::May),
-			b"jun" => Some(Self::June),
-			b"jul" => Some(Self::July),
-			b"aug" => Some(Self::August),
-			b"sep" => Some(Self::September),
-			b"oct" => Some(Self::October),
-			b"nov" => Some(Self::November),
-			b"dec" => Some(Self::December),
-			_ => None,
+	/// This matches the first three non-whitespace bytes, case-insensitively,
+	/// against the `Month` abbreviations.
+	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
+			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
+				[b'j', b'a', b'n'] => Some(Self::January),
+				[b'f', b'e', b'b'] => Some(Self::February),
+				[b'm', b'a', b'r'] => Some(Self::March),
+				[b'a', b'p', b'r'] => Some(Self::April),
+				[b'm', b'a', b'y'] => Some(Self::May),
+				[b'j', b'u', b'n'] => Some(Self::June),
+				[b'j', b'u', b'l'] => Some(Self::July),
+				[b'a', b'u', b'g'] => Some(Self::August),
+				[b's', b'e', b'p'] => Some(Self::September),
+				[b'o', b'c', b't'] => Some(Self::October),
+				[b'n', b'o', b'v'] => Some(Self::November),
+				[b'd', b'e', b'c'] => Some(Self::December),
+				_ => None,
+			}
 		}
+		else { None }
 	}
 }
 
@@ -462,7 +464,7 @@ pub struct RepeatingMonthIter(Month);
 impl Iterator for RepeatingMonthIter {
 	type Item = Month;
 
-	/// # Next Weekday.
+	/// # Next Month.
 	fn next(&mut self) -> Option<Self::Item> {
 		let next = self.0;
 		self.0 = match next {

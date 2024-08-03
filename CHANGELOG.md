@@ -7,13 +7,13 @@
 ### New
 
 * `Month::all`
-* Enable de/serialization for `Month` (with `serde` crate feature)
 * `Month::into_iter` (repeating month iterator)
+* Enable de/serialization for `Month` (with `serde` crate feature)
 * impl `FromStr` for `Month`
 * impl `TryFrom<&[u8]>` for `Month`
 * `Weekday::all`
-* Enable de/serialization for `Weekday` (with `serde` crate feature)
 * `Weekday::into_iter` (repeating week iterator)
+* Enable de/serialization for `Weekday` (with `serde` crate feature)
 * impl `FromStr` for `Weekday`
 * impl `TryFrom<&[u8]>` for `Weekday`
 

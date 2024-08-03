@@ -230,7 +230,7 @@ impl TryFrom<&[u8]> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim_ascii()).ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -243,7 +243,7 @@ impl TryFrom<&str> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::try_from(src.as_bytes())
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -256,7 +256,7 @@ impl TryFrom<String> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::try_from(src.as_bytes())
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -506,20 +506,22 @@ impl Weekday {
 impl Weekday {
 	/// # From Abbreviation Bytes.
 	///
-	/// This matches the first three bytes, case-insensitively, against the
-	/// `Month` abbreviations.
-	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		let src = src.get(..3)?;
-		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
-			b"sun" => Some(Self::Sunday),
-			b"mon" => Some(Self::Monday),
-			b"tue" => Some(Self::Tuesday),
-			b"wed" => Some(Self::Wednesday),
-			b"thu" => Some(Self::Thursday),
-			b"fri" => Some(Self::Friday),
-			b"sat" => Some(Self::Saturday),
-			_ => None,
+	/// This matches the first three non-whitespace bytes, case-insensitively,
+	/// against the `Weekday` abbreviations.
+	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
+			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
+				[b's', b'u', b'n'] => Some(Self::Sunday),
+				[b'm', b'o', b'n'] => Some(Self::Monday),
+				[b't', b'u', b'e'] => Some(Self::Tuesday),
+				[b'w', b'e', b'd'] => Some(Self::Wednesday),
+				[b't', b'h', b'u'] => Some(Self::Thursday),
+				[b'f', b'r', b'i'] => Some(Self::Friday),
+				[b's', b'a', b't'] => Some(Self::Saturday),
+				_ => None,
+			}
 		}
+		else { None }
 	}
 
 	#[must_use]
