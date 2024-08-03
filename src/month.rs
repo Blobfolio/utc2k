@@ -198,29 +198,42 @@ impl SubAssign<u8> for Month {
 	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
+impl TryFrom<&[u8]> for Month {
+	type Error = Utc2kError;
+
+	#[inline]
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Decimal", for example, will match `Month::December`.
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src.trim_ascii()).ok_or(Utc2kError::Invalid)
+	}
+}
+
 impl TryFrom<&str> for Month {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::try_from(src.as_bytes())
 	}
 }
 
 impl TryFrom<String> for Month {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::try_from(src.as_bytes())
 	}
 }
 
@@ -404,25 +417,10 @@ impl Month {
 mod tests {
 	use super::*;
 
-	const ALL_MONTHS: &[Month] = &[
-		Month::January,
-		Month::February,
-		Month::March,
-		Month::April,
-		Month::May,
-		Month::June,
-		Month::July,
-		Month::August,
-		Month::September,
-		Month::October,
-		Month::November,
-		Month::December,
-	];
-
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in ALL_MONTHS {
+		for d in Month::all() {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
 		}
 	}
@@ -449,17 +447,16 @@ mod tests {
 		let mut when = 0;
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
-			assert_eq!(months, ALL_MONTHS, "Round #{}", when);
+			assert_eq!(months, Month::all(), "Round #{}", when);
 		}
 	}
 
 	#[test]
 	/// # Test Some Math!
 	fn t_math() {
-		let months: Vec<Month> = std::iter::repeat(ALL_MONTHS)
+		let months: Vec<Month> = std::iter::repeat(Month::all())
 			.take(4)
 			.flatten()
-			.copied()
 			.collect();
 
 		// Test additions and subtractions.
@@ -483,7 +480,7 @@ mod tests {
 	#[test]
 	/// # String Tests.
 	fn t_str() {
-		for &m in ALL_MONTHS {
+		for m in Month::all() {
 			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));
