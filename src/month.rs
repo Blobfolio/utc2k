@@ -16,6 +16,7 @@ use std::{
 		Sub,
 		SubAssign,
 	},
+	str::FromStr,
 };
 
 
@@ -147,6 +148,11 @@ impl_int!(u16, u32, u64, usize);
 impl From<Utc2k> for Month {
 	#[inline]
 	fn from(src: Utc2k) -> Self { Self::from(src.month()) }
+}
+
+impl FromStr for Month {
+	type Err = Utc2kError;
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
 impl IntoIterator for Month {
@@ -564,6 +570,7 @@ mod tests {
 			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));
+			assert_eq!(Ok(m), m.abbreviation().parse());
 		}
 
 		assert!(Month::try_from("Hello").is_err());

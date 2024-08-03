@@ -16,6 +16,7 @@ use std::{
 		Sub,
 		SubAssign,
 	},
+	str::FromStr,
 };
 
 
@@ -152,6 +153,11 @@ impl_int!(u16, u32, u64, usize);
 impl From<Utc2k> for Weekday {
 	#[inline]
 	fn from(src: Utc2k) -> Self { src.weekday() }
+}
+
+impl FromStr for Weekday {
+	type Err = Utc2kError;
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
 impl IntoIterator for Weekday {
@@ -705,6 +711,7 @@ mod tests {
 			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
+			assert_eq!(Ok(d), d.abbreviation().parse());
 		}
 
 		assert!(Weekday::try_from("Hello").is_err());
