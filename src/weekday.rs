@@ -206,6 +206,7 @@ impl SubAssign<u8> for Weekday {
 impl TryFrom<&[u8]> for Weekday {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
@@ -218,24 +219,26 @@ impl TryFrom<&[u8]> for Weekday {
 impl TryFrom<&str> for Weekday {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes()).ok_or(Utc2kError::Invalid)
+		Self::try_from(src.as_bytes())
 	}
 }
 
 impl TryFrom<String> for Weekday {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes()).ok_or(Utc2kError::Invalid)
+		Self::try_from(src.as_bytes())
 	}
 }
 
