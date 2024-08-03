@@ -149,6 +149,18 @@ impl From<Utc2k> for Month {
 	fn from(src: Utc2k) -> Self { Self::from(src.month()) }
 }
 
+impl IntoIterator for Month {
+	type Item = Self;
+	type IntoIter = RepeatingMonthIter;
+
+	#[inline]
+	/// # Repeating Iterator.
+	///
+	/// Return an iterator that will cycle endlessly through the years,
+	/// starting from this `Month`.
+	fn into_iter(self) -> Self::IntoIter { RepeatingMonthIter(self) }
+}
+
 impl Ord for Month {
 	#[inline]
 	fn cmp(&self, other: &Self) -> Ordering {
@@ -434,6 +446,44 @@ impl Month {
 
 
 
+#[derive(Debug)]
+/// # Endless Months!
+///
+/// This iterator yields an infinite number of `Month`s, in order, starting
+/// from any arbitrary month.
+pub struct RepeatingMonthIter(Month);
+
+impl Iterator for RepeatingMonthIter {
+	type Item = Month;
+
+	/// # Next Weekday.
+	fn next(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = match next {
+			Month::January => Month::February,
+			Month::February => Month::March,
+			Month::March => Month::April,
+			Month::April => Month::May,
+			Month::May => Month::June,
+			Month::June => Month::July,
+			Month::July => Month::August,
+			Month::August => Month::September,
+			Month::September => Month::October,
+			Month::October => Month::November,
+			Month::November => Month::December,
+			Month::December => Month::January,
+		};
+		Some(next)
+	}
+
+	/// # Infinity.
+	///
+	/// This iterator never stops!
+	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -469,6 +519,15 @@ mod tests {
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
 			assert_eq!(months, Month::all(), "Round #{}", when);
+		}
+	}
+
+	#[test]
+	fn t_into_iter() {
+		let mut last = Month::December;
+		for next in Month::January.into_iter().take(25) {
+			assert_eq!(next, last + 1_u8);
+			last = next;
 		}
 	}
 

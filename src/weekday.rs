@@ -154,6 +154,18 @@ impl From<Utc2k> for Weekday {
 	fn from(src: Utc2k) -> Self { src.weekday() }
 }
 
+impl IntoIterator for Weekday {
+	type Item = Self;
+	type IntoIter = RepeatingWeekdayIter;
+
+	#[inline]
+	/// # Repeating Iterator.
+	///
+	/// Return an iterator that will cycle endlessly through the weeks,
+	/// starting from this `Weekday`.
+	fn into_iter(self) -> Self::IntoIter { RepeatingWeekdayIter(self) }
+}
+
 impl Ord for Weekday {
 	#[inline]
 	fn cmp(&self, other: &Self) -> Ordering {
@@ -526,6 +538,39 @@ impl Weekday {
 
 
 
+#[derive(Debug)]
+/// # Endless Weekdays!
+///
+/// This iterator yields an infinite number of `Weekday`s, in order, starting
+/// from any arbitrary day.
+pub struct RepeatingWeekdayIter(Weekday);
+
+impl Iterator for RepeatingWeekdayIter {
+	type Item = Weekday;
+
+	/// # Next Weekday.
+	fn next(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = match next {
+			Weekday::Sunday => Weekday::Monday,
+			Weekday::Monday => Weekday::Tuesday,
+			Weekday::Tuesday => Weekday::Wednesday,
+			Weekday::Wednesday => Weekday::Thursday,
+			Weekday::Thursday => Weekday::Friday,
+			Weekday::Friday => Weekday::Saturday,
+			Weekday::Saturday => Weekday::Sunday,
+		};
+		Some(next)
+	}
+
+	/// # Infinity.
+	///
+	/// This iterator never stops!
+	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -549,6 +594,15 @@ mod tests {
 	fn t_abbr() {
 		for d in Weekday::all() {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
+		}
+	}
+
+	#[test]
+	fn t_into_iter() {
+		let mut last = Weekday::Saturday;
+		for next in Weekday::Sunday.into_iter().take(15) {
+			assert_eq!(next, last + 1_u8);
+			last = next;
 		}
 	}
 

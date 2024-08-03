@@ -9,9 +9,11 @@
 * `Month::all`
 * Enable `Deserialize`/`Serialize` for `Month` (`serde` crate feature)
 * impl `TryFrom<&[u8]>` for `Month`
+* impl `Month::into_iter` (repeating month iterator)
 * `Weekday::all`
 * Enable `Deserialize`/`Serialize` for `Weekday` (`serde` crate feature)
 * impl `TryFrom<&[u8]>` for `Weekday`
+* impl `Weekday::into_iter` (repeating week iterator)
 
 ### Breaking
 
