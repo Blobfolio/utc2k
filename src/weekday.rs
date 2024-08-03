@@ -270,6 +270,22 @@ impl Weekday {
 	}
 
 	#[must_use]
+	/// # All Weekdays.
+	///
+	/// Return an array containing all possible weekdays in order.
+	pub const fn all() -> [Self; 7] {
+		[
+			Self::Sunday,
+			Self::Monday,
+			Self::Tuesday,
+			Self::Wednesday,
+			Self::Thursday,
+			Self::Friday,
+			Self::Saturday,
+		]
+	}
+
+	#[must_use]
 	/// # As Str.
 	///
 	/// Return the day as a string slice.
@@ -501,16 +517,6 @@ impl Weekday {
 mod tests {
 	use super::*;
 
-	const ALL_DAYS: &[Weekday] = &[
-		Weekday::Sunday,
-		Weekday::Monday,
-		Weekday::Tuesday,
-		Weekday::Wednesday,
-		Weekday::Thursday,
-		Weekday::Friday,
-		Weekday::Saturday,
-	];
-
 	#[test]
 	/// # Test First of Year.
 	fn t_year_start() {
@@ -528,7 +534,7 @@ mod tests {
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in ALL_DAYS {
+		for d in Weekday::all() {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
 		}
 	}
@@ -555,17 +561,16 @@ mod tests {
 		let mut when = 0;
 		for days in many.as_slice().chunks_exact(7) {
 			when += 1;
-			assert_eq!(days, ALL_DAYS, "Round #{}", when);
+			assert_eq!(days, Weekday::all(), "Round #{}", when);
 		}
 	}
 
 	#[test]
 	/// # Test Some Math!
 	fn t_math() {
-		let days: Vec<Weekday> = std::iter::repeat(ALL_DAYS)
+		let days: Vec<Weekday> = std::iter::repeat(Weekday::all())
 			.take(6)
 			.flatten()
-			.copied()
 			.collect();
 
 		// Test additions and subtractions.
@@ -629,7 +634,7 @@ mod tests {
 	#[test]
 	/// # String Tests.
 	fn t_str() {
-		for &d in ALL_DAYS {
+		for d in Weekday::all() {
 			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
