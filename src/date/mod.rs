@@ -112,6 +112,7 @@ macro_rules! try_from_unixtime {
 pub struct FmtUtc2k([u8; 19]);
 
 impl AsRef<[u8]> for FmtUtc2k {
+	#[inline]
 	fn as_ref(&self) -> &[u8] { self.as_bytes() }
 }
 
@@ -124,6 +125,7 @@ impl Default for FmtUtc2k {
 
 impl Deref for FmtUtc2k {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -150,6 +152,8 @@ impl From<Utc2k> for FmtUtc2k {
 
 impl FromStr for FmtUtc2k {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
@@ -651,6 +655,7 @@ pub struct Utc2k {
 
 impl Add<u32> for Utc2k {
 	type Output = Self;
+
 	#[inline]
 	fn add(self, other: u32) -> Self { Self::from(Abacus::from(self) + other) }
 }
@@ -700,6 +705,7 @@ impl From<u32> for Utc2k {
 }
 
 impl From<Abacus> for Utc2k {
+	#[inline]
 	fn from(src: Abacus) -> Self {
 		let (y, m, d, hh, mm, ss) = src.parts();
 		Self { y, m, d, hh, mm, ss }
@@ -726,6 +732,8 @@ impl From<FmtUtc2k> for Utc2k {
 
 impl FromStr for Utc2k {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
@@ -842,6 +850,7 @@ try_from_unixtime!(i32, u64, i64, usize, isize);
 impl TryFrom<&OsStr> for Utc2k {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From `OsStr`.
 	///
 	/// ```
@@ -887,10 +896,10 @@ impl TryFrom<&[u8]> for Utc2k {
 	/// assert!(Utc2k::try_from(&b"2021-06-applesauces"[..]).is_err());
 	/// ```
 	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-		if let Some(b) = bytes.get(..19) {
+		if let Some(b) = bytes.first_chunk::<19>() {
 			parse::parts_from_datetime(b)
 		}
-		else if let Some(b) = bytes.get(..10) {
+		else if let Some(b) = bytes.first_chunk::<10>() {
 			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -900,6 +909,7 @@ impl TryFrom<&[u8]> for Utc2k {
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -1092,7 +1102,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..19)
+		src.as_ref().first_chunk::<19>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_datetime)
 	}
@@ -1127,7 +1137,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_smooshed_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..14)
+		src.as_ref().first_chunk::<14>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_smooshed_datetime)
 	}
@@ -1170,7 +1180,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..10)
+		src.as_ref().first_chunk::<10>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_date)
 	}
@@ -1206,7 +1216,8 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_smooshed_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..8)
+		src.as_ref().first_chunk::<8>()
+			.copied()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_smooshed_date)
 	}
@@ -1240,8 +1251,8 @@ impl Utc2k {
 	/// or out of range (hours must be < 24, minutes and seconds < 60).
 	pub fn parse_time_str<B>(src: B) -> Result<(u8, u8, u8), Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..8) {
-			let (hh, mm, ss) = parse::hms(b)?;
+		if let Some(b) = src.as_ref().first_chunk::<8>() {
+			let (hh, mm, ss) = parse::hms(b.as_slice())?;
 			if hh < 24 && mm < 60 && ss < 60 {
 				return Ok((hh, mm, ss));
 			}
@@ -1735,7 +1746,7 @@ impl Utc2k {
 	/// ```
 	pub fn from_rfc2822<S>(src: S) -> Option<Self>
 	where S: AsRef<str> {
-		let src: &[u8] = src.as_ref().trim().as_bytes();
+		let src: &[u8] = src.as_ref().as_bytes().trim_ascii();
 		if 19 <= src.len() {
 			// Strip off the optional weekday, if any, so we can parse the day
 			// from a predictable starting place.
@@ -1783,18 +1794,18 @@ impl Utc2k {
 	/// let date = Utc2k::default(); // 2000-01-01 00:00:00
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
-	pub fn unixtime(self) -> u32 {
+	pub const fn unixtime(self) -> u32 {
 		// Seconds from the new year up to the start of the month.
-		static MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
+		const MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
 
 		// Seconds *before* the new year.
-		static YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
+		const YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
 
 		// Add up everything as it would be in a non-leap year.
-		let time = YEAR_SECONDS[usize::from(self.y)] +
-			MONTH_SECONDS[usize::from(self.m - 1)] +
+		let time = YEAR_SECONDS[self.y as usize] +
+			MONTH_SECONDS[self.m as usize - 1] +
 			self.seconds_from_midnight() +
-			DAY_IN_SECONDS * u32::from(self.d - 1);
+			DAY_IN_SECONDS * (self.d as u32 - 1);
 
 		// Add a day's worth of seconds if we need to.
 		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
@@ -1933,7 +1944,7 @@ impl Utc2k {
 	/// // upper limit to the possible return values…
 	/// assert_eq!(Utc2k::min().abs_diff(Utc2k::max()), 3_155_759_999);
 	/// ```
-	pub fn abs_diff(self, other: Self) -> u32 {
+	pub const fn abs_diff(self, other: Self) -> u32 {
 		self.unixtime().abs_diff(other.unixtime())
 	}
 

@@ -16,6 +16,7 @@ use std::{
 		Sub,
 		SubAssign,
 	},
+	str::FromStr,
 };
 
 
@@ -45,6 +46,7 @@ pub enum Month {
 
 impl Add<u8> for Month {
 	type Output = Self;
+
 	#[inline]
 	fn add(self, other: u8) -> Self {
 		Self::from(self as u8 + other % 12)
@@ -60,6 +62,7 @@ macros::as_ref_borrow_cast!(Month: as_str str);
 
 impl Deref for Month {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -67,6 +70,7 @@ impl Deref for Month {
 macros::display_str!(as_str Month);
 
 impl From<u8> for Month {
+	#[inline]
 	fn from(src: u8) -> Self { Self::from_u8(src) }
 }
 
@@ -99,6 +103,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<Month> for $ty {
+			#[inline]
 			fn from(src: Month) -> Self {
 				match src {
 					Month::January => 1,
@@ -147,6 +152,25 @@ impl_int!(u16, u32, u64, usize);
 impl From<Utc2k> for Month {
 	#[inline]
 	fn from(src: Utc2k) -> Self { Self::from(src.month()) }
+}
+
+impl FromStr for Month {
+	type Err = Utc2kError;
+
+	#[inline]
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
+}
+
+impl IntoIterator for Month {
+	type Item = Self;
+	type IntoIter = RepeatingMonthIter;
+
+	#[inline]
+	/// # Repeating Iterator.
+	///
+	/// Return an iterator that will cycle endlessly through the years,
+	/// starting from this `Month`.
+	fn into_iter(self) -> Self::IntoIter { RepeatingMonthIter(self) }
 }
 
 impl Ord for Month {
@@ -198,29 +222,42 @@ impl SubAssign<u8> for Month {
 	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
+impl TryFrom<&[u8]> for Month {
+	type Error = Utc2kError;
+
+	#[inline]
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Decimal", for example, will match `Month::December`.
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
+	}
+}
+
 impl TryFrom<&str> for Month {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
 impl TryFrom<String> for Month {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -241,25 +278,27 @@ impl Month {
 
 	/// # From Abbreviation Bytes.
 	///
-	/// This matches the first three bytes, case-insensitively, against the
-	/// `Month` abbreviations.
-	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		let src = src.get(..3)?;
-		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
-			b"jan" => Some(Self::January),
-			b"feb" => Some(Self::February),
-			b"mar" => Some(Self::March),
-			b"apr" => Some(Self::April),
-			b"may" => Some(Self::May),
-			b"jun" => Some(Self::June),
-			b"jul" => Some(Self::July),
-			b"aug" => Some(Self::August),
-			b"sep" => Some(Self::September),
-			b"oct" => Some(Self::October),
-			b"nov" => Some(Self::November),
-			b"dec" => Some(Self::December),
-			_ => None,
+	/// This matches the first three non-whitespace bytes, case-insensitively,
+	/// against the `Month` abbreviations.
+	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
+			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
+				[b'j', b'a', b'n'] => Some(Self::January),
+				[b'f', b'e', b'b'] => Some(Self::February),
+				[b'm', b'a', b'r'] => Some(Self::March),
+				[b'a', b'p', b'r'] => Some(Self::April),
+				[b'm', b'a', b'y'] => Some(Self::May),
+				[b'j', b'u', b'n'] => Some(Self::June),
+				[b'j', b'u', b'l'] => Some(Self::July),
+				[b'a', b'u', b'g'] => Some(Self::August),
+				[b's', b'e', b'p'] => Some(Self::September),
+				[b'o', b'c', b't'] => Some(Self::October),
+				[b'n', b'o', b'v'] => Some(Self::November),
+				[b'd', b'e', b'c'] => Some(Self::December),
+				_ => None,
+			}
 		}
+		else { None }
 	}
 }
 
@@ -311,6 +350,27 @@ impl Month {
 			Self::November => *b"Nov",
 			Self::December => *b"Dec",
 		}
+	}
+
+	#[must_use]
+	/// # All Months.
+	///
+	/// Return an array containing all possible months, in order.
+	pub const fn all() -> [Self; 12] {
+		[
+			Self::January,
+			Self::February,
+			Self::March,
+			Self::April,
+			Self::May,
+			Self::June,
+			Self::July,
+			Self::August,
+			Self::September,
+			Self::October,
+			Self::November,
+			Self::December,
+		]
 	}
 
 	#[must_use]
@@ -400,29 +460,52 @@ impl Month {
 
 
 
+#[derive(Debug)]
+/// # Endless Months!
+///
+/// This iterator yields an infinite number of `Month`s, in order, starting
+/// from any arbitrary month.
+pub struct RepeatingMonthIter(Month);
+
+impl Iterator for RepeatingMonthIter {
+	type Item = Month;
+
+	/// # Next Month.
+	fn next(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = match next {
+			Month::January => Month::February,
+			Month::February => Month::March,
+			Month::March => Month::April,
+			Month::April => Month::May,
+			Month::May => Month::June,
+			Month::June => Month::July,
+			Month::July => Month::August,
+			Month::August => Month::September,
+			Month::September => Month::October,
+			Month::October => Month::November,
+			Month::November => Month::December,
+			Month::December => Month::January,
+		};
+		Some(next)
+	}
+
+	/// # Infinity.
+	///
+	/// This iterator never stops!
+	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
-	const ALL_MONTHS: &[Month] = &[
-		Month::January,
-		Month::February,
-		Month::March,
-		Month::April,
-		Month::May,
-		Month::June,
-		Month::July,
-		Month::August,
-		Month::September,
-		Month::October,
-		Month::November,
-		Month::December,
-	];
-
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in ALL_MONTHS {
+		for d in Month::all() {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
 		}
 	}
@@ -449,17 +532,25 @@ mod tests {
 		let mut when = 0;
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
-			assert_eq!(months, ALL_MONTHS, "Round #{}", when);
+			assert_eq!(months, Month::all(), "Round #{}", when);
+		}
+	}
+
+	#[test]
+	fn t_into_iter() {
+		let mut last = Month::December;
+		for next in Month::January.into_iter().take(25) {
+			assert_eq!(next, last + 1_u8);
+			last = next;
 		}
 	}
 
 	#[test]
 	/// # Test Some Math!
 	fn t_math() {
-		let months: Vec<Month> = std::iter::repeat(ALL_MONTHS)
+		let months: Vec<Month> = std::iter::repeat(Month::all())
 			.take(4)
 			.flatten()
-			.copied()
 			.collect();
 
 		// Test additions and subtractions.
@@ -483,10 +574,11 @@ mod tests {
 	#[test]
 	/// # String Tests.
 	fn t_str() {
-		for &m in ALL_MONTHS {
+		for m in Month::all() {
 			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));
+			assert_eq!(Ok(m), m.abbreviation().parse());
 		}
 
 		assert!(Month::try_from("Hello").is_err());

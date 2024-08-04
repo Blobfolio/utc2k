@@ -64,6 +64,7 @@ impl AddAssign<u32> for Abacus {
 }
 
 impl From<Utc2k> for Abacus {
+	#[inline]
 	fn from(src: Utc2k) -> Self {
 		let (y, m, d, hh, mm, ss) = src.parts();
 		Self::new(y, m, d, hh, mm, ss)

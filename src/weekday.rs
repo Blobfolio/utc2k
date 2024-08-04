@@ -16,6 +16,7 @@ use std::{
 		Sub,
 		SubAssign,
 	},
+	str::FromStr,
 };
 
 
@@ -44,10 +45,9 @@ pub enum Weekday {
 
 impl Add<u8> for Weekday {
 	type Output = Self;
+
 	#[inline]
-	fn add(self, other: u8) -> Self {
-		Self::from(self as u8 + other % 7)
-	}
+	fn add(self, other: u8) -> Self { Self::from(self as u8 + other % 7) }
 }
 
 impl AddAssign<u8> for Weekday {
@@ -59,6 +59,7 @@ macros::as_ref_borrow_cast!(Weekday: as_str str);
 
 impl Deref for Weekday {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -109,6 +110,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<Weekday> for $ty {
+			#[inline]
 			fn from(src: Weekday) -> Self {
 				match src {
 					Weekday::Sunday => 1,
@@ -152,6 +154,25 @@ impl_int!(u16, u32, u64, usize);
 impl From<Utc2k> for Weekday {
 	#[inline]
 	fn from(src: Utc2k) -> Self { src.weekday() }
+}
+
+impl FromStr for Weekday {
+	type Err = Utc2kError;
+
+	#[inline]
+	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
+}
+
+impl IntoIterator for Weekday {
+	type Item = Self;
+	type IntoIter = RepeatingWeekdayIter;
+
+	#[inline]
+	/// # Repeating Iterator.
+	///
+	/// Return an iterator that will cycle endlessly through the weeks,
+	/// starting from this `Weekday`.
+	fn into_iter(self) -> Self::IntoIter { RepeatingWeekdayIter(self) }
 }
 
 impl Ord for Weekday {
@@ -203,29 +224,42 @@ impl SubAssign<u8> for Weekday {
 	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
+impl TryFrom<&[u8]> for Weekday {
+	type Error = Utc2kError;
+
+	#[inline]
+	/// # From Str.
+	///
+	/// Note: this is a lazy match, using only the first three characters.
+	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
+	}
+}
+
 impl TryFrom<&str> for Weekday {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
 impl TryFrom<String> for Weekday {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From Str.
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.trim().as_bytes())
-			.ok_or(Utc2kError::Invalid)
+		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -267,6 +301,22 @@ impl Weekday {
 			Self::Friday => *b"Fri",
 			Self::Saturday => *b"Sat",
 		}
+	}
+
+	#[must_use]
+	/// # All Weekdays.
+	///
+	/// Return an array containing all possible weekdays, in order.
+	pub const fn all() -> [Self; 7] {
+		[
+			Self::Sunday,
+			Self::Monday,
+			Self::Tuesday,
+			Self::Wednesday,
+			Self::Thursday,
+			Self::Friday,
+			Self::Saturday,
+		]
 	}
 
 	#[must_use]
@@ -459,20 +509,22 @@ impl Weekday {
 impl Weekday {
 	/// # From Abbreviation Bytes.
 	///
-	/// This matches the first three bytes, case-insensitively, against the
-	/// `Month` abbreviations.
-	pub(crate) fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		let src = src.get(..3)?;
-		match &[src[0].to_ascii_lowercase(), src[1].to_ascii_lowercase(), src[2].to_ascii_lowercase()] {
-			b"sun" => Some(Self::Sunday),
-			b"mon" => Some(Self::Monday),
-			b"tue" => Some(Self::Tuesday),
-			b"wed" => Some(Self::Wednesday),
-			b"thu" => Some(Self::Thursday),
-			b"fri" => Some(Self::Friday),
-			b"sat" => Some(Self::Saturday),
-			_ => None,
+	/// This matches the first three non-whitespace bytes, case-insensitively,
+	/// against the `Weekday` abbreviations.
+	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
+			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
+				[b's', b'u', b'n'] => Some(Self::Sunday),
+				[b'm', b'o', b'n'] => Some(Self::Monday),
+				[b't', b'u', b'e'] => Some(Self::Tuesday),
+				[b'w', b'e', b'd'] => Some(Self::Wednesday),
+				[b't', b'h', b'u'] => Some(Self::Thursday),
+				[b'f', b'r', b'i'] => Some(Self::Friday),
+				[b's', b'a', b't'] => Some(Self::Saturday),
+				_ => None,
+			}
 		}
+		else { None }
 	}
 
 	#[must_use]
@@ -497,19 +549,42 @@ impl Weekday {
 
 
 
+#[derive(Debug)]
+/// # Endless Weekdays!
+///
+/// This iterator yields an infinite number of `Weekday`s, in order, starting
+/// from any arbitrary day.
+pub struct RepeatingWeekdayIter(Weekday);
+
+impl Iterator for RepeatingWeekdayIter {
+	type Item = Weekday;
+
+	/// # Next Weekday.
+	fn next(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = match next {
+			Weekday::Sunday => Weekday::Monday,
+			Weekday::Monday => Weekday::Tuesday,
+			Weekday::Tuesday => Weekday::Wednesday,
+			Weekday::Wednesday => Weekday::Thursday,
+			Weekday::Thursday => Weekday::Friday,
+			Weekday::Friday => Weekday::Saturday,
+			Weekday::Saturday => Weekday::Sunday,
+		};
+		Some(next)
+	}
+
+	/// # Infinity.
+	///
+	/// This iterator never stops!
+	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+
+
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	const ALL_DAYS: &[Weekday] = &[
-		Weekday::Sunday,
-		Weekday::Monday,
-		Weekday::Tuesday,
-		Weekday::Wednesday,
-		Weekday::Thursday,
-		Weekday::Friday,
-		Weekday::Saturday,
-	];
 
 	#[test]
 	/// # Test First of Year.
@@ -528,8 +603,17 @@ mod tests {
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in ALL_DAYS {
+		for d in Weekday::all() {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
+		}
+	}
+
+	#[test]
+	fn t_into_iter() {
+		let mut last = Weekday::Saturday;
+		for next in Weekday::Sunday.into_iter().take(15) {
+			assert_eq!(next, last + 1_u8);
+			last = next;
 		}
 	}
 
@@ -555,17 +639,16 @@ mod tests {
 		let mut when = 0;
 		for days in many.as_slice().chunks_exact(7) {
 			when += 1;
-			assert_eq!(days, ALL_DAYS, "Round #{}", when);
+			assert_eq!(days, Weekday::all(), "Round #{}", when);
 		}
 	}
 
 	#[test]
 	/// # Test Some Math!
 	fn t_math() {
-		let days: Vec<Weekday> = std::iter::repeat(ALL_DAYS)
+		let days: Vec<Weekday> = std::iter::repeat(Weekday::all())
 			.take(6)
 			.flatten()
-			.copied()
 			.collect();
 
 		// Test additions and subtractions.
@@ -629,10 +712,11 @@ mod tests {
 	#[test]
 	/// # String Tests.
 	fn t_str() {
-		for &d in ALL_DAYS {
+		for d in Weekday::all() {
 			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
+			assert_eq!(Ok(d), d.abbreviation().parse());
 		}
 
 		assert!(Weekday::try_from("Hello").is_err());

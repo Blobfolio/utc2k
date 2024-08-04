@@ -2,6 +2,32 @@
 
 
 
+## [0.9.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.0) - 2024-08-03
+
+### New
+
+* `Month::all`
+* `Month::into_iter` (repeating month iterator)
+* Enable de/serialization for `Month` (with `serde` crate feature)
+* impl `FromStr` for `Month`
+* impl `TryFrom<&[u8]>` for `Month`
+* `Weekday::all`
+* `Weekday::into_iter` (repeating week iterator)
+* Enable de/serialization for `Weekday` (with `serde` crate feature)
+* impl `FromStr` for `Weekday`
+* impl `TryFrom<&[u8]>` for `Weekday`
+
+### Breaking
+
+* Bump MSRV to `1.80`
+
+### Changed
+
+* `Utc2k::unixtime` is now const
+* `Utc2k::abs_diff` is now const
+
+
+
 ## [0.8.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.1) - 2024-07-25
 
 ### Changed
