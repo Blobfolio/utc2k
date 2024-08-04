@@ -21,6 +21,11 @@
 
 * Bump MSRV to `1.80`
 
+### Changed
+
+* `Utc2k::unixtime` is now const
+* `Utc2k::abs_diff` is now const
+
 
 
 ## [0.8.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.1) - 2024-07-25
