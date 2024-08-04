@@ -45,12 +45,12 @@ pub(crate) const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
 /// Parse out the hours, minutes, and seconds from a byte slice like
 /// `HH:MM:SS`.
 pub(super) const fn hms(src: &[u8]) -> Result<(u8, u8, u8), Utc2kError> {
-	assert!(8 <= src.len());
-
-	if let Ok(hh) = parse2(src[0], src[1]) {
-		if let Ok(mm) = parse2(src[3], src[4]) {
-			if let Ok(ss) = parse2(src[6], src[7]) {
-				return Ok((hh, mm, ss));
+	if 8 <= src.len() {
+		if let Ok(hh) = parse2(src[0], src[1]) {
+			if let Ok(mm) = parse2(src[3], src[4]) {
+				if let Ok(ss) = parse2(src[6], src[7]) {
+					return Ok((hh, mm, ss));
+				}
 			}
 		}
 	}
@@ -75,9 +75,7 @@ pub(super) const fn parse2(a: u8, b: u8) -> Result<u8, Utc2kError> {
 ///
 /// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
 /// slice. Only the numeric ranges are parsed — separators can be whatever.
-pub(super) fn parts_from_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
-	assert!(10 <= src.len());
-
+pub(super) fn parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
@@ -98,9 +96,7 @@ pub(super) fn parts_from_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 ///
 /// This attempts to extract the year, month, and day from a `YYYYMMDD` byte
 /// slice.
-pub(super) fn parts_from_smooshed_date(src: &[u8]) -> Result<Utc2k, Utc2kError> {
-	assert!(8 <= src.len());
-
+pub(super) fn parts_from_smooshed_date(src: [u8; 8]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)
@@ -122,9 +118,7 @@ pub(super) fn parts_from_smooshed_date(src: &[u8]) -> Result<Utc2k, Utc2kError> 
 /// This attempts to extract the year, month, day, hour, minute and second from
 /// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
 /// separators can be whatever.
-pub(super) fn parts_from_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
-	assert!(19 <= src.len());
-
+pub(super) fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
 	let (src, time) = src.split_at(11);
 	let (hh, mm, ss) = hms(time)?;
 	let tmp = Abacus::new(
@@ -147,9 +141,7 @@ pub(super) fn parts_from_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
 ///
 /// This attempts to extract the year, month, day, hour, minute and second from
 /// a `YYYYMMDDHHMMSS` byte slice.
-pub(super) fn parts_from_smooshed_datetime(src: &[u8]) -> Result<Utc2k, Utc2kError> {
-	assert!(14 <= src.len());
-
+pub(super) fn parts_from_smooshed_datetime(src: &[u8; 14]) -> Result<Utc2k, Utc2kError> {
 	let tmp = Abacus::new(
 		src.iter()
 			.take(4)

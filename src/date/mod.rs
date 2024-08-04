@@ -887,10 +887,10 @@ impl TryFrom<&[u8]> for Utc2k {
 	/// assert!(Utc2k::try_from(&b"2021-06-applesauces"[..]).is_err());
 	/// ```
 	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-		if let Some(b) = bytes.get(..19) {
+		if let Some(b) = bytes.first_chunk::<19>() {
 			parse::parts_from_datetime(b)
 		}
-		else if let Some(b) = bytes.get(..10) {
+		else if let Some(b) = bytes.first_chunk::<10>() {
 			parse::parts_from_date(b)
 		}
 		else { Err(Utc2kError::Invalid) }
@@ -1092,7 +1092,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..19)
+		src.as_ref().first_chunk::<19>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_datetime)
 	}
@@ -1127,7 +1127,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_smooshed_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..14)
+		src.as_ref().first_chunk::<14>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_smooshed_datetime)
 	}
@@ -1170,7 +1170,7 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..10)
+		src.as_ref().first_chunk::<10>()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_date)
 	}
@@ -1206,7 +1206,8 @@ impl Utc2k {
 	/// sized, an error will be returned.
 	pub fn from_smooshed_date_str<B>(src: B) -> Result<Self, Utc2kError>
 	where B: AsRef<[u8]> {
-		src.as_ref().get(..8)
+		src.as_ref().first_chunk::<8>()
+			.copied()
 			.ok_or(Utc2kError::Invalid)
 			.and_then(parse::parts_from_smooshed_date)
 	}
@@ -1240,8 +1241,8 @@ impl Utc2k {
 	/// or out of range (hours must be < 24, minutes and seconds < 60).
 	pub fn parse_time_str<B>(src: B) -> Result<(u8, u8, u8), Utc2kError>
 	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().get(..8) {
-			let (hh, mm, ss) = parse::hms(b)?;
+		if let Some(b) = src.as_ref().first_chunk::<8>() {
+			let (hh, mm, ss) = parse::hms(b.as_slice())?;
 			if hh < 24 && mm < 60 && ss < 60 {
 				return Ok((hh, mm, ss));
 			}
