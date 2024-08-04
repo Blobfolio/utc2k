@@ -45,10 +45,9 @@ pub enum Weekday {
 
 impl Add<u8> for Weekday {
 	type Output = Self;
+
 	#[inline]
-	fn add(self, other: u8) -> Self {
-		Self::from(self as u8 + other % 7)
-	}
+	fn add(self, other: u8) -> Self { Self::from(self as u8 + other % 7) }
 }
 
 impl AddAssign<u8> for Weekday {
@@ -60,6 +59,7 @@ macros::as_ref_borrow_cast!(Weekday: as_str str);
 
 impl Deref for Weekday {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -110,6 +110,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<Weekday> for $ty {
+			#[inline]
 			fn from(src: Weekday) -> Self {
 				match src {
 					Weekday::Sunday => 1,
@@ -157,6 +158,8 @@ impl From<Utc2k> for Weekday {
 
 impl FromStr for Weekday {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 

@@ -46,6 +46,7 @@ pub enum Month {
 
 impl Add<u8> for Month {
 	type Output = Self;
+
 	#[inline]
 	fn add(self, other: u8) -> Self {
 		Self::from(self as u8 + other % 12)
@@ -61,6 +62,7 @@ macros::as_ref_borrow_cast!(Month: as_str str);
 
 impl Deref for Month {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -68,6 +70,7 @@ impl Deref for Month {
 macros::display_str!(as_str Month);
 
 impl From<u8> for Month {
+	#[inline]
 	fn from(src: u8) -> Self { Self::from_u8(src) }
 }
 
@@ -100,6 +103,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<Month> for $ty {
+			#[inline]
 			fn from(src: Month) -> Self {
 				match src {
 					Month::January => 1,
@@ -152,6 +156,8 @@ impl From<Utc2k> for Month {
 
 impl FromStr for Month {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 

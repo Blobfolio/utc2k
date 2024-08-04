@@ -112,6 +112,7 @@ macro_rules! try_from_unixtime {
 pub struct FmtUtc2k([u8; 19]);
 
 impl AsRef<[u8]> for FmtUtc2k {
+	#[inline]
 	fn as_ref(&self) -> &[u8] { self.as_bytes() }
 }
 
@@ -124,6 +125,7 @@ impl Default for FmtUtc2k {
 
 impl Deref for FmtUtc2k {
 	type Target = str;
+
 	#[inline]
 	fn deref(&self) -> &Self::Target { self.as_str() }
 }
@@ -150,6 +152,8 @@ impl From<Utc2k> for FmtUtc2k {
 
 impl FromStr for FmtUtc2k {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
@@ -651,6 +655,7 @@ pub struct Utc2k {
 
 impl Add<u32> for Utc2k {
 	type Output = Self;
+
 	#[inline]
 	fn add(self, other: u32) -> Self { Self::from(Abacus::from(self) + other) }
 }
@@ -700,6 +705,7 @@ impl From<u32> for Utc2k {
 }
 
 impl From<Abacus> for Utc2k {
+	#[inline]
 	fn from(src: Abacus) -> Self {
 		let (y, m, d, hh, mm, ss) = src.parts();
 		Self { y, m, d, hh, mm, ss }
@@ -726,6 +732,8 @@ impl From<FmtUtc2k> for Utc2k {
 
 impl FromStr for Utc2k {
 	type Err = Utc2kError;
+
+	#[inline]
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
@@ -842,6 +850,7 @@ try_from_unixtime!(i32, u64, i64, usize, isize);
 impl TryFrom<&OsStr> for Utc2k {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # From `OsStr`.
 	///
 	/// ```
@@ -900,6 +909,7 @@ impl TryFrom<&[u8]> for Utc2k {
 impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
+	#[inline]
 	/// # Parse String.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
