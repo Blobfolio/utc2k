@@ -148,6 +148,12 @@ impl<'de> Deserialize<'de> for Month {
 			where S: de::Error {
 				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
 			}
+
+			#[inline]
+			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
+			where S: serde::de::Error {
+				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
+			}
 		}
 
 		deserializer.deserialize_str(Visitor)
@@ -186,6 +192,12 @@ impl<'de> Deserialize<'de> for Weekday {
 			#[inline]
 			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
 			where S: de::Error {
+				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
+			}
+
+			#[inline]
+			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
+			where S: serde::de::Error {
 				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
 			}
 		}
