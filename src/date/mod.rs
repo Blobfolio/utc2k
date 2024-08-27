@@ -2,8 +2,6 @@
 # UTC2K
 */
 
-#![allow(clippy::shadow_unrelated)]
-
 pub(super) mod parse;
 
 use crate::{
@@ -276,7 +274,7 @@ impl FmtUtc2k {
 		Self::from(crate::LocalOffset::now())
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[allow(clippy::cast_possible_truncation)] // False positive.
 	/// # Set Date/Time.
 	///
 	/// This can be used to recycle an existing buffer.
@@ -387,7 +385,7 @@ impl FmtUtc2k {
 	/// ```
 	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[inline]
 	#[must_use]
 	/// # As Str.
@@ -410,7 +408,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -427,12 +425,12 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
 	pub fn date(&self) -> &str {
-		// Safety: datetimes are valid ASCII.
 		debug_assert!(self.0[..10].is_ascii(), "Bug: Date is not ASCII.");
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -449,12 +447,12 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
 	pub fn year(&self) -> &str {
-		// Safety: datetimes are valid ASCII.
 		debug_assert!(self.0.iter().take(4).all(u8::is_ascii_digit), "Bug: Year is not numeric.");
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
@@ -471,8 +469,8 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
 	pub fn time(&self) -> &str {
-		// Safety: datetimes are valid ASCII.
 		debug_assert!(self.0[11..].is_ascii(), "Bug: Time is not ASCII.");
+		// Safety: datetimes are valid ASCII.
 		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
 	}
 }
@@ -558,7 +556,7 @@ impl FmtUtc2k {
 		Utc2k::from_rfc2822(src).map(Self::from)
 	}
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -600,8 +598,8 @@ impl FmtUtc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// Safety: datetimes are valid ASCII.
 		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 }
@@ -645,11 +643,22 @@ impl FmtUtc2k {
 /// assert!(Utc2k::try_from("January 1, 2010").is_err()); // Nope!
 /// ```
 pub struct Utc2k {
+	/// # Year.
 	y: u8,
+
+	/// # Month.
 	m: u8,
+
+	/// # Day.
 	d: u8,
+
+	/// # Hour.
 	hh: u8,
+
+	/// # Minute.
 	mm: u8,
+
+	/// # Second.
 	ss: u8,
 }
 
@@ -771,7 +780,7 @@ impl PartialOrd for Utc2k {
 impl Sub<u32> for Utc2k {
 	type Output = Self;
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[allow(clippy::cast_possible_truncation)] // False positive.
 	/// # Subtraction.
 	///
 	/// This method returns a new `Utc2k` object reduced by a given number of
@@ -875,7 +884,7 @@ impl TryFrom<&OsStr> for Utc2k {
 impl TryFrom<&[u8]> for Utc2k {
 	type Error = Utc2kError;
 
-	#[allow(clippy::option_if_let_else)] // No.
+	#[allow(clippy::option_if_let_else)] // Too messy.
 	/// # Parse Slice.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -1460,7 +1469,7 @@ impl Utc2k {
 	/// assert!(! date.leap_year());
 	/// ```
 	pub const fn leap_year(self) -> bool {
-		// Leap years this century.
+		/// # This Century's Leap Years.
 		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
 		LEAP_YEARS[self.y as usize]
 	}
@@ -1647,7 +1656,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
 
-	#[allow(unsafe_code)]
+	#[allow(unsafe_code)] // Content is ASCII.
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -1693,8 +1702,8 @@ impl Utc2k {
 			b' ', b'+', b'0', b'0', b'0', b'0'
 		];
 
-		// Safety: datetimes are valid ASCII.
 		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
+		// Safety: datetimes are valid ASCII.
 		unsafe { String::from_utf8_unchecked(out) }
 	}
 
@@ -1795,10 +1804,10 @@ impl Utc2k {
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
 	pub const fn unixtime(self) -> u32 {
-		// Seconds from the new year up to the start of the month.
+		/// # Seconds from the new year up to the start of the month.
 		const MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
 
-		// Seconds *before* the new year.
+		/// # Seconds *before* the new year.
 		const YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
 
 		// Add up everything as it would be in a non-leap year.

@@ -14,7 +14,7 @@ use crate::{
 
 
 
-#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::cast_possible_truncation)] // False positive.
 /// # Parse Date From Seconds.
 ///
 /// This parses the date portion of a date/time timestamp using the same
@@ -176,7 +176,7 @@ pub(super) fn rfc2822_day(src: &[u8]) -> Option<Utc2k> {
 	None
 }
 
-#[allow(clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::cast_possible_truncation)] // False positive.
 /// # Parse Time From Seconds.
 ///
 /// This parses the time portion of a date/time timestamp. It works the same

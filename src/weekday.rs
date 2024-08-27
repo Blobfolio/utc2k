@@ -21,7 +21,7 @@ use std::{
 
 
 
-#[allow(missing_docs)]
+#[allow(missing_docs)] // Self-explanatory.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Weekday.
@@ -86,6 +86,7 @@ impl From<Weekday> for u8 {
 	fn from(src: Weekday) -> Self { src as Self }
 }
 
+/// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
 	($($ty:ty),+) => ($(
 		impl Add<$ty> for Weekday {
@@ -102,7 +103,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Weekday {
-			#[allow(clippy::cast_possible_truncation)]
+			#[allow(clippy::cast_possible_truncation)] // False positive.
 			fn from(src: $ty) -> Self {
 				if src <= 7 { Self::from(src as u8) }
 				else { Self::from((src % 7) as u8) }
@@ -127,7 +128,6 @@ macro_rules! impl_int {
 		impl Sub<$ty> for Weekday {
 			type Output = Self;
 
-			#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 7;
@@ -204,7 +204,6 @@ impl PartialOrd for Weekday {
 impl Sub<u8> for Weekday {
 	type Output = Self;
 
-	#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
 	fn sub(self, other: u8) -> Self {
 		let mut lhs = self as u8;
 		let mut rhs = other % 7;
@@ -595,7 +594,7 @@ mod tests {
 			assert_eq!(
 				Weekday::year_begins_on((y - 2000) as u8).as_ref(),
 				c.weekday().to_string(),
-				"Failed with year {}", y
+				"Failed with year {y}"
 			);
 		}
 	}
@@ -632,14 +631,14 @@ mod tests {
 
 		assert_eq!(Weekday::from(0_u64), Weekday::Saturday);
 
-		let many: Vec<Weekday> = (1..=35_u32).into_iter()
+		let many: Vec<Weekday> = (1..=35_u32)
 			.map(Weekday::from)
 			.collect();
 
 		let mut when = 0;
 		for days in many.as_slice().chunks_exact(7) {
 			when += 1;
-			assert_eq!(days, Weekday::all(), "Round #{}", when);
+			assert_eq!(days, Weekday::all(), "Round #{when}");
 		}
 	}
 

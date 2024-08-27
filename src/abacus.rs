@@ -31,11 +31,22 @@ use std::ops::{
 /// as a top-level function or something instead, but this approach appears to
 /// be faster.
 pub(super) struct Abacus {
+	/// # Year.
 	y: u32,
+
+	/// # Month.
 	m: u32,
+
+	/// # Day.
 	d: u32,
+
+	/// # Hour.
 	hh: u32,
+
+	/// # Minute.
 	mm: u32,
+
+	/// # Second.
 	ss: u32,
 }
 
@@ -87,7 +98,7 @@ impl Abacus {
 		out
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // It fits.
+	#[allow(clippy::cast_possible_truncation)] // False positive.
 	#[must_use]
 	/// # Parts.
 	///
