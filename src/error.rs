@@ -5,7 +5,9 @@
 use crate::macros;
 use std::error::Error;
 
-#[allow(missing_docs)]
+
+
+#[allow(missing_docs)] // Self-explanatory.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// # Errors.
 pub enum Utc2kError {

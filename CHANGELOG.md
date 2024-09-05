@@ -2,6 +2,16 @@
 
 
 
+## [0.9.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.1) - 2024-09-05
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+* Add `visit_bytes` to `Month`/`Weekday` deserializers
+* Bump `brunch` to `0.6`
+
+
+
 ## [0.9.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.0) - 2024-08-03
 
 ### New

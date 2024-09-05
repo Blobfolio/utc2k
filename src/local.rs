@@ -85,7 +85,10 @@ use tz::timezone::{
 /// let utc = Utc2k::from(-offset);
 /// ```
 pub struct LocalOffset {
+	/// # Unixtime (Seconds).
 	unixtime: u32,
+
+	/// # Offset (Seconds).
 	offset: i32,
 }
 

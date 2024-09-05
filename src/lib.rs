@@ -86,32 +86,56 @@ let s: &str = fmt.borrow();
 * `serde`: Enables serialization/deserialization support.
 */
 
-#![deny(unsafe_code)]
-
-#![warn(clippy::filetype_is_file)]
-#![warn(clippy::integer_division)]
-#![warn(clippy::needless_borrow)]
-#![warn(clippy::nursery)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::perf)]
-#![warn(clippy::suboptimal_flops)]
-#![warn(clippy::unneeded_field_pattern)]
-#![warn(macro_use_extern_crate)]
-#![warn(missing_copy_implementations)]
-#![warn(missing_debug_implementations)]
-#![warn(missing_docs)]
-#![warn(non_ascii_idents)]
-#![warn(trivial_casts)]
-#![warn(trivial_numeric_casts)]
-#![warn(unreachable_pub)]
-#![warn(unused_crate_dependencies)]
-#![warn(unused_extern_crates)]
-#![warn(unused_import_braces)]
-
-#![allow(
-	clippy::module_name_repetitions,
-	clippy::redundant_pub_crate,
+#![deny(
+	// TODO: clippy::allow_attributes_without_reason,
+	clippy::correctness,
+	unreachable_pub,
+	unsafe_code,
 )]
+
+#![warn(
+	clippy::complexity,
+	clippy::nursery,
+	clippy::pedantic,
+	clippy::perf,
+	clippy::style,
+
+	// TODO: clippy::allow_attributes,
+	clippy::clone_on_ref_ptr,
+	clippy::create_dir,
+	clippy::filetype_is_file,
+	clippy::format_push_string,
+	clippy::get_unwrap,
+	clippy::impl_trait_in_params,
+	clippy::lossy_float_literal,
+	clippy::missing_assert_message,
+	clippy::missing_docs_in_private_items,
+	clippy::needless_raw_strings,
+	clippy::panic_in_result_fn,
+	clippy::pub_without_shorthand,
+	clippy::rest_pat_in_fully_bound_structs,
+	clippy::semicolon_inside_block,
+	clippy::str_to_string,
+	clippy::string_to_string,
+	clippy::todo,
+	clippy::undocumented_unsafe_blocks,
+	clippy::unneeded_field_pattern,
+	clippy::unseparated_literal_suffix,
+	clippy::unwrap_in_result,
+
+	macro_use_extern_crate,
+	missing_copy_implementations,
+	missing_docs,
+	non_ascii_idents,
+	trivial_casts,
+	trivial_numeric_casts,
+	unused_crate_dependencies,
+	unused_extern_crates,
+	unused_import_braces,
+)]
+
+#![allow(clippy::module_name_repetitions)] // Repetition is preferred.
+#![allow(clippy::redundant_pub_crate)]     // Unresolvable.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
@@ -170,7 +194,8 @@ pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
 
 
 
-#[allow(clippy::cast_lossless, clippy::cast_possible_truncation)] // It fits.
+#[allow(clippy::cast_lossless)]            // False positive.
+#[allow(clippy::cast_possible_truncation)] // False positive.
 #[must_use]
 /// # Now (Current Unixtime).
 ///

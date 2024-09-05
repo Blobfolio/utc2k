@@ -48,8 +48,10 @@ impl<'de> Deserialize<'de> for Utc2k {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: de::Deserializer<'de> {
+		/// # Visitor Instance.
 		struct Visitor;
 
+		/// # Helper: Errors for Unsupported Formats.
 		macro_rules! invalid {
 			($fn:ident, $ty:ty) => (
 				fn $fn<S>(self, _src: $ty) -> Result<Self::Value, S>
@@ -134,6 +136,7 @@ impl<'de> Deserialize<'de> for Month {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: de::Deserializer<'de> {
+		/// # Visitor Instance.
 		struct Visitor;
 
 		impl<'de> de::Visitor<'de> for Visitor {
@@ -146,6 +149,12 @@ impl<'de> Deserialize<'de> for Month {
 			#[inline]
 			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
 			where S: de::Error {
+				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
+			}
+
+			#[inline]
+			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
+			where S: serde::de::Error {
 				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
 			}
 		}
@@ -174,6 +183,7 @@ impl<'de> Deserialize<'de> for Weekday {
 	/// Use the optional `serde` crate feature to enable serialization support.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: de::Deserializer<'de> {
+		/// # Visitor Instance.
 		struct Visitor;
 
 		impl<'de> de::Visitor<'de> for Visitor {
@@ -186,6 +196,12 @@ impl<'de> Deserialize<'de> for Weekday {
 			#[inline]
 			fn visit_str<S>(self, src: &str) -> Result<Self::Value, S>
 			where S: de::Error {
+				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
+			}
+
+			#[inline]
+			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
+			where S: serde::de::Error {
 				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
 			}
 		}

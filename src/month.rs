@@ -21,7 +21,7 @@ use std::{
 
 
 
-#[allow(missing_docs)]
+#[allow(missing_docs)] // Self-explanatory.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Month.
@@ -79,6 +79,7 @@ impl From<Month> for u8 {
 	fn from(src: Month) -> Self { src as Self }
 }
 
+/// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
 	($($ty:ty),+) => ($(
 		impl Add<$ty> for Month {
@@ -95,7 +96,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Month {
-			#[allow(clippy::cast_possible_truncation)]
+			#[allow(clippy::cast_possible_truncation)] // False positive.
 			fn from(src: $ty) -> Self {
 				if src <= 12 { Self::from_u8(src as u8) }
 				else { Self::from_u8((src % 12) as u8) }
@@ -125,7 +126,6 @@ macro_rules! impl_int {
 		impl Sub<$ty> for Month {
 			type Output = Self;
 
-			#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 12;
@@ -202,7 +202,6 @@ impl PartialOrd for Month {
 impl Sub<u8> for Month {
 	type Output = Self;
 
-	#[allow(clippy::semicolon_if_nothing_returned)] // We are returning?
 	fn sub(self, other: u8) -> Self {
 		let mut lhs = self as u8;
 		let mut rhs = other % 12;
@@ -525,14 +524,14 @@ mod tests {
 
 		assert_eq!(Month::from(0_u64), Month::December);
 
-		let many: Vec<Month> = (1..=60_u32).into_iter()
+		let many: Vec<Month> = (1..=60_u32)
 			.map(Month::from)
 			.collect();
 
 		let mut when = 0;
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
-			assert_eq!(months, Month::all(), "Round #{}", when);
+			assert_eq!(months, Month::all(), "Round #{when}");
 		}
 	}
 
