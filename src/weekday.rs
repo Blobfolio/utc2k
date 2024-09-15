@@ -21,7 +21,6 @@ use std::{
 
 
 
-#[allow(missing_docs)] // Self-explanatory.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Weekday.
@@ -34,12 +33,25 @@ use std::{
 /// Otherwise this is only really used by [`Utc2k::weekday`].
 pub enum Weekday {
 	#[default]
+	/// # Sunday.
 	Sunday = 1_u8,
+
+	/// # Monday.
 	Monday,
+
+	/// # Tuesday.
 	Tuesday,
+
+	/// # Wednesday.
 	Wednesday,
+
+	/// # Thursday.
 	Thursday,
+
+	/// # Friday.
 	Friday,
+
+	/// # Saturday.
 	Saturday,
 }
 
@@ -103,7 +115,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Weekday {
-			#[allow(clippy::cast_possible_truncation)] // False positive.
+			#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 			fn from(src: $ty) -> Self {
 				if src <= 7 { Self::from(src as u8) }
 				else { Self::from((src % 7) as u8) }
