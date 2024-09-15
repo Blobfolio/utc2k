@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.9.1"
+version = "0.10.0"
 authors = ["Blobfolio, LLC. <hello@blobfolio.com>"]
 edition = "2021"
 rust-version = "1.81"
@@ -54,7 +54,7 @@ default = []
 
 # This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
 # and FmtUtc2k into holding a local datetime rather than a UTC one. This only
-# works on unix, but won't break non-unix builds.
+# works on unix, but shouldn't outright break non-unix builds.
 local = [ "tz-rs" ]
 
 # This enables (de)/serialize support for Utc2k and FmtUtc2k.
