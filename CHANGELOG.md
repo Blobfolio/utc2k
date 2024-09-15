@@ -2,6 +2,15 @@
 
 
 
+## [0.10.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.10.0) - TBD
+
+### Changed
+
+* Bump `tz-rs` to `0.7`
+* Bump MSRV to `1.81`
+
+
+
 ## [0.9.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.1) - 2024-09-05
 
 ### Changed
