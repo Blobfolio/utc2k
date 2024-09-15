@@ -7,12 +7,16 @@ use std::error::Error;
 
 
 
-#[allow(missing_docs)] // Self-explanatory.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// # Errors.
 pub enum Utc2kError {
+	/// # Invalid date/time format.
 	Invalid,
+
+	/// # Value is too big/late.
 	Overflow,
+
+	/// # Value is too small/early.
 	Underflow,
 }
 

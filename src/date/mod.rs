@@ -274,7 +274,7 @@ impl FmtUtc2k {
 		Self::from(crate::LocalOffset::now())
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // False positive.
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Set Date/Time.
 	///
 	/// This can be used to recycle an existing buffer.
@@ -385,7 +385,7 @@ impl FmtUtc2k {
 	/// ```
 	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # As Str.
@@ -408,7 +408,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0) }
 	}
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -430,7 +430,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
 	}
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -452,7 +452,7 @@ impl FmtUtc2k {
 		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
 	}
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
@@ -556,7 +556,7 @@ impl FmtUtc2k {
 		Utc2k::from_rfc2822(src).map(Self::from)
 	}
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -780,7 +780,7 @@ impl PartialOrd for Utc2k {
 impl Sub<u32> for Utc2k {
 	type Output = Self;
 
-	#[allow(clippy::cast_possible_truncation)] // False positive.
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Subtraction.
 	///
 	/// This method returns a new `Utc2k` object reduced by a given number of
@@ -884,7 +884,7 @@ impl TryFrom<&OsStr> for Utc2k {
 impl TryFrom<&[u8]> for Utc2k {
 	type Error = Utc2kError;
 
-	#[allow(clippy::option_if_let_else)] // Too messy.
+	#[expect(clippy::option_if_let_else, reason = "Too messy.")]
 	/// # Parse Slice.
 	///
 	/// This will attempt to construct a [`Utc2k`] from a date/time or date
@@ -1656,7 +1656,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
 
-	#[allow(unsafe_code)] // Content is ASCII.
+	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[must_use]
 	/// # To RFC2822.
 	///

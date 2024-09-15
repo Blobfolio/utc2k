@@ -21,7 +21,6 @@ use std::{
 
 
 
-#[allow(missing_docs)] // Self-explanatory.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Month.
@@ -30,17 +29,40 @@ use std::{
 /// printing month names or abbreviations.
 pub enum Month {
 	#[default]
+	/// # January.
 	January = 1_u8,
+
+	/// # February.
 	February,
+
+	/// # March.
 	March,
+
+	/// # April.
 	April,
+
+	/// # May.
 	May,
+
+	/// # June.
 	June,
+
+	/// # July.
 	July,
+
+	/// # August.
 	August,
+
+	/// # September.
 	September,
+
+	/// # October.
 	October,
+
+	/// # November.
 	November,
+
+	/// # December.
 	December,
 }
 
@@ -96,7 +118,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Month {
-			#[allow(clippy::cast_possible_truncation)] // False positive.
+			#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 			fn from(src: $ty) -> Self {
 				if src <= 12 { Self::from_u8(src as u8) }
 				else { Self::from_u8((src % 12) as u8) }

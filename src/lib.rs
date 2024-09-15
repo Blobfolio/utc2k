@@ -87,7 +87,7 @@ let s: &str = fmt.borrow();
 */
 
 #![deny(
-	// TODO: clippy::allow_attributes_without_reason,
+	clippy::allow_attributes_without_reason,
 	clippy::correctness,
 	unreachable_pub,
 	unsafe_code,
@@ -100,7 +100,7 @@ let s: &str = fmt.borrow();
 	clippy::perf,
 	clippy::style,
 
-	// TODO: clippy::allow_attributes,
+	clippy::allow_attributes,
 	clippy::clone_on_ref_ptr,
 	clippy::create_dir,
 	clippy::filetype_is_file,
@@ -134,8 +134,8 @@ let s: &str = fmt.borrow();
 	unused_import_braces,
 )]
 
-#![allow(clippy::module_name_repetitions)] // Repetition is preferred.
-#![allow(clippy::redundant_pub_crate)]     // Unresolvable.
+#![expect(clippy::module_name_repetitions, reason = "Repetition is preferred.")]
+#![expect(clippy::redundant_pub_crate, reason = "Unresolvable.")]
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
@@ -194,8 +194,11 @@ pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
 
 
 
-#[allow(clippy::cast_lossless)]            // False positive.
-#[allow(clippy::cast_possible_truncation)] // False positive.
+#[expect(
+	clippy::cast_lossless,
+	clippy::cast_possible_truncation,
+	reason = "False positive.",
+)]
 #[must_use]
 /// # Now (Current Unixtime).
 ///

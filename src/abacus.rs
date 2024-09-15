@@ -98,7 +98,7 @@ impl Abacus {
 		out
 	}
 
-	#[allow(clippy::cast_possible_truncation)] // False positive.
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	#[must_use]
 	/// # Parts.
 	///
