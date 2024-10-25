@@ -101,7 +101,7 @@ impl<'de> Deserialize<'de> for Utc2k {
 			where S: de::Error {
 				// Return the max value on failure because it's too big,
 				// otherwise parse as normal.
-				Ok(u32::try_from(src).map_or_else(|_| Utc2k::max(), Utc2k::from))
+				Ok(u32::try_from(src).map_or_else(|_| Utc2k::MAX, Utc2k::from))
 			}
 
 			// Too small to hold an in-range value.

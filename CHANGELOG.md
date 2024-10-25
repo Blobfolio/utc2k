@@ -4,10 +4,24 @@
 
 ## [0.11.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.0) - TBD
 
+### New
+
+* `FmtUtc2k::MIN`
+* `FmtUtc2k::MAX`
+* `Utc2k::MIN`
+* `Utc2k::MAX`
+
 ### Changed
 
 * Make `Utc2k::cmp_date` const
 * Make `Utc2k::cmp_time` const
+
+### Replaced
+
+* `FmtUtc2k::min` (use `FmtUtc2k::MIN` instead)
+* `FmtUtc2k::max` (use `FmtUtc2k::MAX` instead)
+* `Utc2k::min` (use `Utc2k::MIN` instead)
+* `Utc2k::max` (use `Utc2k::MAX` instead)
 
 
 
