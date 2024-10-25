@@ -213,9 +213,23 @@ impl TryFrom<&str> for FmtUtc2k {
 /// ## Min/Max.
 impl FmtUtc2k {
 	/// # Minimum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::FmtUtc2k::MIN.as_str(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// ```
 	pub const MIN: Self = Self(*b"2000-01-01 00:00:00");
 
 	/// # Maximum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::FmtUtc2k::MAX.as_str(),
+	///     "2099-12-31 23:59:59",
+	/// );
+	/// ```
 	pub const MAX: Self = Self(*b"2099-12-31 23:59:59");
 }
 
@@ -925,16 +939,50 @@ impl TryFrom<&str> for Utc2k {
 
 /// ## Min/Max.
 impl Utc2k {
-	/// # Minimum Value.
+	/// # Minimum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::Utc2k::MIN.to_string(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// ```
 	pub const MIN: Self = Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 };
 
-	/// # Maximum Value.
+	/// # Maximum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::Utc2k::MAX.to_string(),
+	///     "2099-12-31 23:59:59",
+	/// );
+	/// ```
 	pub const MAX: Self = Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
 
-	/// # Minimum Timestamp.
+	/// # Minimum Unix Timestamp.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::MIN_UNIXTIME, 946_684_800);
+	/// assert_eq!(
+	///     Utc2k::MIN.unixtime(),
+	///     Utc2k::MIN_UNIXTIME,
+	/// );
+	/// ```
 	pub const MIN_UNIXTIME: u32 = 946_684_800;
 
-	/// # Maximum Timestamp.
+	/// # Maximum Unix Timestamp.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::MAX_UNIXTIME, 4_102_444_799);
+	/// assert_eq!(
+	///     Utc2k::MAX.unixtime(),
+	///     Utc2k::MAX_UNIXTIME,
+	/// );
+	/// ```
 	pub const MAX_UNIXTIME: u32 = 4_102_444_799;
 }
 
