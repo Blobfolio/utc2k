@@ -11,6 +11,10 @@
 * `Utc2k::MIN`
 * `Utc2k::MAX`
 
+### Fixed
+
+* Clamp `utc2k::unixtime` to supported min/max range in case the system clock is the right kind of wrong
+
 ### Changed
 
 * Make `Utc2k::cmp_date` const
