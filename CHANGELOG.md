@@ -2,6 +2,15 @@
 
 
 
+## [0.11.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.0) - TBD
+
+### Changed
+
+* Make `Utc2k::cmp_date` const
+* Make `Utc2k::cmp_time` const
+
+
+
 ## [0.10.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.10.0) - 2024-09-14
 
 ### Changed

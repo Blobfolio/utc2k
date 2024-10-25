@@ -1978,14 +1978,18 @@ impl Utc2k {
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
 	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
 	/// ```
-	pub fn cmp_date(self, other: Self) -> Ordering {
-		match self.y.cmp(&other.y) {
-			Ordering::Equal => match self.m.cmp(&other.m) {
-				Ordering::Equal => self.d.cmp(&other.d),
-				cmp => cmp,
-			},
-			cmp => cmp,
+	pub const fn cmp_date(self, other: Self) -> Ordering {
+		if self.y == other.y {
+			if self.m == other.m {
+				if self.d == other.d { Ordering::Equal }
+				else if self.d < other.d { Ordering::Less }
+				else { Ordering::Greater }
+			}
+			else if self.m < other.m { Ordering::Less }
+			else { Ordering::Greater }
 		}
+		else if self.y < other.y { Ordering::Less }
+		else { Ordering::Greater }
 	}
 
 	#[must_use]
@@ -2009,14 +2013,18 @@ impl Utc2k {
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
 	/// assert_eq!(date1.cmp_time(date3), Ordering::Equal);
 	/// ```
-	pub fn cmp_time(self, other: Self) -> Ordering {
-		match self.hh.cmp(&other.hh) {
-			Ordering::Equal => match self.mm.cmp(&other.mm) {
-				Ordering::Equal => self.ss.cmp(&other.ss),
-				cmp => cmp,
-			},
-			cmp => cmp,
+	pub const fn cmp_time(self, other: Self) -> Ordering {
+		if self.hh == other.hh {
+			if self.mm == other.mm {
+				if self.ss == other.ss { Ordering::Equal }
+				else if self.ss < other.ss { Ordering::Less }
+				else { Ordering::Greater }
+			}
+			else if self.mm < other.mm { Ordering::Less }
+			else { Ordering::Greater }
 		}
+		else if self.hh < other.hh { Ordering::Less }
+		else { Ordering::Greater }
 	}
 }
 
@@ -2198,5 +2206,95 @@ mod tests {
 		// Now they should match.
 		assert_eq!(expected, shuffled);
 		assert_eq!(f_expected, f_shuffled);
+	}
+
+	#[test]
+	/// # Test Manual cmp_date and cmp_time.
+	fn cmp_date() {
+		let set = vec![
+			Utc2k::new(2024, 1, 1, 0, 0, 0),
+			Utc2k::new(2024, 1, 2, 0, 0, 0),
+			Utc2k::new(2024, 2, 1, 0, 0, 0),
+			Utc2k::new(2024, 2, 2, 0, 0, 0),
+			Utc2k::new(2025, 1, 1, 0, 0, 0),
+			Utc2k::new(2025, 1, 2, 0, 0, 0),
+			Utc2k::new(2025, 2, 1, 0, 0, 0),
+			Utc2k::new(2025, 2, 2, 0, 0, 0),
+		];
+
+		let mut sorted = set.clone();
+		sorted.sort();
+		sorted.dedup();
+		assert_eq!(set, sorted); // Double-check our manual sorting.
+
+		for pair in set.windows(2) {
+			let &[a, b] = pair else { panic!("Windows is broken?!"); };
+
+			// Each should be equal to itself.
+			assert!(a.cmp_date(a).is_eq());
+			assert!(b.cmp_date(b).is_eq());
+
+			// And times shouldn't matter.
+			assert!(a.cmp_date(a.with_time(1, 2, 3)).is_eq());
+			assert!(b.cmp_date(b.with_time(3, 2, 1)).is_eq());
+			assert!(a.with_time(1, 2, 3).cmp_date(a).is_eq());
+			assert!(b.with_time(3, 2, 1).cmp_date(b).is_eq());
+
+			// A < B, B > A.
+			assert!(a.cmp_date(b).is_lt());
+			assert!(b.cmp_date(a).is_gt());
+
+			// Again, times shouldn't matter.
+			assert!(a.cmp_date(b.with_time(5, 6, 7)).is_lt());
+			assert!(b.cmp_date(a.with_time(8, 9, 3)).is_gt());
+			assert!(a.with_time(5, 6, 7).cmp_date(b).is_lt());
+			assert!(b.with_time(8, 9, 3).cmp_date(a).is_gt());
+		}
+	}
+
+	#[test]
+	/// # Test Manual cmp_time.
+	fn cmp_time() {
+		let set = vec![
+			Utc2k::new(2027, 6, 5, 0, 0, 0),
+			Utc2k::new(2027, 6, 5, 0, 0, 1),
+			Utc2k::new(2027, 6, 5, 0, 1, 0),
+			Utc2k::new(2027, 6, 5, 0, 1, 1),
+			Utc2k::new(2027, 6, 5, 1, 0, 0),
+			Utc2k::new(2027, 6, 5, 1, 0, 1),
+			Utc2k::new(2027, 6, 5, 1, 1, 0),
+			Utc2k::new(2027, 6, 5, 1, 1, 1),
+		];
+
+		let mut sorted = set.clone();
+		sorted.sort();
+		sorted.dedup();
+		assert_eq!(set, sorted); // Double-check our manual sorting.
+
+		for pair in set.windows(2) {
+			let &[a, b] = pair else { panic!("Windows is broken?!"); };
+
+			// Each should be equal to itself.
+			assert!(a.cmp_time(a).is_eq());
+			assert!(b.cmp_time(b).is_eq());
+
+			// The date shouldn't matter.
+			let c = a + crate::YEAR_IN_SECONDS;
+			assert!(a.cmp_time(c).is_eq());
+			assert!(c.cmp_time(a).is_eq());
+			let d = b + crate::YEAR_IN_SECONDS;
+			assert!(b.cmp_time(d).is_eq());
+			assert!(d.cmp_time(b).is_eq());
+
+			// A < B, B > A.
+			assert!(a.cmp_time(b).is_lt());
+			assert!(b.cmp_time(a).is_gt());
+
+			// Again, the date shouldn't matter.
+			assert!(a.cmp_time(d).is_lt());
+			assert!(b.cmp_time(c).is_gt());
+			assert!(c.cmp_time(b).is_lt());
+			assert!(d.cmp_time(a).is_gt());
+		}
 	}
 }
