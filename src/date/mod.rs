@@ -118,7 +118,7 @@ macros::as_ref_borrow_cast!(FmtUtc2k: as_str str);
 
 impl Default for FmtUtc2k {
 	#[inline]
-	fn default() -> Self { Self::min() }
+	fn default() -> Self { Self::MIN }
 }
 
 impl Deref for FmtUtc2k {
@@ -213,42 +213,24 @@ impl TryFrom<&str> for FmtUtc2k {
 /// ## Min/Max.
 impl FmtUtc2k {
 	/// # Minimum Date/Time.
-	pub(crate) const MIN: [u8; 19] = *b"2000-01-01 00:00:00";
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::FmtUtc2k::MIN.as_str(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// ```
+	pub const MIN: Self = Self(*b"2000-01-01 00:00:00");
 
 	/// # Maximum Date/Time.
-	pub(crate) const MAX: [u8; 19] = *b"2099-12-31 23:59:59";
-
-	#[inline]
-	#[must_use]
-	/// # Minimum Value.
-	///
-	/// This is equivalent to `2000-01-01 00:00:00`.
-	///
-	/// ## Examples
 	///
 	/// ```
-	/// use utc2k::FmtUtc2k;
-	///
-	/// let date = FmtUtc2k::min();
-	/// assert_eq!(date.as_str(), "2000-01-01 00:00:00");
+	/// assert_eq!(
+	///     utc2k::FmtUtc2k::MAX.as_str(),
+	///     "2099-12-31 23:59:59",
+	/// );
 	/// ```
-	pub const fn min() -> Self { Self(Self::MIN) }
-
-	#[inline]
-	#[must_use]
-	/// # Maximum Value.
-	///
-	/// This is equivalent to `2099-12-31 23:59:59`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::FmtUtc2k;
-	///
-	/// let date = FmtUtc2k::max();
-	/// assert_eq!(date.as_str(), "2099-12-31 23:59:59");
-	/// ```
-	pub const fn max() -> Self { Self(Self::MAX) }
+	pub const MAX: Self = Self(*b"2099-12-31 23:59:59");
 }
 
 /// ## Instantiation/Reuse.
@@ -281,7 +263,7 @@ impl FmtUtc2k {
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
+	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
 	///
 	/// ## Examples
 	///
@@ -305,7 +287,7 @@ impl FmtUtc2k {
 	///
 	/// As with all other part-based operations, overflows and underflows will
 	/// be adjusted automatically, with minimum and maximum dates capped to
-	/// [`FmtUtc2k::min`] and [`FmtUtc2k::max`] respectively.
+	/// [`FmtUtc2k::MIN`] and [`FmtUtc2k::MAX`] respectively.
 	///
 	/// ## Examples
 	///
@@ -380,7 +362,7 @@ impl FmtUtc2k {
 	/// ```
 	/// use utc2k::FmtUtc2k;
 	///
-	/// let fmt = FmtUtc2k::max();
+	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_bytes(), b"2099-12-31 23:59:59");
 	/// ```
 	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
@@ -400,7 +382,7 @@ impl FmtUtc2k {
 	/// ```
 	/// use utc2k::FmtUtc2k;
 	///
-	/// let fmt = FmtUtc2k::max();
+	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
 	pub const fn as_str(&self) -> &str {
@@ -676,7 +658,7 @@ impl AddAssign<u32> for Utc2k {
 
 impl Default for Utc2k {
 	#[inline]
-	fn default() -> Self { Self::min() }
+	fn default() -> Self { Self::MIN }
 }
 
 impl fmt::Display for Utc2k {
@@ -701,8 +683,8 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
 	fn from(src: u32) -> Self {
-		if src <= Self::MIN_UNIXTIME { Self::min() }
-		else if src >= Self::MAX_UNIXTIME { Self::max() }
+		if src <= Self::MIN_UNIXTIME { Self::MIN }
+		else if src >= Self::MAX_UNIXTIME { Self::MAX }
 		else {
 			// Tease out the date parts with a lot of terrible math.
 			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
@@ -957,43 +939,51 @@ impl TryFrom<&str> for Utc2k {
 
 /// ## Min/Max.
 impl Utc2k {
-	/// # Minimum Timestamp.
+	/// # Minimum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::Utc2k::MIN.to_string(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// ```
+	pub const MIN: Self = Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 };
+
+	/// # Maximum Date/Time.
+	///
+	/// ```
+	/// assert_eq!(
+	///     utc2k::Utc2k::MAX.to_string(),
+	///     "2099-12-31 23:59:59",
+	/// );
+	/// ```
+	pub const MAX: Self = Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
+
+	/// # Minimum Unix Timestamp.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::MIN_UNIXTIME, 946_684_800);
+	/// assert_eq!(
+	///     Utc2k::MIN.unixtime(),
+	///     Utc2k::MIN_UNIXTIME,
+	/// );
+	/// ```
 	pub const MIN_UNIXTIME: u32 = 946_684_800;
 
-	/// # Maximum Timestamp.
+	/// # Maximum Unix Timestamp.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(Utc2k::MAX_UNIXTIME, 4_102_444_799);
+	/// assert_eq!(
+	///     Utc2k::MAX.unixtime(),
+	///     Utc2k::MAX_UNIXTIME,
+	/// );
+	/// ```
 	pub const MAX_UNIXTIME: u32 = 4_102_444_799;
-
-	#[inline]
-	#[must_use]
-	/// # Minimum Value.
-	///
-	/// This is equivalent to `2000-01-01 00:00:00`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::min();
-	/// assert_eq!(date.to_string(), "2000-01-01 00:00:00");
-	/// ```
-	pub const fn min() -> Self { Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 } }
-
-	#[inline]
-	#[must_use]
-	/// # Maximum Value.
-	///
-	/// This is equivalent to `2099-12-31 23:59:59`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::max();
-	/// assert_eq!(date.to_string(), "2099-12-31 23:59:59");
-	/// ```
-	pub const fn max() -> Self { Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 } }
 }
 
 /// ## Instantiation.
@@ -1857,7 +1847,7 @@ impl Utc2k {
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// let date = Utc2k::max();
+	/// let date = Utc2k::MAX;
 	/// assert!(date.checked_add(1).is_none());
 	///
 	/// let date = Utc2k::new(2010, 1, 1, 0, 0, 0);
@@ -1913,7 +1903,7 @@ impl Utc2k {
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// let date = Utc2k::min();
+	/// let date = Utc2k::MIN;
 	/// assert!(date.checked_sub(1).is_none());
 	///
 	/// let date = Utc2k::new(2010, 1, 1, 0, 0, 0);
@@ -1951,7 +1941,7 @@ impl Utc2k {
 	///
 	/// // Because we're only dealing with a single century, there is an
 	/// // upper limit to the possible return values…
-	/// assert_eq!(Utc2k::min().abs_diff(Utc2k::max()), 3_155_759_999);
+	/// assert_eq!(Utc2k::MIN.abs_diff(Utc2k::MAX), 3_155_759_999);
 	/// ```
 	pub const fn abs_diff(self, other: Self) -> u32 {
 		self.unixtime().abs_diff(other.unixtime())
@@ -1978,14 +1968,18 @@ impl Utc2k {
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
 	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
 	/// ```
-	pub fn cmp_date(self, other: Self) -> Ordering {
-		match self.y.cmp(&other.y) {
-			Ordering::Equal => match self.m.cmp(&other.m) {
-				Ordering::Equal => self.d.cmp(&other.d),
-				cmp => cmp,
-			},
-			cmp => cmp,
+	pub const fn cmp_date(self, other: Self) -> Ordering {
+		if self.y == other.y {
+			if self.m == other.m {
+				if self.d == other.d { Ordering::Equal }
+				else if self.d < other.d { Ordering::Less }
+				else { Ordering::Greater }
+			}
+			else if self.m < other.m { Ordering::Less }
+			else { Ordering::Greater }
 		}
+		else if self.y < other.y { Ordering::Less }
+		else { Ordering::Greater }
 	}
 
 	#[must_use]
@@ -2009,14 +2003,18 @@ impl Utc2k {
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
 	/// assert_eq!(date1.cmp_time(date3), Ordering::Equal);
 	/// ```
-	pub fn cmp_time(self, other: Self) -> Ordering {
-		match self.hh.cmp(&other.hh) {
-			Ordering::Equal => match self.mm.cmp(&other.mm) {
-				Ordering::Equal => self.ss.cmp(&other.ss),
-				cmp => cmp,
-			},
-			cmp => cmp,
+	pub const fn cmp_time(self, other: Self) -> Ordering {
+		if self.hh == other.hh {
+			if self.mm == other.mm {
+				if self.ss == other.ss { Ordering::Equal }
+				else if self.ss < other.ss { Ordering::Less }
+				else { Ordering::Greater }
+			}
+			else if self.mm < other.mm { Ordering::Less }
+			else { Ordering::Greater }
 		}
+		else if self.hh < other.hh { Ordering::Less }
+		else { Ordering::Greater }
 	}
 }
 
@@ -2152,7 +2150,7 @@ mod tests {
 
 	#[test]
 	/// # Leap Years.
-	fn leap_years() {
+	fn t_leap_years() {
 		for y in 2000..2100 {
 			let date = Utc2k::new(y, 1, 1, 0, 0, 0);
 			assert_eq!(date.year(), y);
@@ -2164,8 +2162,24 @@ mod tests {
 	}
 
 	#[test]
+	/// # Test Min/Max Explicitly.
+	fn t_min_max() {
+		// Self and Timestamps.
+		assert_eq!(Utc2k::MIN, Utc2k::from(Utc2k::MIN_UNIXTIME));
+		assert_eq!(Utc2k::MAX, Utc2k::from(Utc2k::MAX_UNIXTIME));
+		assert_eq!(Utc2k::MIN.unixtime(), Utc2k::MIN_UNIXTIME);
+		assert_eq!(Utc2k::MAX.unixtime(), Utc2k::MAX_UNIXTIME);
+
+		// Utc2k and FmtUtc2k.
+		assert_eq!(Utc2k::MIN, Utc2k::from(FmtUtc2k::MIN));
+		assert_eq!(Utc2k::MAX, Utc2k::from(FmtUtc2k::MAX));
+		assert_eq!(FmtUtc2k::MIN, FmtUtc2k::from(Utc2k::MIN));
+		assert_eq!(FmtUtc2k::MAX, FmtUtc2k::from(Utc2k::MAX));
+	}
+
+	#[test]
 	/// # Test Ordering.
-	fn ordering() {
+	fn t_ordering() {
 		let expected = vec![
 			Utc2k::try_from("2000-01-01 00:00:00").unwrap(),
 			Utc2k::try_from("2010-05-31 01:02:03").unwrap(),
@@ -2198,5 +2212,95 @@ mod tests {
 		// Now they should match.
 		assert_eq!(expected, shuffled);
 		assert_eq!(f_expected, f_shuffled);
+	}
+
+	#[test]
+	/// # Test Manual cmp_date.
+	fn t_cmp_date() {
+		let set = vec![
+			Utc2k::new(2024, 1, 1, 0, 0, 0),
+			Utc2k::new(2024, 1, 2, 0, 0, 0),
+			Utc2k::new(2024, 2, 1, 0, 0, 0),
+			Utc2k::new(2024, 2, 2, 0, 0, 0),
+			Utc2k::new(2025, 1, 1, 0, 0, 0),
+			Utc2k::new(2025, 1, 2, 0, 0, 0),
+			Utc2k::new(2025, 2, 1, 0, 0, 0),
+			Utc2k::new(2025, 2, 2, 0, 0, 0),
+		];
+
+		let mut sorted = set.clone();
+		sorted.sort();
+		sorted.dedup();
+		assert_eq!(set, sorted); // Double-check our manual sorting.
+
+		for pair in set.windows(2) {
+			let &[a, b] = pair else { panic!("Windows is broken?!"); };
+
+			// Each should be equal to itself.
+			assert!(a.cmp_date(a).is_eq());
+			assert!(b.cmp_date(b).is_eq());
+
+			// And times shouldn't matter.
+			assert!(a.cmp_date(a.with_time(1, 2, 3)).is_eq());
+			assert!(b.cmp_date(b.with_time(3, 2, 1)).is_eq());
+			assert!(a.with_time(1, 2, 3).cmp_date(a).is_eq());
+			assert!(b.with_time(3, 2, 1).cmp_date(b).is_eq());
+
+			// A < B, B > A.
+			assert!(a.cmp_date(b).is_lt());
+			assert!(b.cmp_date(a).is_gt());
+
+			// Again, times shouldn't matter.
+			assert!(a.cmp_date(b.with_time(5, 6, 7)).is_lt());
+			assert!(b.cmp_date(a.with_time(8, 9, 3)).is_gt());
+			assert!(a.with_time(5, 6, 7).cmp_date(b).is_lt());
+			assert!(b.with_time(8, 9, 3).cmp_date(a).is_gt());
+		}
+	}
+
+	#[test]
+	/// # Test Manual cmp_time.
+	fn t_cmp_time() {
+		let set = vec![
+			Utc2k::new(2027, 6, 5, 0, 0, 0),
+			Utc2k::new(2027, 6, 5, 0, 0, 1),
+			Utc2k::new(2027, 6, 5, 0, 1, 0),
+			Utc2k::new(2027, 6, 5, 0, 1, 1),
+			Utc2k::new(2027, 6, 5, 1, 0, 0),
+			Utc2k::new(2027, 6, 5, 1, 0, 1),
+			Utc2k::new(2027, 6, 5, 1, 1, 0),
+			Utc2k::new(2027, 6, 5, 1, 1, 1),
+		];
+
+		let mut sorted = set.clone();
+		sorted.sort();
+		sorted.dedup();
+		assert_eq!(set, sorted); // Double-check our manual sorting.
+
+		for pair in set.windows(2) {
+			let &[a, b] = pair else { panic!("Windows is broken?!"); };
+
+			// Each should be equal to itself.
+			assert!(a.cmp_time(a).is_eq());
+			assert!(b.cmp_time(b).is_eq());
+
+			// The date shouldn't matter.
+			let c = a + crate::YEAR_IN_SECONDS;
+			assert!(a.cmp_time(c).is_eq());
+			assert!(c.cmp_time(a).is_eq());
+			let d = b + crate::YEAR_IN_SECONDS;
+			assert!(b.cmp_time(d).is_eq());
+			assert!(d.cmp_time(b).is_eq());
+
+			// A < B, B > A.
+			assert!(a.cmp_time(b).is_lt());
+			assert!(b.cmp_time(a).is_gt());
+
+			// Again, the date shouldn't matter.
+			assert!(a.cmp_time(d).is_lt());
+			assert!(b.cmp_time(c).is_gt());
+			assert!(c.cmp_time(b).is_lt());
+			assert!(d.cmp_time(a).is_gt());
+		}
 	}
 }

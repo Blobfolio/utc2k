@@ -213,7 +213,7 @@ pub fn unixtime() -> u32 {
 
 	SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map_or(
 		Utc2k::MIN_UNIXTIME,
-		|n| n.as_secs().min(Utc2k::MAX_UNIXTIME as u64) as u32
+		|n| n.as_secs().clamp(Utc2k::MIN_UNIXTIME as u64, Utc2k::MAX_UNIXTIME as u64) as u32
 	)
 }
 
@@ -232,4 +232,39 @@ pub fn unixtime() -> u32 {
 pub fn year() -> u16 {
 	let (y, _, _) = date::parse::date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
 	u16::from(y) + 2000
+}
+
+
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use std::time::SystemTime;
+
+	#[test]
+	fn t_unixtime() {
+		// Our method.
+		let our_secs = unixtime();
+
+		// Manual construction via SystemTime.
+		let secs: u32 = SystemTime::now()
+			.duration_since(SystemTime::UNIX_EPOCH)
+			.expect("The system time is set to the deep past!")
+			.as_secs()
+			.try_into()
+			.expect("The system clock is set to the distant future!");
+
+		// The SystemTime version should fall within our range.
+		assert!(
+			(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME).contains(&secs),
+			"Bug: the system clock is completely wrong!",
+		);
+
+		// It should also match the `unixtime` output, but let's allow a tiny
+		// ten-second cushion in case the runner is _really_ slow.
+		assert!(
+			our_secs.abs_diff(secs) <= 10,
+			"SystemTime and unixtime are more different than expected!",
+		)
+	}
 }
