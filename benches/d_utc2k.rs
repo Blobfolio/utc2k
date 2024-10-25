@@ -30,6 +30,9 @@ benches!(
 
 	Bench::spacer(),
 
+	Bench::new("utc2k::Utc2k::to_string()")
+		.run_seeded(Utc2k::from(Utc2k::MAX_UNIXTIME), |u| u.to_string()),
+
 	Bench::new("utc2k::Utc2k::to_rfc2822()")
 		.run_seeded(Utc2k::from(Utc2k::MAX_UNIXTIME), |u| u.to_rfc2822()),
 
