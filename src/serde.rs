@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for Utc2k {
 			);
 		}
 
-		impl<'de> de::Visitor<'de> for Visitor {
+		impl de::Visitor<'_> for Visitor {
 			type Value = Utc2k;
 
 			fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -139,7 +139,7 @@ impl<'de> Deserialize<'de> for Month {
 		/// # Visitor Instance.
 		struct Visitor;
 
-		impl<'de> de::Visitor<'de> for Visitor {
+		impl de::Visitor<'_> for Visitor {
 			type Value = Month;
 
 			fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -186,7 +186,7 @@ impl<'de> Deserialize<'de> for Weekday {
 		/// # Visitor Instance.
 		struct Visitor;
 
-		impl<'de> de::Visitor<'de> for Visitor {
+		impl de::Visitor<'_> for Visitor {
 			type Value = Weekday;
 
 			fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
