@@ -406,10 +406,27 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
-	pub fn date(&self) -> &str {
-		debug_assert!(self.0[..10].is_ascii(), "Bug: Date is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { std::str::from_utf8_unchecked(&self.0[..10]) }
+	pub const fn date(&self) -> &str {
+		if let Some(v) = self.0.first_chunk::<10>() {
+			debug_assert!(
+				v[0].is_ascii_digit() &&
+				v[1].is_ascii_digit() &&
+				v[2].is_ascii_digit() &&
+				v[3].is_ascii_digit() &&
+				v[4] == b'-' &&
+				v[5].is_ascii_digit() &&
+				v[6].is_ascii_digit() &&
+				v[7] == b'-' &&
+				v[8].is_ascii_digit() &&
+				v[9].is_ascii_digit(),
+				"Bug: Date is not ASCII.",
+			);
+
+			// Safety: datetimes are valid ASCII.
+			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
+		}
+		// Unreachable.
+		else { "2000-01-01" }
 	}
 
 	#[expect(unsafe_code, reason = "Content is ASCII.")]
@@ -428,10 +445,21 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
-	pub fn year(&self) -> &str {
-		debug_assert!(self.0.iter().take(4).all(u8::is_ascii_digit), "Bug: Year is not numeric.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { std::str::from_utf8_unchecked(&self.0[..4]) }
+	pub const fn year(&self) -> &str {
+		if let Some(v) = self.0.first_chunk::<4>() {
+			debug_assert!(
+				v[0].is_ascii_digit() &&
+				v[1].is_ascii_digit() &&
+				v[2].is_ascii_digit() &&
+				v[3].is_ascii_digit(),
+				"Bug: Year is not ASCII.",
+			);
+
+			// Safety: datetimes are valid ASCII.
+			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
+		}
+		// Unreachable.
+		else { "2000" }
 	}
 
 	#[expect(unsafe_code, reason = "Content is ASCII.")]
@@ -450,10 +478,25 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
-	pub fn time(&self) -> &str {
-		debug_assert!(self.0[11..].is_ascii(), "Bug: Time is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { std::str::from_utf8_unchecked(&self.0[11..]) }
+	pub const fn time(&self) -> &str {
+		if let Some(v) = self.0.last_chunk::<8>() {
+			debug_assert!(
+				v[0].is_ascii_digit() &&
+				v[1].is_ascii_digit() &&
+				v[2] == b':' &&
+				v[3].is_ascii_digit() &&
+				v[4].is_ascii_digit() &&
+				v[5] == b':' &&
+				v[6].is_ascii_digit() &&
+				v[7].is_ascii_digit(),
+				"Bug: Time is not ASCII.",
+			);
+
+			// Safety: datetimes are valid ASCII.
+			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
+		}
+		// Unreachable.
+		else { "00:00:00" }
 	}
 }
 
