@@ -2,13 +2,15 @@
 
 
 
-## [0.11.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.1) - TBD
+## [0.11.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.1) - 2024-11-28
 
 ### Changed
 
+* Bump `brunch` to `0.7` (dev)
 * `FmtUtf2k::date` is now const
 * `FmtUtf2k::time` is now const
 * `FmtUtf2k::year` is now const
+* Miscellaneous code changes and lints
 
 
 
