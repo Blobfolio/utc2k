@@ -2,6 +2,15 @@
 
 
 
+## [0.11.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.2) - 2025-01-09
+
+### Changed
+
+* Bump `brunch` to `0.8` (dev)
+* Miscellaneous code changes and lints
+
+
+
 ## [0.11.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.1) - 2024-11-28
 
 ### Changed
