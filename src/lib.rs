@@ -264,6 +264,6 @@ mod test {
 		assert!(
 			our_secs.abs_diff(secs) <= 10,
 			"SystemTime and unixtime are more different than expected!",
-		)
+		);
 	}
 }

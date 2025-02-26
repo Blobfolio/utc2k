@@ -2,12 +2,23 @@
 
 
 
+## [0.12.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.0) - 2025-02-25
+
+### Changed
+
+* Bump `brunch` to `0.9` (dev)
+* Bump MSRV to `1.85`
+* Bump Rust edition to `2024`
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.11.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.2) - 2025-01-09
 
 ### Changed
 
 * Bump `brunch` to `0.8` (dev)
-* Miscellaneous code changes and lints
+* Miscellaneous code cleanup and lints
 
 
 
@@ -19,7 +30,7 @@
 * `FmtUtf2k::date` is now const
 * `FmtUtf2k::time` is now const
 * `FmtUtf2k::year` is now const
-* Miscellaneous code changes and lints
+* Miscellaneous code cleanup and lints
 
 
 

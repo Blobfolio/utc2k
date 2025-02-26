@@ -2258,7 +2258,7 @@ mod tests {
 	}
 
 	#[test]
-	/// # Test Manual cmp_date.
+	/// # Test Manual `cmp_date`.
 	fn t_cmp_date() {
 		let set = vec![
 			Utc2k::new(2024, 1, 1, 0, 0, 0),
@@ -2302,7 +2302,7 @@ mod tests {
 	}
 
 	#[test]
-	/// # Test Manual cmp_time.
+	/// # Test Manual `cmp_time`.
 	fn t_cmp_time() {
 		let set = vec![
 			Utc2k::new(2027, 6, 5, 0, 0, 0),

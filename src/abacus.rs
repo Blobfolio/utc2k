@@ -345,7 +345,7 @@ mod tests {
 	///
 	/// The range to check is therefore `0..DAY_IN_SECONDS`.
 	fn shifting() {
-		fn divvy(mut ss: u32) -> (u32, u32, u32) {
+		const fn divvy(mut ss: u32) -> (u32, u32, u32) {
 			let mut hh = 0;
 			let mut mm = 0;
 
@@ -363,7 +363,7 @@ mod tests {
 			(hh, mm, ss)
 		}
 
-		fn shifty(mut ss: u32) -> (u32, u32, u32) {
+		const fn shifty(mut ss: u32) -> (u32, u32, u32) {
 			let mut hh = 0;
 			let mut mm = 0;
 
