@@ -1634,6 +1634,7 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	#[expect(clippy::missing_const_for_fn, reason = "False positive.")]
 	/// # Weekday.
 	///
 	/// Return the [`Weekday`] corresponding to the given date.

@@ -2,6 +2,14 @@
 
 
 
+## [0.12.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.1) - 2025-04-03
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.12.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.0) - 2025-02-25
 
 ### Changed

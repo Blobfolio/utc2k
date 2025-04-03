@@ -149,7 +149,7 @@ impl Abacus {
 	/// which only increment seconds.
 	///
 	/// The bitshift wizardry was inspired by [this post](https://johnnylee-sde.github.io/Fast-unsigned-integer-to-time-string/).
-	fn rebalance_ss(&mut self) {
+	const fn rebalance_ss(&mut self) {
 		if self.ss >= DAY_IN_SECONDS {
 			let div = self.ss.wrapping_div(DAY_IN_SECONDS);
 			self.d += div;
@@ -170,7 +170,7 @@ impl Abacus {
 	/// # Rebalance Minutes.
 	///
 	/// This moves overflowing minutes to hours.
-	fn rebalance_mm(&mut self) {
+	const fn rebalance_mm(&mut self) {
 		if self.mm > 59 {
 			let div = (self.mm * 0x889) >> 17;
 			self.hh += div;
@@ -181,7 +181,7 @@ impl Abacus {
 	/// # Rebalance Hours.
 	///
 	/// This moves overflowing hours to days.
-	fn rebalance_hh(&mut self) {
+	const fn rebalance_hh(&mut self) {
 		if self.hh > 23 {
 			let div = self.hh.wrapping_div(24);
 			self.d += div;
