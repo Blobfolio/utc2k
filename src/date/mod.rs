@@ -705,9 +705,9 @@ impl Default for Utc2k {
 }
 
 impl fmt::Display for Utc2k {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let buf = FmtUtc2k::from(*self);
-		f.write_str(buf.as_str())
+		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from(*self), f)
 	}
 }
 
