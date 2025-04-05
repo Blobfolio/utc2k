@@ -16,6 +16,7 @@ use crate::{
 	Weekday,
 };
 use std::{
+	borrow::Cow,
 	cmp::Ordering,
 	ffi::OsStr,
 	fmt,
@@ -160,8 +161,29 @@ impl Ord for FmtUtc2k {
 	fn cmp(&self, other: &Self) -> Ordering { self.0.cmp(&other.0) }
 }
 
-macros::partial_eq_cast!(deref FmtUtc2k: as_str &str, as_str &String);
-macros::partial_eq_cast!(FmtUtc2k: as_str str, as_str String);
+impl PartialEq<str> for FmtUtc2k {
+	#[inline]
+	fn eq(&self, other: &str) -> bool { self.as_str() == other }
+}
+impl PartialEq<FmtUtc2k> for str {
+	#[inline]
+	fn eq(&self, other: &FmtUtc2k) -> bool { <FmtUtc2k as PartialEq<Self>>::eq(other, self) }
+}
+
+/// # Helper: Reciprocal `PartialEq`.
+macro_rules! eq {
+	($($ty:ty),+) => ($(
+		impl PartialEq<$ty> for FmtUtc2k {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { <Self as PartialEq<str>>::eq(self, other) }
+		}
+		impl PartialEq<FmtUtc2k> for $ty {
+			#[inline]
+			fn eq(&self, other: &FmtUtc2k) -> bool { <FmtUtc2k as PartialEq<str>>::eq(other, self) }
+		}
+	)+);
+}
+eq!(&str, &String, String, &Cow<'_, str>, Cow<'_, str>, &Box<str>, Box<str>);
 
 impl PartialOrd for FmtUtc2k {
 	#[inline]
