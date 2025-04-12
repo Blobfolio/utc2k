@@ -2222,6 +2222,7 @@ mod tests {
 			assert_eq!(date.year(), y);
 			assert_eq!(
 				date.leap_year(),
+				// TODO: use is_multiple_of once stable
 				y.trailing_zeros() >= 2 && ((y % 100) != 0 || (y % 400) == 0)
 			);
 		}
