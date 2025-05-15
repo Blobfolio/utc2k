@@ -257,8 +257,7 @@ impl Abacus {
 		match self.m {
 			1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
 			4 | 6 | 9 | 11 => 30,
-			// TODO: use is_multiple_of once stable
-			2 if self.y.trailing_zeros() >= 2 && ((self.y % 100) != 0 || (self.y % 400) == 0) => 29,
+			2 if self.y.trailing_zeros() >= 2 && (! self.y.is_multiple_of(100) || self.y.is_multiple_of(400)) => 29,
 			_ => 28,
 		}
 	}
