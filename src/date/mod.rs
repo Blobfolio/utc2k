@@ -16,6 +16,7 @@ use crate::{
 	Weekday,
 };
 use std::{
+	borrow::Cow,
 	cmp::Ordering,
 	ffi::OsStr,
 	fmt,
@@ -160,8 +161,29 @@ impl Ord for FmtUtc2k {
 	fn cmp(&self, other: &Self) -> Ordering { self.0.cmp(&other.0) }
 }
 
-macros::partial_eq_cast!(deref FmtUtc2k: as_str &str, as_str &String);
-macros::partial_eq_cast!(FmtUtc2k: as_str str, as_str String);
+impl PartialEq<str> for FmtUtc2k {
+	#[inline]
+	fn eq(&self, other: &str) -> bool { self.as_str() == other }
+}
+impl PartialEq<FmtUtc2k> for str {
+	#[inline]
+	fn eq(&self, other: &FmtUtc2k) -> bool { <FmtUtc2k as PartialEq<Self>>::eq(other, self) }
+}
+
+/// # Helper: Reciprocal `PartialEq`.
+macro_rules! eq {
+	($($ty:ty),+) => ($(
+		impl PartialEq<$ty> for FmtUtc2k {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { <Self as PartialEq<str>>::eq(self, other) }
+		}
+		impl PartialEq<FmtUtc2k> for $ty {
+			#[inline]
+			fn eq(&self, other: &FmtUtc2k) -> bool { <FmtUtc2k as PartialEq<str>>::eq(other, self) }
+		}
+	)+);
+}
+eq!(&str, &String, String, &Cow<'_, str>, Cow<'_, str>, &Box<str>, Box<str>);
 
 impl PartialOrd for FmtUtc2k {
 	#[inline]
@@ -705,9 +727,9 @@ impl Default for Utc2k {
 }
 
 impl fmt::Display for Utc2k {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let buf = FmtUtc2k::from(*self);
-		f.write_str(buf.as_str())
+		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from(*self), f)
 	}
 }
 
@@ -1634,7 +1656,6 @@ impl Utc2k {
 	}
 
 	#[must_use]
-	#[expect(clippy::missing_const_for_fn, reason = "False positive.")]
 	/// # Weekday.
 	///
 	/// Return the [`Weekday`] corresponding to the given date.
@@ -2127,49 +2148,40 @@ mod tests {
 	}
 
 	#[cfg(not(debug_assertions))]
+	/// # Generate Century Tests.
+	///
+	/// There are a lot of seconds to test. Multiple functions allows
+	/// parallelization where supported.
 	macro_rules! century_test {
-		($rem:literal) => (
-			let mut buf = FmtUtc2k::default();
-			let format = time::format_description::parse(
-				"[year]-[month]-[day] [hour]:[minute]:[second]",
-			).expect("Unable to parse datetime format.");
-			for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-				if $rem == i % 4 { range_test!(buf, i, format); }
+		($($fn:ident, $rem:literal),+ $(,)?) => ($(
+			#[test]
+			#[ignore = "testing a decade's worth of seconds takes a very long time"]
+			/// # 1/10 Full Range Unixtime Test.
+			fn $fn() {
+				let mut buf = FmtUtc2k::default();
+				let format = time::format_description::parse(
+					"[year]-[month]-[day] [hour]:[minute]:[second]",
+				).expect("Unable to parse datetime format.");
+				for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
+					if $rem == i % 10 { range_test!(buf, i, format); }
+				}
 			}
-		);
+		)+);
 	}
 
-
-
 	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	///
-	/// This compares our objects against `time` to ensure conversions line
-	/// up as expected for the supported unixtime range.
-	///
-	/// There are a lot of seconds in a century, so this test is split into
-	/// four to allow for possible parallelized execution.
-	fn full_unixtime_0() { century_test!(0); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_1() { century_test!(1); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_2() { century_test!(2); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_3() { century_test!(3); }
+	century_test!(
+		full_unixtime_0, 0,
+		full_unixtime_1, 1,
+		full_unixtime_2, 2,
+		full_unixtime_3, 3,
+		full_unixtime_4, 4,
+		full_unixtime_5, 5,
+		full_unixtime_6, 6,
+		full_unixtime_7, 7,
+		full_unixtime_8, 8,
+		full_unixtime_9, 9,
+	);
 
 	#[test]
 	/// # Limited Range Unixtime Test.
@@ -2200,7 +2212,7 @@ mod tests {
 			assert_eq!(date.year(), y);
 			assert_eq!(
 				date.leap_year(),
-				y.trailing_zeros() >= 2 && ((y % 100) != 0 || (y % 400) == 0)
+				y.trailing_zeros() >= 2 && (! y.is_multiple_of(100) || y.is_multiple_of(400))
 			);
 		}
 	}

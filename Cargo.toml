@@ -1,9 +1,9 @@
 [package]
 name = "utc2k"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 description = "A fast and lean UTC date/time library concerned only with happenings in this century (2000-2099)."
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/utc2k"
@@ -28,7 +28,7 @@ default-target = "x86_64-unknown-linux-gnu"
 name = "UTC2K"
 
 [dev-dependencies]
-brunch = "0.9.*"
+brunch = "0.10.*"
 fastrand = "2"
 serde = "1.0.*"
 serde_json = "1.0.*"

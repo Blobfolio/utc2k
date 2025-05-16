@@ -204,17 +204,20 @@ impl Ord for Month {
 	}
 }
 
-impl PartialEq<u8> for Month {
-	#[inline]
-	fn eq(&self, other: &u8) -> bool { (*self as u8).eq(other) }
+/// # Helper: Reciprocal `PartialEq`.
+macro_rules! eq {
+	($($ty:ty),+) => ($(
+		impl PartialEq<$ty> for Month {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
+		}
+		impl PartialEq<Month> for $ty {
+			#[inline]
+			fn eq(&self, other: &Month) -> bool { <Month as PartialEq<$ty>>::eq(other, self) }
+		}
+	)+);
 }
-
-impl PartialEq<Month> for u8 {
-	#[inline]
-	fn eq(&self, other: &Month) -> bool { (*other as Self).eq(self) }
-}
-
-macros::partial_eq_from!(Month: u16, u32, u64, usize);
+eq!(u8, u16, u32, u64, usize);
 
 impl PartialOrd for Month {
 	#[inline]

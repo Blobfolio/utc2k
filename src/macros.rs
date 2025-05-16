@@ -23,54 +23,10 @@ macro_rules! display_str {
 		impl ::std::fmt::Display for $ty {
 			#[inline]
 			fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-				f.write_str(self.$cast())
+				<str as ::std::fmt::Display>::fmt(self.$cast(), f)
 			}
 		}
 	);
-}
-
-/// # Helper: 2-Way `PartialEq`.
-macro_rules! partial_eq_cast {
-	// Dereference.
-	(deref $parent:ty: $($cast:ident $ty:ty),+ $(,)?) => ($(
-		impl PartialEq<$ty> for $parent {
-			#[inline]
-			fn eq(&self, other: &$ty) -> bool { self.$cast() == *other }
-		}
-
-		impl PartialEq<$parent> for $ty {
-			#[inline]
-			fn eq(&self, other: &$parent) -> bool { other.$cast() == *self }
-		}
-	)+);
-
-	// Plain.
-	($parent:ty: $($cast:ident $ty:ty),+ $(,)?) => ($(
-		impl PartialEq<$ty> for $parent {
-			#[inline]
-			fn eq(&self, other: &$ty) -> bool { self.$cast() == other }
-		}
-
-		impl PartialEq<$parent> for $ty {
-			#[inline]
-			fn eq(&self, other: &$parent) -> bool { other.$cast() == self }
-		}
-	)+);
-}
-
-/// # Helper: 2-Way `PartialEq`.
-macro_rules! partial_eq_from {
-	($parent:ty: $($ty:ty),+ $(,)?) => ($(
-		impl PartialEq<$ty> for $parent {
-			#[inline]
-			fn eq(&self, other: &$ty) -> bool { <$ty>::from(*self).eq(other) }
-		}
-
-		impl PartialEq<$parent> for $ty {
-			#[inline]
-			fn eq(&self, other: &$parent) -> bool { Self::from(*other).eq(self) }
-		}
-	)+);
 }
 
 
@@ -78,6 +34,4 @@ macro_rules! partial_eq_from {
 pub(super) use {
 	as_ref_borrow_cast,
 	display_str,
-	partial_eq_cast,
-	partial_eq_from,
 };

@@ -196,17 +196,20 @@ impl Ord for Weekday {
 	}
 }
 
-impl PartialEq<u8> for Weekday {
-	#[inline]
-	fn eq(&self, other: &u8) -> bool { (*self as u8).eq(other) }
+/// # Helper: Reciprocal `PartialEq`.
+macro_rules! eq {
+	($($ty:ty),+) => ($(
+		impl PartialEq<$ty> for Weekday {
+			#[inline]
+			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
+		}
+		impl PartialEq<Weekday> for $ty {
+			#[inline]
+			fn eq(&self, other: &Weekday) -> bool { <Weekday as PartialEq<$ty>>::eq(other, self) }
+		}
+	)+);
 }
-
-impl PartialEq<Weekday> for u8 {
-	#[inline]
-	fn eq(&self, other: &Weekday) -> bool { (*other as Self).eq(self) }
-}
-
-macros::partial_eq_from!(Weekday: u16, u32, u64, usize);
+eq!(u8, u16, u32, u64, usize);
 
 impl PartialOrd for Weekday {
 	#[inline]
