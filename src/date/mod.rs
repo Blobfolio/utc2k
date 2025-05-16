@@ -2148,49 +2148,40 @@ mod tests {
 	}
 
 	#[cfg(not(debug_assertions))]
+	/// # Generate Century Tests.
+	///
+	/// There are a lot of seconds to test. Multiple functions allows
+	/// parallelization where supported.
 	macro_rules! century_test {
-		($rem:literal) => (
-			let mut buf = FmtUtc2k::default();
-			let format = time::format_description::parse(
-				"[year]-[month]-[day] [hour]:[minute]:[second]",
-			).expect("Unable to parse datetime format.");
-			for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-				if $rem == i % 4 { range_test!(buf, i, format); }
+		($($fn:ident, $rem:literal),+ $(,)?) => ($(
+			#[test]
+			#[ignore = "testing a decade's worth of seconds takes a very long time"]
+			/// # 1/10 Full Range Unixtime Test.
+			fn $fn() {
+				let mut buf = FmtUtc2k::default();
+				let format = time::format_description::parse(
+					"[year]-[month]-[day] [hour]:[minute]:[second]",
+				).expect("Unable to parse datetime format.");
+				for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
+					if $rem == i % 10 { range_test!(buf, i, format); }
+				}
 			}
-		);
+		)+);
 	}
 
-
-
 	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	///
-	/// This compares our objects against `time` to ensure conversions line
-	/// up as expected for the supported unixtime range.
-	///
-	/// There are a lot of seconds in a century, so this test is split into
-	/// four to allow for possible parallelized execution.
-	fn full_unixtime_0() { century_test!(0); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_1() { century_test!(1); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_2() { century_test!(2); }
-
-	#[cfg(not(debug_assertions))]
-	#[test]
-	#[ignore = "testing a quarter century's worth of seconds takes a very long time"]
-	/// # 1/4 Full Range Unixtime Test.
-	fn full_unixtime_3() { century_test!(3); }
+	century_test!(
+		full_unixtime_0, 0,
+		full_unixtime_1, 1,
+		full_unixtime_2, 2,
+		full_unixtime_3, 3,
+		full_unixtime_4, 4,
+		full_unixtime_5, 5,
+		full_unixtime_6, 6,
+		full_unixtime_7, 7,
+		full_unixtime_8, 8,
+		full_unixtime_9, 9,
+	);
 
 	#[test]
 	/// # Limited Range Unixtime Test.
