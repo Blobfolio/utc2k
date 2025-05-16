@@ -2,6 +2,16 @@
 
 
 
+## [0.13.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.13.0) - 2025-05-15
+
+### Changed
+
+* Bump `brunch` to `0.10` (dev)
+* Bump MSRV to `1.87`
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.12.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.1) - 2025-04-03
 
 ### Changed
