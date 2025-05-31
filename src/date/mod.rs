@@ -133,7 +133,7 @@ macros::display_str!(as_str FmtUtc2k);
 
 impl From<u32> for FmtUtc2k {
 	#[inline]
-	fn from(src: u32) -> Self { Self::from(Utc2k::from_u32(src)) }
+	fn from(src: u32) -> Self { Self::from(Utc2k::from_unixtime(src)) }
 }
 
 impl From<&Utc2k> for FmtUtc2k {
@@ -748,7 +748,7 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(0).to_string(), "2000-01-01 00:00:00");
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
-	fn from(src: u32) -> Self { Self::from_u32(src) }
+	fn from(src: u32) -> Self { Self::from_unixtime(src) }
 }
 
 impl From<&FmtUtc2k> for Utc2k {
@@ -1017,12 +1017,61 @@ impl Utc2k {
 		Self::from_abacus(Abacus::new(y, m, d, hh, mm, ss))
 	}
 
+	#[must_use]
+	/// # From Timestamp.
+	///
+	/// Initialize a new [`Utc2k`] from a unix timestamp, saturating to
+	/// [`Utc2k::MIN_UNIXTIME`] or [`Utc2k::MAX_UNIXTIME`] if out of range.
+	///
+	/// This is identical to the `From<u32>`, but `const`.
+	///
+	/// For a non-saturating alternative, see [`Utc2k::checked_from_unixtime`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// assert_eq!(
+	///     Utc2k::from_unixtime(1_748_672_925).to_string(),
+	///     "2025-05-31 06:28:45",
+	/// );
+	///
+	/// // Same as the above, but using the `From<u32>` impl.
+	/// assert_eq!(
+	///     Utc2k::from(1_748_672_925_u32).to_string(),
+	///     "2025-05-31 06:28:45",
+	/// );
+	///
+	/// // Out of range values will saturate to the boundaries of the
+	/// // century.
+	/// assert_eq!(
+	///     Utc2k::from_unixtime(0).to_string(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// assert_eq!(
+	///     Utc2k::from_unixtime(u32::MAX).to_string(),
+	///     "2099-12-31 23:59:59",
+	/// );
+	/// ```
+	pub const fn from_unixtime(src: u32) -> Self {
+		if src <= Self::MIN_UNIXTIME { Self::MIN }
+		else if src >= Self::MAX_UNIXTIME { Self::MAX }
+		else {
+			// Tease out the date parts with a lot of terrible math.
+			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
+			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
+
+			Self { y, m, d, hh, mm, ss }
+		}
+	}
+
 	#[inline]
 	#[must_use]
 	/// # Now.
 	///
 	/// Create a new instance representing the current UTC time.
-	pub fn now() -> Self { Self::from_u32(unixtime()) }
+	pub fn now() -> Self { Self::from_unixtime(unixtime()) }
 
 	#[cfg(feature = "local")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
@@ -1049,7 +1098,7 @@ impl Utc2k {
 	///
 	/// assert_eq!(Utc2k::tomorrow(), Utc2k::now() + 86_400_u32);
 	/// ```
-	pub fn tomorrow() -> Self { Self::from_u32(unixtime() + DAY_IN_SECONDS) }
+	pub fn tomorrow() -> Self { Self::from_unixtime(unixtime() + DAY_IN_SECONDS) }
 
 	#[inline]
 	#[must_use]
@@ -1064,7 +1113,7 @@ impl Utc2k {
 	///
 	/// assert_eq!(Utc2k::yesterday(), Utc2k::now() - 86_400_u32);
 	/// ```
-	pub fn yesterday() -> Self { Self::from_u32(unixtime() - DAY_IN_SECONDS) }
+	pub fn yesterday() -> Self { Self::from_unixtime(unixtime() - DAY_IN_SECONDS) }
 }
 
 /// ## String Parsing.
@@ -1864,7 +1913,7 @@ impl Utc2k {
 	pub const fn checked_add(self, secs: u32) -> Option<Self> {
 		if let Some(s) = self.unixtime().checked_add(secs) {
 			if s <= Self::MAX_UNIXTIME {
-				return Some(Self::from_u32(s));
+				return Some(Self::from_unixtime(s));
 			}
 		}
 
@@ -1873,9 +1922,9 @@ impl Utc2k {
 
 	/// # From Unixtime (Checked).
 	///
-	/// This can be used instead of the usual `From<u32>` if you'd like to
-	/// trigger an error when the timestamp is out of range (rather than just
-	/// saturating it).
+	/// This can be used instead of the usual [`Utc2k::from_unixtime`] or
+	/// `From<u32>` if you'd like to trigger an error when the timestamp is out
+	/// of range (rather than just saturating it).
 	///
 	/// ## Errors
 	///
@@ -1899,7 +1948,7 @@ impl Utc2k {
 	pub const fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
 		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
 		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
-		else { Ok(Self::from_u32(src)) }
+		else { Ok(Self::from_unixtime(src)) }
 	}
 
 	#[must_use]
@@ -1925,7 +1974,7 @@ impl Utc2k {
 	pub const fn checked_sub(self, secs: u32) -> Option<Self> {
 		if let Some(s) = self.unixtime().checked_sub(secs) {
 			if Self::MIN_UNIXTIME <= s {
-				return Some(Self::from_u32(s));
+				return Some(Self::from_unixtime(s));
 			}
 		}
 
@@ -2056,20 +2105,6 @@ impl Utc2k {
 		)
 	}
 
-	#[must_use]
-	/// # From Seconds.
-	pub(crate) const fn from_u32(src: u32) -> Self {
-		if src <= Self::MIN_UNIXTIME { Self::MIN }
-		else if src >= Self::MAX_UNIXTIME { Self::MAX }
-		else {
-			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
-			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
-
-			Self { y, m, d, hh, mm, ss }
-		}
-	}
-
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	#[must_use]
 	/// # Subtract Seconds.
@@ -2106,7 +2141,7 @@ impl Utc2k {
 		// Otherwise it is best to convert to unixtime, perform the
 		// subtraction, and convert it back.
 		else {
-			Self::from_u32(self.unixtime().saturating_sub(offset))
+			Self::from_unixtime(self.unixtime().saturating_sub(offset))
 		}
 	}
 }

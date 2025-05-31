@@ -4,6 +4,10 @@
 
 ## [0.14.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.14.0) - TBD
 
+### New
+
+* `Utc2k::from_unixtime` (const alternative to `From<u32>`)
+
 ### Changed
 
 * `Utc2k::checked_add` is now const
