@@ -59,7 +59,7 @@ impl Add<u8> for Weekday {
 	type Output = Self;
 
 	#[inline]
-	fn add(self, other: u8) -> Self { Self::from(self as u8 + other % 7) }
+	fn add(self, other: u8) -> Self { Self::from_u8(self as u8 + other % 7) }
 }
 
 impl AddAssign<u8> for Weekday {
@@ -79,18 +79,8 @@ impl Deref for Weekday {
 macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
-	fn from(src: u8) -> Self {
-		match src {
-			1 => Self::Sunday,
-			2 => Self::Monday,
-			3 => Self::Tuesday,
-			4 => Self::Wednesday,
-			5 => Self::Thursday,
-			6 => Self::Friday,
-			0 | 7 => Self::Saturday,
-			_ => Self::from(src % 7),
-		}
-	}
+	#[inline]
+	fn from(src: u8) -> Self { Self::from_u8(src) }
 }
 
 impl From<Weekday> for u8 {
@@ -425,7 +415,9 @@ impl Weekday {
 	///     Some(3),
 	/// );
 	/// ```
-	pub fn first_in_month(self, y: u16, m: u8) -> Option<u8> { self.nth_in_month(y, m, 1) }
+	pub const fn first_in_month(self, y: u16, m: u8) -> Option<u8> {
+		self.nth_in_month(y, m, 1)
+	}
 
 	#[inline]
 	#[must_use]
@@ -447,20 +439,22 @@ impl Weekday {
 	///     Some(29),
 	/// );
 	/// ```
-	pub fn last_in_month(self, y: u16, m: u8) -> Option<u8> {
+	pub const fn last_in_month(self, y: u16, m: u8) -> Option<u8> {
 		// Load the first date of the month, and make sure it is sane.
 		let first = Utc2k::new(y, m, 1, 0, 0, 0);
-		if (y, m, 1) != first.ymd() { return None; }
+		let check = first.ymd();
+		if check.0 != y || check.1 != m || check.2 != 1 { return None; }
 
 		// Pull that first day's weekday.
 		let weekday = first.weekday();
 
 		// Find the first day.
-		let d = match (weekday as u8).cmp(&(self as u8)) {
-			Ordering::Less => 1 + self as u8 - weekday as u8,
-			Ordering::Equal => 1,
-			Ordering::Greater => 8 - (weekday as u8 - self as u8),
-		};
+		let w_num = weekday as u8;
+		let s_num = self as u8;
+		let d =
+			if w_num == s_num { 1 }
+			else if w_num < s_num { 1 + s_num - w_num }
+			else { 8 - (w_num - s_num) };
 
 		// Now find out how many weeks we can add to that without going over.
 		let n = (first.month_size() - d).wrapping_div(7);
@@ -492,25 +486,25 @@ impl Weekday {
 	/// // But no more!
 	/// assert_eq!(day.nth_in_month(2023, 10, 6), None);
 	/// ```
-	pub fn nth_in_month(self, y: u16, m: u8, n: u8) -> Option<u8> {
+	pub const fn nth_in_month(self, y: u16, m: u8, n: u8) -> Option<u8> {
 		// Zero is meaningless, and there will never be more than five.
-		if ! (1..6).contains(&n) { return None; }
+		if n == 0 || 6 <= n { return None; }
 
 		// Load the first date of the month, and make sure it is sane.
 		let first = Utc2k::new(y, m, 1, 0, 0, 0);
-		if (y, m, 1) != first.ymd() { return None; }
+		let check = first.ymd();
+		if check.0 != y || check.1 != m || check.2 != 1 { return None; }
 
 		// Pull that first day's weekday.
 		let weekday = first.weekday();
 
 		// Calculate the day!
+		let w_num = weekday as u8;
+		let s_num = self as u8;
 		let d =
-			// Find the first.
-			match (weekday as u8).cmp(&(self as u8)) {
-				Ordering::Less => 1 + self as u8 - weekday as u8,
-				Ordering::Equal => 1,
-				Ordering::Greater => 8 - (weekday as u8 - self as u8),
-			}
+			if w_num == s_num { 1 }
+			else if w_num < s_num { 1 + s_num - w_num }
+			else { 8 - (w_num - s_num) }
 			// Scale to the nth.
 			+ (n - 1) * 7;
 
@@ -521,6 +515,7 @@ impl Weekday {
 }
 
 impl Weekday {
+	#[must_use]
 	/// # From Abbreviation Bytes.
 	///
 	/// This matches the first three non-whitespace bytes, case-insensitively,
@@ -539,6 +534,21 @@ impl Weekday {
 			}
 		}
 		else { None }
+	}
+
+	#[must_use]
+	/// # From `u8`.
+	pub(crate) const fn from_u8(src: u8) -> Self {
+		match src {
+			1 => Self::Sunday,
+			2 => Self::Monday,
+			3 => Self::Tuesday,
+			4 => Self::Wednesday,
+			5 => Self::Thursday,
+			6 => Self::Friday,
+			0 | 7 => Self::Saturday,
+			_ => Self::from_u8(src % 7),
+		}
 	}
 
 	#[must_use]

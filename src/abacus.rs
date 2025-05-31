@@ -8,10 +8,6 @@ use crate::{
 	MINUTE_IN_SECONDS,
 	Utc2k,
 };
-use std::ops::{
-	Add,
-	AddAssign,
-};
 
 
 
@@ -50,30 +46,6 @@ pub(super) struct Abacus {
 	ss: u32,
 }
 
-impl Add<u32> for Abacus {
-	type Output = Self;
-	fn add(self, other: u32) -> Self {
-		let mut out = Self {
-			y: self.y,
-			m: self.m,
-			d: self.d,
-			hh: self.hh,
-			mm: self.mm,
-			ss: self.ss.saturating_add(other),
-		};
-		out.rebalance();
-		out
-	}
-}
-
-impl AddAssign<u32> for Abacus {
-	#[inline]
-	fn add_assign(&mut self, other: u32) {
-		self.ss = self.ss.saturating_add(other);
-		self.rebalance();
-	}
-}
-
 impl From<Utc2k> for Abacus {
 	#[inline]
 	fn from(src: Utc2k) -> Self {
@@ -85,14 +57,14 @@ impl From<Utc2k> for Abacus {
 impl Abacus {
 	#[must_use]
 	/// # New.
-	pub(super) fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
+	pub(super) const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
 		let mut out = Self {
-			y: y.into(),
-			m: m.into(),
-			d: d.into(),
-			hh: hh.into(),
-			mm: mm.into(),
-			ss: ss.into(),
+			y: y as u32,
+			m: m as u32,
+			d: d as u32,
+			hh: hh as u32,
+			mm: mm as u32,
+			ss: ss as u32,
 		};
 		out.rebalance();
 		out
@@ -125,7 +97,7 @@ impl Abacus {
 	///
 	/// Shift overflowing small units to larger units, like seconds to minutes,
 	/// minutes to hours, etc.
-	fn rebalance(&mut self) {
+	const fn rebalance(&mut self) {
 		if 23 < self.hh || 59 < self.mm || 59 < self.ss {
 			self.rebalance_ss();
 			self.rebalance_mm();
@@ -136,7 +108,6 @@ impl Abacus {
 			0 == self.m || 12 < self.m || 0 == self.d ||
 			(28 < self.d && self.month_days() < self.d)
 		{
-
 			self.rebalance_date();
 		}
 	}
@@ -200,7 +171,7 @@ impl Abacus {
 	/// Because months have different numbers of days from one another, and
 	/// even from their selves year-to-year, this method recurses to simplify
 	/// handling.
-	fn rebalance_date(&mut self) {
+	const fn rebalance_date(&mut self) {
 		// No amount of rebalancing can bring this within range.
 		if self.y < 1500 {
 			self.y = 1500;
@@ -263,6 +234,16 @@ impl Abacus {
 	}
 }
 
+impl Abacus {
+	#[must_use]
+	/// # Add Seconds.
+	pub(crate) const fn plus_seconds(mut self, offset: u32) -> Self {
+		self.ss = self.ss.saturating_add(offset);
+		self.rebalance();
+		self
+	}
+}
+
 
 
 #[cfg(test)]
@@ -275,17 +256,9 @@ mod tests {
 		macro_rules! add {
 			($($start:ident + $num:literal = ($y2:literal, $m2:literal, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal)),+) => ($(
 				assert_eq!(
-					($start + $num).parts(),
+					$start.plus_seconds($num).parts(),
 					($y2, $m2, $d2, $hh2, $mm2, $ss2)
 				);
-
-				// Make sure add/assign is the same as adding. It's obviously
-				// fine now, but could get broken later. Who knows!
-				{
-					let mut tmp = $start;
-					tmp += $num;
-					assert_eq!($start + $num, tmp);
-				}
 			)+);
 		}
 

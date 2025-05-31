@@ -133,7 +133,7 @@ macros::display_str!(as_str FmtUtc2k);
 
 impl From<u32> for FmtUtc2k {
 	#[inline]
-	fn from(src: u32) -> Self { Self::from(Utc2k::from(src)) }
+	fn from(src: u32) -> Self { Self::from(Utc2k::from_u32(src)) }
 }
 
 impl From<&Utc2k> for FmtUtc2k {
@@ -274,9 +274,7 @@ impl FmtUtc2k {
 	///
 	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
 	/// limitations.
-	pub fn now_local() -> Self {
-		Self::from(crate::LocalOffset::now())
-	}
+	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Set Date/Time.
@@ -713,7 +711,9 @@ impl Add<u32> for Utc2k {
 	type Output = Self;
 
 	#[inline]
-	fn add(self, other: u32) -> Self { Self::from(Abacus::from(self) + other) }
+	fn add(self, other: u32) -> Self {
+		Self::from_abacus(Abacus::from(self).plus_seconds(other))
+	}
 }
 
 impl AddAssign<u32> for Utc2k {
@@ -734,6 +734,7 @@ impl fmt::Display for Utc2k {
 }
 
 impl From<u32> for Utc2k {
+	#[inline]
 	/// # From Timestamp.
 	///
 	/// Note, this will saturate to [`Utc2k::MIN_UNIXTIME`] and
@@ -747,25 +748,7 @@ impl From<u32> for Utc2k {
 	/// assert_eq!(Utc2k::from(0).to_string(), "2000-01-01 00:00:00");
 	/// assert_eq!(Utc2k::from(u32::MAX).to_string(), "2099-12-31 23:59:59");
 	/// ```
-	fn from(src: u32) -> Self {
-		if src <= Self::MIN_UNIXTIME { Self::MIN }
-		else if src >= Self::MAX_UNIXTIME { Self::MAX }
-		else {
-			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
-			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
-
-			Self { y, m, d, hh, mm, ss }
-		}
-	}
-}
-
-impl From<Abacus> for Utc2k {
-	#[inline]
-	fn from(src: Abacus) -> Self {
-		let (y, m, d, hh, mm, ss) = src.parts();
-		Self { y, m, d, hh, mm, ss }
-	}
+	fn from(src: u32) -> Self { Self::from_u32(src) }
 }
 
 impl From<&FmtUtc2k> for Utc2k {
@@ -774,16 +757,8 @@ impl From<&FmtUtc2k> for Utc2k {
 }
 
 impl From<FmtUtc2k> for Utc2k {
-	fn from(src: FmtUtc2k) -> Self {
-		Self::new(
-			2000 + u16::from((src.0[2] & 0x0f) * 10 + (src.0[3] & 0x0f)),
-			(src.0[5] & 0x0f) * 10 + (src.0[6] & 0x0f),
-			(src.0[8] & 0x0f) * 10 + (src.0[9] & 0x0f),
-			(src.0[11] & 0x0f) * 10 + (src.0[12] & 0x0f),
-			(src.0[14] & 0x0f) * 10 + (src.0[15] & 0x0f),
-			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
-		)
-	}
+	#[inline]
+	fn from(src: FmtUtc2k) -> Self { Self::from_fmtutc2k(src) }
 }
 
 impl FromStr for Utc2k {
@@ -827,7 +802,7 @@ impl PartialOrd for Utc2k {
 impl Sub<u32> for Utc2k {
 	type Output = Self;
 
-	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+	#[inline]
 	/// # Subtraction.
 	///
 	/// This method returns a new `Utc2k` object reduced by a given number of
@@ -858,42 +833,7 @@ impl Sub<u32> for Utc2k {
 	///     Utc2k::new(2019, 12, 31, 23, 10, 20),
 	/// );
 	/// ```
-	fn sub(self, other: u32) -> Self {
-		// Count up the "easy" seconds. If we're subtracting less than this
-		// amount, we can handle the subtraction without any month boundary or
-		// leap year shenanigans.
-		let mut easy: u32 =
-			u32::from(self.d - 1) * DAY_IN_SECONDS +
-			u32::from(self.hh) * HOUR_IN_SECONDS +
-			u32::from(self.mm) * MINUTE_IN_SECONDS +
-			u32::from(self.ss);
-
-		if other <= easy {
-			easy -= other;
-			let d: u8 =
-				if easy >= DAY_IN_SECONDS {
-					let d = easy.wrapping_div(DAY_IN_SECONDS);
-					easy -= d * DAY_IN_SECONDS;
-					d as u8 + 1
-				}
-				else { 1 };
-
-			let (hh, mm, ss) = parse::time_seconds(easy);
-			Self {
-				y: self.y,
-				m: self.m,
-				d,
-				hh,
-				mm,
-				ss,
-			}
-		}
-		// Otherwise it is best to convert to unixtime, perform the
-		// subtraction, and convert it back.
-		else {
-			Self::from(self.unixtime().saturating_sub(other))
-		}
-	}
+	fn sub(self, other: u32) -> Self { self.minus_seconds(other) }
 }
 
 impl SubAssign<u32> for Utc2k {
@@ -1073,8 +1013,8 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.to_string(), "2010-05-05 16:30:01");
 	/// ```
-	pub fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
-		Self::from(Abacus::new(y, m, d, hh, mm, ss))
+	pub const fn new(y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) -> Self {
+		Self::from_abacus(Abacus::new(y, m, d, hh, mm, ss))
 	}
 
 	#[inline]
@@ -1082,7 +1022,7 @@ impl Utc2k {
 	/// # Now.
 	///
 	/// Create a new instance representing the current UTC time.
-	pub fn now() -> Self { Self::from(unixtime()) }
+	pub fn now() -> Self { Self::from_u32(unixtime()) }
 
 	#[cfg(feature = "local")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
@@ -1094,9 +1034,7 @@ impl Utc2k {
 	///
 	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
 	/// limitations.
-	pub fn now_local() -> Self {
-		Self::from(crate::LocalOffset::now())
-	}
+	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
 
 	#[inline]
 	#[must_use]
@@ -1111,7 +1049,7 @@ impl Utc2k {
 	///
 	/// assert_eq!(Utc2k::tomorrow(), Utc2k::now() + 86_400_u32);
 	/// ```
-	pub fn tomorrow() -> Self { Self::from(unixtime() + DAY_IN_SECONDS) }
+	pub fn tomorrow() -> Self { Self::from_u32(unixtime() + DAY_IN_SECONDS) }
 
 	#[inline]
 	#[must_use]
@@ -1126,7 +1064,7 @@ impl Utc2k {
 	///
 	/// assert_eq!(Utc2k::yesterday(), Utc2k::now() - 86_400_u32);
 	/// ```
-	pub fn yesterday() -> Self { Self::from(unixtime() - DAY_IN_SECONDS) }
+	pub fn yesterday() -> Self { Self::from_u32(unixtime() - DAY_IN_SECONDS) }
 }
 
 /// ## String Parsing.
@@ -1669,8 +1607,11 @@ impl Utc2k {
 	/// assert_eq!(date.weekday(), Weekday::Thursday);
 	/// assert_eq!(date.weekday().as_ref(), "Thursday");
 	/// ```
-	pub fn weekday(self) -> Weekday {
-		Weekday::year_begins_on(self.y) + (self.ordinal() - 1)
+	pub const fn weekday(self) -> Weekday {
+		Weekday::from_u8(
+			Weekday::year_begins_on(self.y) as u8 +
+			((self.ordinal() - 1) % 7) as u8
+		)
 	}
 }
 
@@ -1893,13 +1834,14 @@ impl Utc2k {
 	/// // Change the time bits.
 	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
 	/// ```
-	pub fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
-		Self::from(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
+	pub const fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
+		Self::from_abacus(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
 	}
 }
 
 /// ## Checked Operations.
 impl Utc2k {
+	#[must_use]
 	/// # Checked Add.
 	///
 	/// Return a new [`Utc2k`] instance set _n_ seconds into the future from
@@ -1919,10 +1861,14 @@ impl Utc2k {
 	/// let added = date.checked_add(86_413).unwrap();
 	/// assert_eq!(added.to_string(), "2010-01-02 00:00:13");
 	/// ```
-	pub fn checked_add(self, secs: u32) -> Option<Self> {
-		self.unixtime().checked_add(secs)
-			.filter(|s| s <= &Self::MAX_UNIXTIME)
-			.map(Self::from)
+	pub const fn checked_add(self, secs: u32) -> Option<Self> {
+		if let Some(s) = self.unixtime().checked_add(secs) {
+			if s <= Self::MAX_UNIXTIME {
+				return Some(Self::from_u32(s));
+			}
+		}
+
+		None
 	}
 
 	/// # From Unixtime (Checked).
@@ -1950,12 +1896,13 @@ impl Utc2k {
 	/// // This fits.
 	/// assert!(Utc2k::checked_from_unixtime(Utc2k::MIN_UNIXTIME).is_ok());
 	/// ```
-	pub fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
+	pub const fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
 		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
 		else if src > Self::MAX_UNIXTIME { Err(Utc2kError::Overflow) }
-		else { Ok(Self::from(src)) }
+		else { Ok(Self::from_u32(src)) }
 	}
 
+	#[must_use]
 	/// # Checked Sub.
 	///
 	/// Return a new [`Utc2k`] instance set _n_ seconds before this one,
@@ -1975,10 +1922,14 @@ impl Utc2k {
 	/// let subbed = date.checked_sub(86_413).unwrap();
 	/// assert_eq!(subbed.to_string(), "2009-12-30 23:59:47");
 	/// ```
-	pub fn checked_sub(self, secs: u32) -> Option<Self> {
-		self.unixtime().checked_sub(secs)
-			.filter(|s| s >= &Self::MIN_UNIXTIME)
-			.map(Self::from)
+	pub const fn checked_sub(self, secs: u32) -> Option<Self> {
+		if let Some(s) = self.unixtime().checked_sub(secs) {
+			if Self::MIN_UNIXTIME <= s {
+				return Some(Self::from_u32(s));
+			}
+		}
+
+		None
 	}
 }
 
@@ -2080,6 +2031,83 @@ impl Utc2k {
 		}
 		else if self.hh < other.hh { Ordering::Less }
 		else { Ordering::Greater }
+	}
+}
+
+/// # Internal Helpers.
+impl Utc2k {
+	#[must_use]
+	/// # From `Abacus`.
+	pub(crate) const fn from_abacus(src: Abacus) -> Self {
+		let (y, m, d, hh, mm, ss) = src.parts();
+		Self { y, m, d, hh, mm, ss }
+	}
+
+	#[must_use]
+	/// # From `FmtUtc2k`.
+	pub(crate) const fn from_fmtutc2k(src: FmtUtc2k) -> Self {
+		Self::new(
+			2000 + ((src.0[2] & 0x0f) * 10 + (src.0[3] & 0x0f)) as u16,
+			(src.0[5] & 0x0f) * 10 + (src.0[6] & 0x0f),
+			(src.0[8] & 0x0f) * 10 + (src.0[9] & 0x0f),
+			(src.0[11] & 0x0f) * 10 + (src.0[12] & 0x0f),
+			(src.0[14] & 0x0f) * 10 + (src.0[15] & 0x0f),
+			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
+		)
+	}
+
+	#[must_use]
+	/// # From Seconds.
+	pub(crate) const fn from_u32(src: u32) -> Self {
+		if src <= Self::MIN_UNIXTIME { Self::MIN }
+		else if src >= Self::MAX_UNIXTIME { Self::MAX }
+		else {
+			// Tease out the date parts with a lot of terrible math.
+			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
+			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
+
+			Self { y, m, d, hh, mm, ss }
+		}
+	}
+
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+	#[must_use]
+	/// # Subtract Seconds.
+	pub(crate) const fn minus_seconds(self, offset: u32) -> Self {
+		// Count up the "easy" seconds. If we're subtracting less than this
+		// amount, we can handle the subtraction without any month boundary or
+		// leap year shenanigans.
+		let mut easy: u32 =
+			(self.d - 1) as u32 * DAY_IN_SECONDS +
+			(self.hh) as u32 * HOUR_IN_SECONDS +
+			(self.mm) as u32 * MINUTE_IN_SECONDS +
+			(self.ss) as u32;
+
+		if offset <= easy {
+			easy -= offset;
+			let d: u8 =
+				if easy >= DAY_IN_SECONDS {
+					let d = easy.wrapping_div(DAY_IN_SECONDS);
+					easy -= d * DAY_IN_SECONDS;
+					d as u8 + 1
+				}
+				else { 1 };
+
+			let (hh, mm, ss) = parse::time_seconds(easy);
+			Self {
+				y: self.y,
+				m: self.m,
+				d,
+				hh,
+				mm,
+				ss,
+			}
+		}
+		// Otherwise it is best to convert to unixtime, perform the
+		// subtraction, and convert it back.
+		else {
+			Self::from_u32(self.unixtime().saturating_sub(offset))
+		}
 	}
 }
 
