@@ -327,6 +327,24 @@ impl Month {
 }
 
 impl Month {
+	/// # All Months.
+	///
+	/// Return an array containing all possible months, in order.
+	pub const ALL: [Self; 12] = [
+		Self::January,
+		Self::February,
+		Self::March,
+		Self::April,
+		Self::May,
+		Self::June,
+		Self::July,
+		Self::August,
+		Self::September,
+		Self::October,
+		Self::November,
+		Self::December,
+	];
+
 	#[must_use]
 	/// # As Str (Abbreviated).
 	///
@@ -374,27 +392,6 @@ impl Month {
 			Self::November => *b"Nov",
 			Self::December => *b"Dec",
 		}
-	}
-
-	#[must_use]
-	/// # All Months.
-	///
-	/// Return an array containing all possible months, in order.
-	pub const fn all() -> [Self; 12] {
-		[
-			Self::January,
-			Self::February,
-			Self::March,
-			Self::April,
-			Self::May,
-			Self::June,
-			Self::July,
-			Self::August,
-			Self::September,
-			Self::October,
-			Self::November,
-			Self::December,
-		]
 	}
 
 	#[must_use]
@@ -529,7 +526,7 @@ mod tests {
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in Month::all() {
+		for d in Month::ALL {
 			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
 		}
 	}
@@ -556,7 +553,7 @@ mod tests {
 		let mut when = 0;
 		for months in many.as_slice().chunks_exact(12) {
 			when += 1;
-			assert_eq!(months, Month::all(), "Round #{when}");
+			assert_eq!(months, Month::ALL, "Round #{when}");
 		}
 	}
 
@@ -572,7 +569,7 @@ mod tests {
 	#[test]
 	/// # Test Some Math!
 	fn t_math() {
-		let months: Vec<Month> = std::iter::repeat(Month::all())
+		let months: Vec<Month> = std::iter::repeat(Month::ALL)
 			.take(4)
 			.flatten()
 			.collect();
@@ -598,7 +595,7 @@ mod tests {
 	#[test]
 	/// # String Tests.
 	fn t_str() {
-		for m in Month::all() {
+		for m in Month::ALL {
 			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));

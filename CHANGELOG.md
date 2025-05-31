@@ -20,6 +20,11 @@
 * `Weekday::last_in_month` is now const
 * `Weekday::nth_in_month` is now const
 
+### Breaking
+
+* `Month::all` (method) is now `Month::ALL` (constant)
+* `Weekday::all` (method) is now `Weekday::ALL` (constant)
+
 
 
 ## [0.13.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.13.0) - 2025-05-15

@@ -309,7 +309,7 @@ mod tests {
 
 	#[test]
 	fn t_serde_month() {
-		for month in Month::all() {
+		for month in Month::ALL {
 			let s = serde_json::to_string(&month).expect("Serialization failed.");
 			assert_eq!(s, format!("\"{}\"", month.as_str()));
 
@@ -325,7 +325,7 @@ mod tests {
 
 	#[test]
 	fn t_serde_weekday() {
-		for day in Weekday::all() {
+		for day in Weekday::ALL {
 			let s = serde_json::to_string(&day).expect("Serialization failed.");
 			assert_eq!(s, format!("\"{}\"", day.as_str()));
 
