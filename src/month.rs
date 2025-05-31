@@ -12,7 +12,6 @@ use std::{
 	ops::{
 		Add,
 		AddAssign,
-		Deref,
 		Sub,
 		SubAssign,
 	},
@@ -81,13 +80,6 @@ impl AddAssign<u8> for Month {
 }
 
 macros::as_ref_borrow_cast!(Month: as_str str);
-
-impl Deref for Month {
-	type Target = str;
-
-	#[inline]
-	fn deref(&self) -> &Self::Target { self.as_str() }
-}
 
 macros::display_str!(as_str Month);
 

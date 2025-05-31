@@ -23,7 +23,6 @@ use std::{
 	ops::{
 		Add,
 		AddAssign,
-		Deref,
 		Sub,
 		SubAssign,
 	},
@@ -83,7 +82,7 @@ macro_rules! try_from_unixtime {
 ///
 /// It follows the simple Unix date format of `YYYY-MM-DD HH:MM:SS`.
 ///
-/// Speaking of, you can obtain an `&str` using `Deref`, `AsRef<str>`,
+/// Speaking of, you can obtain an `&str` using `AsRef<str>`,
 /// `Borrow<str>`, or [`FmtUtc2k::as_str`].
 ///
 /// If you only want the date or time half, call [`FmtUtc2k::date`] or
@@ -120,13 +119,6 @@ macros::as_ref_borrow_cast!(FmtUtc2k: as_str str);
 impl Default for FmtUtc2k {
 	#[inline]
 	fn default() -> Self { Self::MIN }
-}
-
-impl Deref for FmtUtc2k {
-	type Target = str;
-
-	#[inline]
-	fn deref(&self) -> &Self::Target { self.as_str() }
 }
 
 macros::display_str!(as_str FmtUtc2k);

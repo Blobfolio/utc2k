@@ -72,7 +72,6 @@ use std::borrow::Borrow;
 
 let fmt = FmtUtc2k::from(4_102_444_799_u32);
 
-let s: &str = &fmt;
 let s: &str = fmt.as_ref();
 let s: &str = fmt.as_str();
 let s: &str = fmt.borrow();

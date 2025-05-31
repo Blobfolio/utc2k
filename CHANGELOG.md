@@ -24,6 +24,9 @@
 
 * `Month::all` (method) is now `Month::ALL` (constant)
 * `Weekday::all` (method) is now `Weekday::ALL` (constant)
+* Removed `Deref` impl for `FmtUtc2k`
+* Removed `Deref` impl for `Month`
+* Removed `Deref` impl for `Weekday`
 
 
 

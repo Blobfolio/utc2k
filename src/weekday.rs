@@ -12,7 +12,6 @@ use std::{
 	ops::{
 		Add,
 		AddAssign,
-		Deref,
 		Sub,
 		SubAssign,
 	},
@@ -68,14 +67,6 @@ impl AddAssign<u8> for Weekday {
 }
 
 macros::as_ref_borrow_cast!(Weekday: as_str str);
-
-impl Deref for Weekday {
-	type Target = str;
-
-	#[inline]
-	fn deref(&self) -> &Self::Target { self.as_str() }
-}
-
 macros::display_str!(as_str Weekday);
 
 impl From<u8> for Weekday {
