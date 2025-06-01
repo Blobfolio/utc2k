@@ -2,6 +2,34 @@
 
 
 
+## [0.14.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.14.0) - 2025-05-31
+
+### New
+
+* `Utc2k::from_unixtime` (const alternative to `From<u32>`)
+
+### Changed
+
+* `Utc2k::checked_add` is now const
+* `Utc2k::checked_from_unixtime` is now const
+* `Utc2k::checked_sub` is now const
+* `Utc2k::new` is now const
+* `Utc2k::weekday` is now const
+* `Utc2k::with_time` is now const
+* `Weekday::first_in_month` is now const
+* `Weekday::last_in_month` is now const
+* `Weekday::nth_in_month` is now const
+
+### Breaking
+
+* `Month::all` (method) is now `Month::ALL` (constant)
+* `Weekday::all` (method) is now `Weekday::ALL` (constant)
+* Removed `Deref` impl for `FmtUtc2k`
+* Removed `Deref` impl for `Month`
+* Removed `Deref` impl for `Weekday`
+
+
+
 ## [0.13.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.13.0) - 2025-05-15
 
 ### Changed

@@ -90,30 +90,30 @@ pub(super) const fn parse4(a: u8, b: u8, c: u8, d: u8) -> Result<u16, Utc2kError
 ///
 /// This attempts to extract the year, month, and day from a `YYYY-MM-DD` byte
 /// slice. Only the numeric ranges are parsed — separators can be whatever.
-pub(super) fn parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
-	let tmp = Abacus::new(
-		parse4(src[0], src[1], src[2], src[3])?,
-		parse2(src[5], src[6])?,
-		parse2(src[8], src[9])?,
-		0, 0, 0
-	);
-
-	Ok(Utc2k::from(tmp))
+pub(super) const fn parts_from_date(src: &[u8; 10]) -> Result<Utc2k, Utc2kError> {
+	if let Ok((y, m, d)) = parse_date_bytes(
+		[src[0], src[1], src[2], src[3]],
+		[src[5], src[6]],
+		[src[8], src[9]],
+	) {
+		Ok(Utc2k::from_abacus(Abacus::new(y, m, d, 0, 0, 0)))
+	}
+	else { Err(Utc2kError::Invalid) }
 }
 
 /// # Parse Parts From Date.
 ///
 /// This attempts to extract the year, month, and day from a `YYYYMMDD` byte
 /// slice.
-pub(super) fn parts_from_smooshed_date(src: [u8; 8]) -> Result<Utc2k, Utc2kError> {
-	let tmp = Abacus::new(
-		parse4(src[0], src[1], src[2], src[3])?,
-		parse2(src[4], src[5])?,
-		parse2(src[6], src[7])?,
-		0, 0, 0
-	);
-
-	Ok(Utc2k::from(tmp))
+pub(super) const fn parts_from_smooshed_date(src: [u8; 8]) -> Result<Utc2k, Utc2kError> {
+	if let Ok((y, m, d)) = parse_date_bytes(
+		[src[0], src[1], src[2], src[3]],
+		[src[4], src[5]],
+		[src[6], src[7]],
+	) {
+		Ok(Utc2k::from_abacus(Abacus::new(y, m, d, 0, 0, 0)))
+	}
+	else { Err(Utc2kError::Invalid) }
 }
 
 /// # Parse Parts From Date/Time.
@@ -121,33 +121,42 @@ pub(super) fn parts_from_smooshed_date(src: [u8; 8]) -> Result<Utc2k, Utc2kError
 /// This attempts to extract the year, month, day, hour, minute and second from
 /// a `YYYY-MM-DD HH:MM:SS` byte slice. Only the numeric ranges are parsed —
 /// separators can be whatever.
-pub(super) fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
-	let (hh, mm, ss) = hms(&src[11..])?;
-	let tmp = Abacus::new(
-		parse4(src[0], src[1], src[2], src[3])?,
-		parse2(src[5], src[6])?,
-		parse2(src[8], src[9])?,
-		hh, mm, ss,
-	);
+pub(super) const fn parts_from_datetime(src: &[u8; 19]) -> Result<Utc2k, Utc2kError> {
+	if let Ok((y, m, d)) = parse_date_bytes(
+		[src[0], src[1], src[2], src[3]],
+		[src[5], src[6]],
+		[src[8], src[9]],
+	) {
+		let (_, src_time) = src.split_at(11);
+		if let Ok((hh, mm, ss)) = hms(src_time) {
+			return Ok(Utc2k::from_abacus(Abacus::new(y, m, d, hh, mm, ss)));
+		}
+	}
 
-	Ok(Utc2k::from(tmp))
+	Err(Utc2kError::Invalid)
 }
 
 /// # Parse Parts From Date/Time.
 ///
 /// This attempts to extract the year, month, day, hour, minute and second from
 /// a `YYYYMMDDHHMMSS` byte slice.
-pub(super) fn parts_from_smooshed_datetime(src: &[u8; 14]) -> Result<Utc2k, Utc2kError> {
-	let tmp = Abacus::new(
-		parse4(src[0], src[1], src[2], src[3])?,
-		parse2(src[4], src[5])?,
-		parse2(src[6], src[7])?,
-		parse2(src[8], src[9])?,
-		parse2(src[10], src[11])?,
-		parse2(src[12], src[13])?,
-	);
+pub(super) const fn parts_from_smooshed_datetime(src: &[u8; 14])
+-> Result<Utc2k, Utc2kError> {
+	if let Ok((y, m, d)) = parse_date_bytes(
+		[src[0], src[1], src[2], src[3]],
+		[src[4], src[5]],
+		[src[6], src[7]],
+	) {
+		if let Ok(hh) = parse2(src[8], src[9]) {
+			if let Ok(mm) = parse2(src[10], src[11]) {
+				if let Ok(ss) = parse2(src[12], src[13]) {
+					return Ok(Utc2k::from_abacus(Abacus::new(y, m, d, hh, mm, ss)));
+				}
+			}
+		}
+	}
 
-	Ok(Utc2k::from(tmp))
+	Err(Utc2kError::Invalid)
 }
 
 /// # Parse RFC2822 Day.
@@ -155,20 +164,19 @@ pub(super) fn parts_from_smooshed_datetime(src: &[u8; 14]) -> Result<Utc2k, Utc2
 /// This method represents the second stage of [`Utc2k::from_rfc2822`]. It
 /// parses the month-day component from the string, moves the pointer, and
 /// passes it along to [`parse_rfc2822_datetime`] to finish it up.
-pub(super) fn rfc2822_day(src: &[u8]) -> Option<Utc2k> {
+pub(super) const fn rfc2822_day(src: &[u8]) -> Option<Utc2k> {
 	if 19 <= src.len() {
 		let a = src[0] ^ b'0';
 		if a < 10 {
 			if src[1] == b' ' {
-				return rfc2822_datetime(&src[2..], a);
+				let (_, slice) = src.split_at(2);
+				return rfc2822_datetime(slice, a);
 			}
 
 			let b = src[1] ^ b'0';
 			if b < 10 {
-				return rfc2822_datetime(
-					&src[3..],
-					a * 10 + b,
-				);
+				let (_, slice) = src.split_at(3);
+				return rfc2822_datetime(slice, a * 10 + b);
 			}
 		}
 	}
@@ -206,33 +214,48 @@ pub(super) const fn time_seconds(mut src: u32) -> (u8, u8, u8) {
 
 
 
+/// # Parse Date From Bytes.
+///
+/// Most of the string date formats have 4-byte years and two-byte months and
+/// days, but their locations within the broader string vary. This method
+/// handles the parsing once the caller has pulled them from the right places.
+const fn parse_date_bytes(y: [u8; 4], m: [u8; 2], d: [u8; 2])
+-> Result<(u16, u8, u8), Utc2kError> {
+	if let Ok(y) = parse4(y[0], y[1], y[2], y[3]) {
+		if let Ok(m) = parse2(m[0], m[1]) {
+			if let Ok(d) = parse2(d[0], d[1]) {
+				return Ok((y, m, d));
+			}
+		}
+	}
+
+	Err(Utc2kError::Invalid)
+}
+
 /// # Parse RFC2822 Date/Time.
 ///
 /// This method represents the third stage of [`Utc2k::from_rfc2822`]. It
 /// parses the remaining date/time components from the string, applies the
 /// offset (if any), and returns the desired `Utc2k` object.
-fn rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
-	// Grab the time bits.
-	let (src, time) = src.split_first_chunk::<9>()?;
-	let (hh, mm, ss) = hms(time).ok()?;
+const fn rfc2822_datetime(src: &[u8], d: u8) -> Option<Utc2k> {
+	// Parse the datetime bits.
+	let Some((src, time)) = src.split_first_chunk::<9>() else { return None; };
+	let Ok((hh, mm, ss)) = hms(time) else { return None; };
+	let Ok(y) = parse4(src[4], src[5], src[6], src[7]) else { return None; };
+	let Some(m) = Month::from_abbreviation(src.as_slice()) else { return None; };
 
-	// Parse out the rest!
-	let tmp = Abacus::new(
-		parse4(src[4], src[5], src[6], src[7]).ok()?,
-		Month::from_abbreviation(src.as_slice())? as u8,
-		d,
-		hh, mm, ss,
-	);
+	// Sanity checks.
+	let tmp = Abacus::new(y, m as u8, d, hh, mm, ss);
 
 	// Apply an offset?
 	if let Some((plus, offset_ss)) = rfc2822_offset(time) {
 		// The offset is beyond UTC; we need to subtract.
-		if plus { Some(Utc2k::from(tmp) - offset_ss) }
+		if plus { Some(Utc2k::from_abacus(tmp).minus_seconds(offset_ss)) }
 		// The offset is earlier than UTC; we need to add.
-		else { Some(Utc2k::from(tmp + offset_ss)) }
+		else { Some(Utc2k::from_abacus(tmp.plus_seconds(offset_ss))) }
 	}
 	// Pass through as-is!
-	else { Some(Utc2k::from(tmp)) }
+	else { Some(Utc2k::from_abacus(tmp)) }
 }
 
 /// # Parse RFC2822 Offset.
