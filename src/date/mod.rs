@@ -245,6 +245,22 @@ impl FmtUtc2k {
 	/// );
 	/// ```
 	pub const MAX: Self = Self(*b"2099-12-31 23:59:59");
+
+	/// # Length.
+	///
+	/// The length of the formatted datetime in string/byte form.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::MIN.as_str().len(),
+	///     FmtUtc2k::LEN,
+	/// );
+	/// ```
+	pub const LEN: usize = 19;
 }
 
 /// ## Instantiation/Reuse.

@@ -2,6 +2,14 @@
 
 
 
+## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - TBD
+
+### New
+
+* `FmtUtc2k::LEN`
+
+
+
 ## [0.14.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.14.0) - 2025-05-31
 
 ### New
