@@ -91,7 +91,7 @@ let s: &str = fmt.borrow();
 
 Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
-```
+```toml
 [dependencies]
 utc2k = "0.14.*"
 ```
