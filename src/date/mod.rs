@@ -6,6 +6,7 @@ pub(super) mod parse;
 
 use crate::{
 	Abacus,
+	DateChar,
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
 	macros,
@@ -28,22 +29,6 @@ use std::{
 	},
 	str::FromStr,
 };
-
-
-
-/// # Double-Digit ASCII.
-static DD: [[u8; 2]; 100] = [
-	[48, 48], [48, 49], [48, 50], [48, 51], [48, 52], [48, 53], [48, 54], [48, 55], [48, 56], [48, 57],
-	[49, 48], [49, 49], [49, 50], [49, 51], [49, 52], [49, 53], [49, 54], [49, 55], [49, 56], [49, 57],
-	[50, 48], [50, 49], [50, 50], [50, 51], [50, 52], [50, 53], [50, 54], [50, 55], [50, 56], [50, 57],
-	[51, 48], [51, 49], [51, 50], [51, 51], [51, 52], [51, 53], [51, 54], [51, 55], [51, 56], [51, 57],
-	[52, 48], [52, 49], [52, 50], [52, 51], [52, 52], [52, 53], [52, 54], [52, 55], [52, 56], [52, 57],
-	[53, 48], [53, 49], [53, 50], [53, 51], [53, 52], [53, 53], [53, 54], [53, 55], [53, 56], [53, 57],
-	[54, 48], [54, 49], [54, 50], [54, 51], [54, 52], [54, 53], [54, 54], [54, 55], [54, 56], [54, 57],
-	[55, 48], [55, 49], [55, 50], [55, 51], [55, 52], [55, 53], [55, 54], [55, 55], [55, 56], [55, 57],
-	[56, 48], [56, 49], [56, 50], [56, 51], [56, 52], [56, 53], [56, 54], [56, 55], [56, 56], [56, 57],
-	[57, 48], [57, 49], [57, 50], [57, 51], [57, 52], [57, 53], [57, 54], [57, 55], [57, 56], [57, 57]
-];
 
 
 
@@ -107,7 +92,7 @@ macro_rules! try_from_unixtime {
 /// let utc_date = Utc2k::from(946_684_800_u32);
 /// assert_eq!(FmtUtc2k::from(utc_date), utc_date.formatted());
 /// ```
-pub struct FmtUtc2k([u8; 19]);
+pub struct FmtUtc2k([DateChar; 19]);
 
 impl AsRef<[u8]> for FmtUtc2k {
 	#[inline]
@@ -134,11 +119,8 @@ impl From<&Utc2k> for FmtUtc2k {
 }
 
 impl From<Utc2k> for FmtUtc2k {
-	fn from(src: Utc2k) -> Self {
-		let mut out = Self::default();
-		out.set_datetime(src);
-		out
-	}
+	#[inline]
+	fn from(src: Utc2k) -> Self { Self::from_utc2k(src) }
 }
 
 impl FromStr for FmtUtc2k {
@@ -234,7 +216,19 @@ impl FmtUtc2k {
 	///     "2000-01-01 00:00:00",
 	/// );
 	/// ```
-	pub const MIN: Self = Self(*b"2000-01-01 00:00:00");
+	pub const MIN: Self = Self([
+		DateChar::Digit2, DateChar::Digit0, DateChar::Digit0, DateChar::Digit0,
+		DateChar::Dash,
+		DateChar::Digit0, DateChar::Digit1,
+		DateChar::Dash,
+		DateChar::Digit0, DateChar::Digit1,
+		DateChar::Space,
+		DateChar::Digit0, DateChar::Digit0,
+		DateChar::Colon,
+		DateChar::Digit0, DateChar::Digit0,
+		DateChar::Colon,
+		DateChar::Digit0, DateChar::Digit0,
+	]);
 
 	/// # Maximum Date/Time.
 	///
@@ -244,7 +238,19 @@ impl FmtUtc2k {
 	///     "2099-12-31 23:59:59",
 	/// );
 	/// ```
-	pub const MAX: Self = Self(*b"2099-12-31 23:59:59");
+	pub const MAX: Self = Self([
+		DateChar::Digit2, DateChar::Digit0, DateChar::Digit9, DateChar::Digit9,
+		DateChar::Dash,
+		DateChar::Digit1, DateChar::Digit2,
+		DateChar::Dash,
+		DateChar::Digit3, DateChar::Digit1,
+		DateChar::Space,
+		DateChar::Digit2, DateChar::Digit3,
+		DateChar::Colon,
+		DateChar::Digit5, DateChar::Digit9,
+		DateChar::Colon,
+		DateChar::Digit5, DateChar::Digit9,
+	]);
 
 	/// # Length.
 	///
@@ -270,7 +276,7 @@ impl FmtUtc2k {
 	/// # Now.
 	///
 	/// This returns an instance using the current unixtime as the seed.
-	pub fn now() -> Self { Self::from(Utc2k::now()) }
+	pub fn now() -> Self { Self::from_utc2k(Utc2k::now()) }
 
 	#[cfg(feature = "local")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
@@ -283,6 +289,14 @@ impl FmtUtc2k {
 	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
 	/// limitations.
 	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
+
+	#[must_use]
+	/// # From `Utc2k`.
+	pub(crate) const fn from_utc2k(src: Utc2k) -> Self {
+		let mut out = Self::MIN;
+		out.set_datetime(src);
+		out
+	}
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Set Date/Time.
@@ -304,7 +318,7 @@ impl FmtUtc2k {
 	/// fmt.set_datetime(Utc2k::from(Utc2k::MAX_UNIXTIME));
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
-	pub fn set_datetime(&mut self, src: Utc2k) {
+	pub const fn set_datetime(&mut self, src: Utc2k) {
 		let (y, m, d, hh, mm, ss) = src.parts();
 		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
 	}
@@ -332,7 +346,7 @@ impl FmtUtc2k {
 	/// fmt.set_parts(2010, 10, 32, 12, 33, 59);
 	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
 	/// ```
-	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+	pub const fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
 		let (y, m, d, hh, mm, ss) = Abacus::new(y, m, d, hh, mm, ss).parts();
 		self.set_parts_unchecked(y, m, d, hh, mm, ss);
 	}
@@ -343,13 +357,13 @@ impl FmtUtc2k {
 	/// been applied by the time this method is called.
 	///
 	/// From here, it's just straight ASCII-writing.
-	fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		for (chunk, v) in self.0[1..].chunks_exact_mut(3).zip([y, m, d, hh, mm, ss]) {
-			chunk[1..].copy_from_slice(DD[usize::from(v)].as_slice());
-		}
-
-		// Additionally make sure the result is ASCII.
-		debug_assert!(self.0.is_ascii(), "Bug: Datetime is not ASCII.");
+	const fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+		[self.0[2],  self.0[3]] =  DateChar::dd(y);
+		[self.0[5],  self.0[6]] =  DateChar::dd(m);
+		[self.0[8],  self.0[9]] =  DateChar::dd(d);
+		[self.0[11], self.0[12]] = DateChar::dd(hh);
+		[self.0[14], self.0[15]] = DateChar::dd(mm);
+		[self.0[17], self.0[18]] = DateChar::dd(ss);
 	}
 
 	#[inline]
@@ -393,9 +407,8 @@ impl FmtUtc2k {
 	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_bytes(), b"2099-12-31 23:59:59");
 	/// ```
-	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
+	pub const fn as_bytes(&self) -> &[u8] { DateChar::as_bytes(self.0.as_slice()) }
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # As Str.
@@ -413,12 +426,8 @@ impl FmtUtc2k {
 	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
-	pub const fn as_str(&self) -> &str {
-		// Safety: datetimes are valid ASCII.
-		unsafe { std::str::from_utf8_unchecked(&self.0) }
-	}
+	pub const fn as_str(&self) -> &str { DateChar::as_str(self.0.as_slice()) }
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -435,29 +444,10 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
 	pub const fn date(&self) -> &str {
-		if let Some(v) = self.0.first_chunk::<10>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2].is_ascii_digit() &&
-				v[3].is_ascii_digit() &&
-				v[4] == b'-' &&
-				v[5].is_ascii_digit() &&
-				v[6].is_ascii_digit() &&
-				v[7] == b'-' &&
-				v[8].is_ascii_digit() &&
-				v[9].is_ascii_digit(),
-				"Bug: Date is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "2000-01-01" }
+		let (out, _) = self.0.split_at(10);
+		DateChar::as_str(out)
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -474,23 +464,10 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
 	pub const fn year(&self) -> &str {
-		if let Some(v) = self.0.first_chunk::<4>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2].is_ascii_digit() &&
-				v[3].is_ascii_digit(),
-				"Bug: Year is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "2000" }
+		let (out, _) = self.0.split_at(4);
+		DateChar::as_str(out)
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
@@ -507,24 +484,8 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
 	pub const fn time(&self) -> &str {
-		if let Some(v) = self.0.last_chunk::<8>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2] == b':' &&
-				v[3].is_ascii_digit() &&
-				v[4].is_ascii_digit() &&
-				v[5] == b':' &&
-				v[6].is_ascii_digit() &&
-				v[7].is_ascii_digit(),
-				"Bug: Time is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "00:00:00" }
+		let (_, out) = self.0.split_at(11);
+		DateChar::as_str(out)
 	}
 }
 
@@ -609,7 +570,6 @@ impl FmtUtc2k {
 		Utc2k::from_rfc2822(src).map(Self::from)
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -632,28 +592,21 @@ impl FmtUtc2k {
 	/// assert_eq!(date.to_rfc2822(), "Sat, 13 Jun 2020 08:08:08 +0000");
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
-		let utc = Utc2k::from(self);
-		let weekday: [u8; 3] = utc.weekday().abbreviation_bytes();
-		let month: [u8; 3] = utc.month_enum().abbreviation_bytes();
+		let utc = Utc2k::from_fmtutc2k(*self);
 
-		// Working from bytes is ugly, but performs much better than any
-		// string-based operations.
-		let out: Vec<u8> = vec![
-			weekday[0], weekday[1], weekday[2],
-			b',', b' ',
-			self.0[8], self.0[9],
-			b' ',
-			month[0], month[1], month[2],
-			b' ',
-			b'2', b'0', self.0[2], self.0[3],
-			b' ',
-			self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
-			b' ', b'+', b'0', b'0', b'0', b'0'
-		];
+		let mut out = String::with_capacity(31);
+		out.push_str(utc.weekday().abbreviation());
+		out.push_str(", ");
+		out.push_str(DateChar::as_str(&[self.0[8], self.0[9]]));
+		out.push(' ');
+		out.push_str(utc.month_enum().abbreviation());
+		out.push(' ');
+		out.push_str(self.year());
+		out.push(' ');
+		out.push_str(self.time());
+		out.push_str(" +0000");
 
-		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { String::from_utf8_unchecked(out) }
+		out
 	}
 }
 
@@ -737,7 +690,7 @@ impl Default for Utc2k {
 impl fmt::Display for Utc2k {
 	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from(*self), f)
+		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from_utc2k(*self), f)
 	}
 }
 
@@ -1689,7 +1642,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
-	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
+	pub const fn formatted(self) -> FmtUtc2k { FmtUtc2k::from_utc2k(self) }
 
 	#[inline]
 	#[must_use]
@@ -1707,9 +1660,8 @@ impl Utc2k {
 	/// let date = Utc2k::new(2021, 12, 13, 11, 56, 1);
 	/// assert_eq!(date.to_rfc3339(), "2021-12-13T11:56:01Z");
 	/// ```
-	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
+	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from_utc2k(*self).to_rfc3339() }
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[must_use]
 	/// # To RFC2822.
 	///
@@ -1731,33 +1683,24 @@ impl Utc2k {
 	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
-		let weekday: [u8; 3] = self.weekday().abbreviation_bytes();
-		let month: [u8; 3] = self.month_enum().abbreviation_bytes();
+		let mut out = String::with_capacity(31);
 
-		let day = DD[usize::from(self.d)];
-		let year = DD[usize::from(self.y)];
-		let hh = DD[usize::from(self.hh)];
-		let mm = DD[usize::from(self.mm)];
-		let ss = DD[usize::from(self.ss)];
+		out.push_str(self.weekday().abbreviation());
+		out.push_str(", ");
+		out.push_str(DateChar::as_str(DateChar::dd(self.d).as_slice()));
+		out.push(' ');
+		out.push_str(self.month_enum().abbreviation());
+		out.push_str(" 20");
+		out.push_str(DateChar::as_str(DateChar::dd(self.y).as_slice()));
+		out.push(' ');
+		out.push_str(DateChar::as_str(DateChar::dd(self.hh).as_slice()));
+		out.push(':');
+		out.push_str(DateChar::as_str(DateChar::dd(self.mm).as_slice()));
+		out.push(':');
+		out.push_str(DateChar::as_str(DateChar::dd(self.ss).as_slice()));
+		out.push_str(" +0000");
 
-		// Working from bytes is ugly, but performs much better than any
-		// string-based operations.
-		let out: Vec<u8> = vec![
-			weekday[0], weekday[1], weekday[2],
-			b',', b' ',
-			day[0], day[1],
-			b' ',
-			month[0], month[1], month[2],
-			b' ',
-			b'2', b'0', year[0], year[1],
-			b' ',
-			hh[0], hh[1], b':', mm[0], mm[1], b':', ss[0], ss[1],
-			b' ', b'+', b'0', b'0', b'0', b'0'
-		];
-
-		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { String::from_utf8_unchecked(out) }
+		out
 	}
 
 	/// # From RFC2822.
@@ -2104,12 +2047,12 @@ impl Utc2k {
 	/// # From `FmtUtc2k`.
 	pub(crate) const fn from_fmtutc2k(src: FmtUtc2k) -> Self {
 		Self::new(
-			2000 + ((src.0[2] & 0x0f) * 10 + (src.0[3] & 0x0f)) as u16,
-			(src.0[5] & 0x0f) * 10 + (src.0[6] & 0x0f),
-			(src.0[8] & 0x0f) * 10 + (src.0[9] & 0x0f),
-			(src.0[11] & 0x0f) * 10 + (src.0[12] & 0x0f),
-			(src.0[14] & 0x0f) * 10 + (src.0[15] & 0x0f),
-			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
+			2000 + (src.0[2].as_digit() * 10 + src.0[3].as_digit()) as u16,
+			src.0[5].as_digit() * 10 + src.0[6].as_digit(),
+			src.0[8].as_digit() * 10 + src.0[9].as_digit(),
+			src.0[11].as_digit() * 10 + src.0[12].as_digit(),
+			src.0[14].as_digit() * 10 + src.0[15].as_digit(),
+			src.0[17].as_digit() * 10 + src.0[18].as_digit(),
 		)
 	}
 

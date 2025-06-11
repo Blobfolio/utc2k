@@ -8,6 +8,14 @@
 
 * `FmtUtc2k::LEN`
 
+### Changed
+
+* `FmtUtc2k::set_datetime` is now const
+* `FmtUtc2k::set_parts` is now const
+* `Utc2k::formatted` is now const
+* Refactor byte/string handling; remove all but two `unsafe` blocks
+* Miscellaneous code cleanup and lints
+
 
 
 ## [0.14.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.14.0) - 2025-05-31

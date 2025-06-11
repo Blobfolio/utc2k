@@ -296,21 +296,6 @@ impl Weekday {
 		}
 	}
 
-	/// # Abbreviation (bytes).
-	///
-	/// This returns the abbreviation as a fixed-size byte array.
-	pub(crate) const fn abbreviation_bytes(self) -> [u8; 3] {
-		match self {
-			Self::Sunday => *b"Sun",
-			Self::Monday => *b"Mon",
-			Self::Tuesday => *b"Tue",
-			Self::Wednesday => *b"Wed",
-			Self::Thursday => *b"Thu",
-			Self::Friday => *b"Fri",
-			Self::Saturday => *b"Sat",
-		}
-	}
-
 	#[must_use]
 	/// # As Str.
 	///
@@ -636,7 +621,6 @@ mod tests {
 		for i in 1..=7_u8 {
 			let weekday = Weekday::from(i);
 			assert_eq!(weekday as u8, i);
-			assert_eq!(weekday.abbreviation().as_bytes(), weekday.abbreviation_bytes());
 		}
 		for i in 1..=7_u64 {
 			assert_eq!(u64::from(Weekday::from(i)), i);

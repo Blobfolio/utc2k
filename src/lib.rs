@@ -140,6 +140,7 @@ let s: &str = fmt.borrow();
 
 
 mod abacus;
+mod chr;
 mod date;
 mod error;
 mod month;
@@ -156,6 +157,7 @@ mod serde;
 
 
 pub(crate) use abacus::Abacus;
+pub(crate) use chr::DateChar;
 pub use date::{
 	FmtUtc2k,
 	Utc2k,
