@@ -28,7 +28,7 @@ macro_rules! date_chars {
 			///
 			/// Convert the ASCII back to a real number.
 			pub(crate) const fn as_digit(self) -> u8 {
-				debug_assert!((self as u8 ^ b'0') < 10, "BUG: trying to digit a non-digit");
+				debug_assert!((self as u8 ^ b'0') < 10, "BUG: trying to digit a non-digit!");
 				self as u8 ^ b'0'
 			}
 

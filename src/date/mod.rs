@@ -575,21 +575,26 @@ impl FmtUtc2k {
 	///
 	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
 	///
-	/// There are a couple things to consider:
-	/// * This method is allocating;
-	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	///
 	/// ## Examples
 	///
 	/// ```
 	/// use utc2k::{FmtUtc2k, Utc2k};
 	///
 	/// let date = FmtUtc2k::from(Utc2k::new(2003, 7, 1, 10, 52, 37));
-	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
-	/// assert_eq!(date.to_rfc2822(), Utc2k::new(2003, 7, 1, 10, 52, 37).to_rfc2822());
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Tue, 01 Jul 2003 10:52:37 +0000",
+	/// //        ^ This implementation zero-pads short day
+	/// //          numbers rather than truncating them…
+	/// );
 	///
-	/// let date = FmtUtc2k::from(Utc2k::new(2020, 6, 13, 8, 8, 8));
-	/// assert_eq!(date.to_rfc2822(), "Sat, 13 Jun 2020 08:08:08 +0000");
+	/// let date = FmtUtc2k::from(Utc2k::new(2036, 12, 15, 16, 30, 55));
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Mon, 15 Dec 2036 16:30:55 +0000",
+	/// //   ^-----------------------------^ …to keep the output
+	/// //                                   length consistent.
+	/// );
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
 		let utc = Utc2k::from_fmtutc2k(*self);
@@ -1667,20 +1672,26 @@ impl Utc2k {
 	///
 	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
 	///
-	/// There are a couple things to consider:
-	/// * This method is allocating;
-	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	///
 	/// ## Examples
 	///
 	/// ```
 	/// use utc2k::Utc2k;
 	///
 	/// let date = Utc2k::new(2003, 7, 1, 10, 52, 37);
-	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Tue, 01 Jul 2003 10:52:37 +0000",
+	/// //        ^ This implementation zero-pads short day
+	/// //          numbers rather than truncating them…
+	/// );
 	///
 	/// let date = Utc2k::new(2036, 12, 15, 16, 30, 55);
-	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Mon, 15 Dec 2036 16:30:55 +0000",
+	/// //   ^-----------------------------^ …to keep the output
+	/// //                                   length consistent.
+	/// );
 	/// ```
 	pub fn to_rfc2822(&self) -> String {
 		let mut out = String::with_capacity(31);
@@ -1755,7 +1766,9 @@ impl Utc2k {
 		if 19 <= src.len() {
 			// Strip off the optional weekday, if any, so we can parse the day
 			// from a predictable starting place.
-			if src[0].is_ascii_alphabetic() { parse::rfc2822_day(&src[5..]) }
+			if src[0].is_ascii_alphabetic() {
+				parse::rfc2822_day(src[5..].trim_ascii_start())
+			}
 			else { parse::rfc2822_day(src) }
 		}
 		else { None }

@@ -2,6 +2,8 @@
 # UTC2K - Month
 */
 
+#![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
+
 use crate::{
 	macros,
 	Utc2k,
@@ -32,37 +34,37 @@ pub enum Month {
 	January = 1_u8,
 
 	/// # February.
-	February,
+	February = 2_u8,
 
 	/// # March.
-	March,
+	March = 3_u8,
 
 	/// # April.
-	April,
+	April = 4_u8,
 
 	/// # May.
-	May,
+	May = 5_u8,
 
 	/// # June.
-	June,
+	June = 6_u8,
 
 	/// # July.
-	July,
+	July = 7_u8,
 
 	/// # August.
-	August,
+	August = 8_u8,
 
 	/// # September.
-	September,
+	September = 9_u8,
 
 	/// # October.
-	October,
+	October = 10_u8,
 
 	/// # November.
-	November,
+	November = 11_u8,
 
 	/// # December.
-	December,
+	December = 12_u8,
 }
 
 impl Add<u8> for Month {
@@ -70,7 +72,7 @@ impl Add<u8> for Month {
 
 	#[inline]
 	fn add(self, other: u8) -> Self {
-		Self::from(self as u8 + other % 12)
+		Self::from_u8(self as u8 + other % 12)
 	}
 }
 
@@ -90,6 +92,25 @@ impl From<u8> for Month {
 
 impl From<Month> for u8 {
 	#[inline]
+	/// # As `u8`
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Month;
+	///
+	/// // January is one.
+	/// assert_eq!(
+	///     u8::from(Month::January),
+	///     1,
+	/// );
+	///
+	/// // As casts work too.
+	/// assert_eq!(
+	///     u8::from(Month::January),
+	///     Month::January as u8,
+	/// );
+	/// ```
 	fn from(src: Month) -> Self { src as Self }
 }
 
@@ -110,15 +131,30 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Month {
-			#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-			fn from(src: $ty) -> Self {
-				if src <= 12 { Self::from_u8(src as u8) }
-				else { Self::from_u8((src % 12) as u8) }
-			}
+			fn from(src: $ty) -> Self { Self::from_u8((src % 12) as u8) }
 		}
 
 		impl From<Month> for $ty {
 			#[inline]
+			#[doc = concat!("# As `", stringify!($ty), "`")]
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			/// // January is one.
+			/// assert_eq!(
+			#[doc = concat!("    ", stringify!($ty), "::from(Month::January),")]
+			///     1,
+			/// );
+			///
+			/// // As casts work too.
+			/// assert_eq!(
+			#[doc = concat!("    ", stringify!($ty), "::from(Month::January),")]
+			#[doc = concat!("    Month::January as ", stringify!($ty), ",")]
+			/// );
+			/// ```
 			fn from(src: Month) -> Self {
 				match src {
 					Month::January => 1,
@@ -140,6 +176,7 @@ macro_rules! impl_int {
 		impl Sub<$ty> for Month {
 			type Output = Self;
 
+			#[inline]
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 12;
@@ -165,7 +202,7 @@ impl_int!(u16, u32, u64, usize);
 
 impl From<Utc2k> for Month {
 	#[inline]
-	fn from(src: Utc2k) -> Self { Self::from(src.month()) }
+	fn from(src: Utc2k) -> Self { Self::from_u8(src.month()) }
 }
 
 impl FromStr for Month {
@@ -219,6 +256,7 @@ impl PartialOrd for Month {
 impl Sub<u8> for Month {
 	type Output = Self;
 
+	#[inline]
 	fn sub(self, other: u8) -> Self {
 		let mut lhs = self as u8;
 		let mut rhs = other % 12;
@@ -229,7 +267,7 @@ impl Sub<u8> for Month {
 			else { lhs -= 1; }
 		}
 
-		Self::from(lhs)
+		Self::from_u8(lhs)
 	}
 }
 
@@ -433,7 +471,8 @@ impl Month {
 	///
 	/// This is the same as From, but const.
 	pub(crate) const fn from_u8(src: u8) -> Self {
-		match src {
+		match src % 12 {
+			0 =>  Self::December,
 			1  => Self::January,
 			2  => Self::February,
 			3  => Self::March,
@@ -444,9 +483,7 @@ impl Month {
 			8  => Self::August,
 			9  => Self::September,
 			10 => Self::October,
-			11 => Self::November,
-			0 | 12 => Self::December,
-			_ => Self::from_u8(src % 12),
+			_ =>  Self::November,
 		}
 	}
 }

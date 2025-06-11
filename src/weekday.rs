@@ -2,6 +2,8 @@
 # UTC2K - Weekday
 */
 
+#![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
+
 use crate::{
 	macros,
 	Utc2k,
@@ -36,22 +38,22 @@ pub enum Weekday {
 	Sunday = 1_u8,
 
 	/// # Monday.
-	Monday,
+	Monday = 2_u8,
 
 	/// # Tuesday.
-	Tuesday,
+	Tuesday = 3_u8,
 
 	/// # Wednesday.
-	Wednesday,
+	Wednesday = 4_u8,
 
 	/// # Thursday.
-	Thursday,
+	Thursday = 5_u8,
 
 	/// # Friday.
-	Friday,
+	Friday = 6_u8,
 
 	/// # Saturday.
-	Saturday,
+	Saturday = 7_u8,
 }
 
 impl Add<u8> for Weekday {
@@ -76,6 +78,25 @@ impl From<u8> for Weekday {
 
 impl From<Weekday> for u8 {
 	#[inline]
+	/// # As `u8`
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Weekday;
+	///
+	/// // Starts on Sunday, and at one.
+	/// assert_eq!(
+	///     u8::from(Weekday::Sunday),
+	///     1,
+	/// );
+	///
+	/// // As casts work too.
+	/// assert_eq!(
+	///     u8::from(Weekday::Sunday),
+	///     Weekday::Sunday as u8,
+	/// );
+	/// ```
 	fn from(src: Weekday) -> Self { src as Self }
 }
 
@@ -96,15 +117,31 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Weekday {
-			#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-			fn from(src: $ty) -> Self {
-				if src <= 7 { Self::from(src as u8) }
-				else { Self::from((src % 7) as u8) }
-			}
+			#[inline]
+			fn from(src: $ty) -> Self { Self::from((src % 7) as u8) }
 		}
 
 		impl From<Weekday> for $ty {
 			#[inline]
+			#[doc = concat!("# As `", stringify!($ty), "`")]
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			/// // Starts on Sunday, and at one.
+			/// assert_eq!(
+			#[doc = concat!("    ", stringify!($ty), "::from(Weekday::Sunday),")]
+			///     1,
+			/// );
+			///
+			/// // As casts work too.
+			/// assert_eq!(
+			#[doc = concat!("    ", stringify!($ty), "::from(Weekday::Sunday),")]
+			#[doc = concat!("    Weekday::Sunday as ", stringify!($ty), ",")]
+			/// );
+			/// ```
 			fn from(src: Weekday) -> Self {
 				match src {
 					Weekday::Sunday => 1,
@@ -121,6 +158,7 @@ macro_rules! impl_int {
 		impl Sub<$ty> for Weekday {
 			type Output = Self;
 
+			#[inline]
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 7;
@@ -200,6 +238,7 @@ impl PartialOrd for Weekday {
 impl Sub<u8> for Weekday {
 	type Output = Self;
 
+	#[inline]
 	fn sub(self, other: u8) -> Self {
 		let mut lhs = self as u8;
 		let mut rhs = other % 7;
@@ -210,7 +249,7 @@ impl Sub<u8> for Weekday {
 			else { lhs -= 1; }
 		}
 
-		Self::from(lhs)
+		Self::from_u8(lhs)
 	}
 }
 
@@ -512,15 +551,14 @@ impl Weekday {
 	#[must_use]
 	/// # From `u8`.
 	pub(crate) const fn from_u8(src: u8) -> Self {
-		match src {
+		match src % 7 {
+			0 => Self::Saturday,
 			1 => Self::Sunday,
 			2 => Self::Monday,
 			3 => Self::Tuesday,
 			4 => Self::Wednesday,
 			5 => Self::Thursday,
-			6 => Self::Friday,
-			0 | 7 => Self::Saturday,
-			_ => Self::from_u8(src % 7),
+			_ => Self::Friday,
 		}
 	}
 
