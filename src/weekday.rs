@@ -311,6 +311,7 @@ impl Weekday {
 		Self::Saturday,
 	];
 
+	#[inline]
 	#[must_use]
 	/// # As Str (Abbreviated).
 	///
@@ -335,6 +336,7 @@ impl Weekday {
 		}
 	}
 
+	#[inline]
 	#[must_use]
 	/// # As Str.
 	///
@@ -533,21 +535,19 @@ impl Weekday {
 	/// This matches the first three non-whitespace bytes, case-insensitively,
 	/// against the `Weekday` abbreviations.
 	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
-			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
-				[b's', b'u', b'n'] => Some(Self::Sunday),
-				[b'm', b'o', b'n'] => Some(Self::Monday),
-				[b't', b'u', b'e'] => Some(Self::Tuesday),
-				[b'w', b'e', b'd'] => Some(Self::Wednesday),
-				[b't', b'h', b'u'] => Some(Self::Thursday),
-				[b'f', b'r', b'i'] => Some(Self::Friday),
-				[b's', b'a', b't'] => Some(Self::Saturday),
-				_ => None,
-			}
+		match src {
+			[ b'S' | b's', b'U' | b'u', b'N' | b'n', .. ] => Some(Self::Sunday),
+			[ b'M' | b'm', b'O' | b'o', b'N' | b'n', .. ] => Some(Self::Monday),
+			[ b'T' | b't', b'U' | b'u', b'E' | b'e', .. ] => Some(Self::Tuesday),
+			[ b'W' | b'w', b'E' | b'e', b'D' | b'd', .. ] => Some(Self::Wednesday),
+			[ b'T' | b't', b'H' | b'h', b'U' | b'u', .. ] => Some(Self::Thursday),
+			[ b'F' | b'f', b'R' | b'r', b'I' | b'i', .. ] => Some(Self::Friday),
+			[ b'S' | b's', b'A' | b'a', b'T' | b't', .. ] => Some(Self::Saturday),
+			_ => None,
 		}
-		else { None }
 	}
 
+	#[inline]
 	#[must_use]
 	/// # From `u8`.
 	pub(crate) const fn from_u8(src: u8) -> Self {
@@ -749,6 +749,7 @@ mod tests {
 		for d in Weekday::ALL {
 			assert_eq!(Ok(d), Weekday::try_from(d.abbreviation()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str()));
+			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_lowercase()));
 			assert_eq!(Ok(d), Weekday::try_from(d.as_str().to_ascii_uppercase()));
 			assert_eq!(Ok(d), d.abbreviation().parse());
 		}

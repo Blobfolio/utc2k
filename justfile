@@ -94,6 +94,9 @@ bench BENCH="":
 	fyi task "Testing native/default target."
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
 
+	fyi task "Testing i686-unknown-linux-gnu (32-bit) target."
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --target i686-unknown-linux-gnu
+
 	fyi task "Testing mps64 (big endian) target."
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --target mips64-unknown-linux-gnuabi64
 

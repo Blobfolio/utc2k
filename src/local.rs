@@ -21,13 +21,13 @@ use tz::timezone::{
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Local Offset.
 ///
-/// This struct attempts to determine the appropriate UTC offset for the local
-/// timezone in a thread-safe manner, but **only for unix systems**.
+/// This struct attempts to determine the appropriate UTC offset for the
+/// **local** time zone in a thread-safe manner, but **only for unix systems**.
 ///
 /// Instantiation will never fail, though.
 ///
 /// If the platform isn't supported or no offset can be determined, the
-/// "offset" will simply be zero (i.e. as if it were UTC).
+/// "offset" will simply be zero, i.e. UTC.
 ///
 /// ## Examples
 ///
@@ -54,16 +54,13 @@ use tz::timezone::{
 /// `From<LocalOffset>` implementations, or the [`FmtUtc2k::now_local`]/[`Utc2k::now_local`]
 /// shorthands.
 ///
-/// If you do this, however, it is worth noting that comparing tricked and
-/// untricked objects makes no logical sense, so you shouldn't mix-and-match if
-/// you need to test for equality or ordering.
+/// The `Utc2k`/`FmtUtc2k` structures _imply_ UTC; they don't have any explicit
+/// concept of offsets or time zones. All "localization" really does is add or
+/// subtract from the time parts to make their numbers _look right_.
 ///
-/// Additionally, you should avoid localizing a datetime if you plan on using the
-/// `to_rfc2822` or `to_rfc3339` formatting helpers. They always assume they're
-/// representing a UTC timestamp, so will add the wrong suffix to their output
-/// if your local offset is non-zero.
-///
-/// Other than that, the trick works perfectly well. ;)
+/// That works surprisingly well, with two main exceptions:
+/// 1. Tricked objects cannot be meaningfully compared with untricked ones;
+/// 2. Tricked objects cannot be (correctly) converted to formats with offset or time zone components, like RFC2822 or RFC3339;
 ///
 /// ```
 /// use utc2k::{LocalOffset, Utc2k};
@@ -113,6 +110,7 @@ impl From<Utc2k> for LocalOffset {
 impl Neg for LocalOffset {
 	type Output = Self;
 
+	#[inline]
 	fn neg(self) -> Self::Output {
 		if self.offset == i32::MIN {
 			Self {
@@ -201,9 +199,11 @@ impl From<LocalOffset> for Utc2k {
 /// # Parsed Timezone Details.
 static TZ: OnceLock<TimeZone> = OnceLock::new();
 
+#[inline]
+#[must_use]
 /// # Offset From Unixtime.
 ///
-/// The local timezone details are cached on the first run; subsequent method
+/// The local time zone details are cached on the first run; subsequent method
 /// calls will perform much faster.
 fn offset(now: u32) -> i32 {
 	TZ.get_or_init(|| TimeZone::local().unwrap_or_else(|_| TimeZone::utc()))

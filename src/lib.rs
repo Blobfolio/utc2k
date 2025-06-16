@@ -9,72 +9,49 @@
 [![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
 [![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/utc2k/issues)
 
-UTC2K is a fast and lean date/time library that only cares about UTC happenings in _this century_ (between `2000-01-01 00:00:00` and `2099-12-31 23:59:59`).
+UTC2K is a heavily-optimized — and extremely niche — date/time library that **only supports UTC happenings in _this century_**.
 
-With that very significant constraint in mind, UTC2K can:
+For the moments between `2000-01-01 00:00:00..=2099-12-31 23:59:59`, it can run circles around crates like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), while still being able to:
 
-* Convert to/from Unix timestamps (`u32`);
-* Convert to/from date strings of the `YYYY-MM-DD` and `YYYY-MM-DD hh:mm:ss` varieties;
-* Perform addition/subtraction (in seconds), checked or saturating;
-* Calculate the date's ordinal;
-* Calculate the number of seconds from midnight;
-
-That's it!
-
-Compared to more robust libraries like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), UTC2K can be magnitudes faster, particularly in regards to string parsing and printing.
-
-This library is still a work in progress and there is certainly room to improve performance further.
-
-If you have any suggestions for improvement, feel free to open [an issue](https://github.com/Blobfolio/utc2k/issues) on Github!
+* Determine "now"[^1];
+* Convert to/from Unix timestamps;
+* Convert to/from all sorts of different date/time strings;
+* Perform checked and saturating addition/subtraction;
+* Calculate ordinals, weekdays, leap years, etc.;
 
 
 
 ## Examples
 
-The main date object is [`Utc2k`].
+The library's main export is [`Utc2k`], a `Copy`-friendly struct representing a specific UTC datetime.
 
 ```
-use utc2k::Utc2k;
+use utc2k::{Utc2k, Weekday};
 
-let date = Utc2k::default(); // 2000-01-01 00:00:00
-let date = Utc2k::now(); // The current time.
-let date = Utc2k::from(4_102_444_799_u32); // 2099-12-31 23:59:59
-let date = Utc2k::new(2010, 10, 31, 15, 30, 0); // 2010-10-31 15:30:00
+// Instantiation, four ways:
+let date = Utc2k::now();                             // The current system time.
+let date = Utc2k::new(2020, 1, 2, 12, 30, 30);       // From parts.
+let date = Utc2k::from_unixtime(4_102_444_799);      // From a timestamp.
+let date = Utc2k::from_ascii(b"2024-10-31 00:00:00") // From a datetime string.
+               .unwrap();
 
-// String parsing is fallible, but flexible. So long as the numbers we
-// need are in the right place, it will be fine. (At least, it won't error
-// out; if the date string is trying to communicate a time zone, that won't
-// be listened to.)
-assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
-assert!(Utc2k::try_from("2099-12-31T23:59:59.0000Z").is_ok()); // Also fine.
-assert!(Utc2k::try_from("January 1, 2010 @ Eleven O'Clock").is_err()); // Nope!
-```
+// What day was Halloween 2024, anyway?
+assert_eq!(
+    date.weekday(),
+    Weekday::Thursday,
+);
 
-There is also [`FmtUtc2k`], used for string representation.
+// Ordinals are a kind of bird, right?
+assert_eq!(
+    date.ordinal(),
+    305,
+);
 
-```
-use utc2k::{FmtUtc2k, Utc2k};
-
-// You can generate it from an existing Utc2k with either:
-assert_eq!(Utc2k::default().formatted(), FmtUtc2k::from(Utc2k::default()));
-
-// You could also skip `Utc2k` and seed directly from a timestamp or date/time
-// string.
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-let fmt = FmtUtc2k::try_from("2099-12-31 23:59:59").unwrap();
-```
-
-Once you have a [`FmtUtc2k`], you can turn it into a string with:
-
-```
-use utc2k::{FmtUtc2k, Utc2k};
-use std::borrow::Borrow;
-
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-
-let s: &str = fmt.as_ref();
-let s: &str = fmt.as_str();
-let s: &str = fmt.borrow();
+// Boss wants an RFC2822 for some reason?
+assert_eq!(
+    date.to_rfc2822(),
+    "Thu, 31 Oct 2024 00:00:00 +0000",
+);
 ```
 
 
@@ -83,6 +60,10 @@ let s: &str = fmt.borrow();
 
 * `local`: Enables the [`LocalOffset`] struct. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
+
+
+
+[^1] Up until the final seconds of New Year's Eve, 2099 at least…
 */
 
 #![deny(
@@ -139,7 +120,6 @@ let s: &str = fmt.borrow();
 
 
 
-mod abacus;
 mod chr;
 mod date;
 mod error;
@@ -156,7 +136,6 @@ mod serde;
 
 
 
-pub(crate) use abacus::Abacus;
 pub(crate) use chr::DateChar;
 pub use date::{
 	FmtUtc2k,
@@ -170,6 +149,7 @@ pub use weekday::Weekday;
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 pub use local::LocalOffset;
 
+#[cfg(test)] use brunch as _;
 
 
 /// # Seconds per Minute.
@@ -230,8 +210,66 @@ pub fn unixtime() -> u32 {
 /// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
 /// ```
 pub fn year() -> u16 {
-	let (y, _, _) = date::parse::date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
+	let (y, _, _) = date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
 	u16::from(y) + 2000
+}
+
+
+
+#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+#[must_use]
+/// # Parse Date From Seconds.
+///
+/// This parses the date portion of a date/time timestamp using the same
+/// approach as [`time`](https://crates.io/crates/time), which is based on
+/// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
+///
+/// (Our version is a little simpler as we aren't worried about old times.)
+const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
+	z += JULIAN_EPOCH - 1_721_119;
+	let h: u32 = 100 * z - 25;
+	let mut a: u32 = h.wrapping_div(3_652_425);
+	a -= a >> 2;
+	let year: u32 = (100 * a + h).wrapping_div(36_525);
+	a = a + z - 365 * year - (year >> 2);
+	let month: u32 = (5 * a + 456).wrapping_div(153);
+	let day: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
+
+	if month > 12 {
+		((year - 1999) as u8, month as u8 - 12, day)
+	}
+	else {
+		((year - 2000) as u8, month as u8, day)
+	}
+}
+
+#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+#[must_use]
+/// # Parse Time From Seconds.
+///
+/// This parses the time portion of a date/time timestamp. It works the same
+/// way a naive div/mod approach would, except it uses multiplication and bit
+/// shifts to avoid actually having to div/mod.
+///
+/// (This only works because time values stop at 23 or 59; rounding errors
+/// would creep in if the full u8 range was used.)
+const fn time_seconds(mut src: u32) -> (u8, u8, u8) {
+	let hh =
+		if src >= HOUR_IN_SECONDS {
+			let hh = ((src * 0x91A3) >> 27) as u8;
+			src -= hh as u32 * HOUR_IN_SECONDS;
+			hh
+		}
+		else { 0 };
+
+	if src >= MINUTE_IN_SECONDS {
+		let mm = ((src * 0x889) >> 17) as u8;
+		src -= mm as u32 * MINUTE_IN_SECONDS;
+		(hh, mm, src as u8)
+	}
+	else {
+		(hh, 0, src as u8)
+	}
 }
 
 

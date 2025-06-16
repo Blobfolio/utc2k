@@ -24,46 +24,21 @@ macro_rules! date_chars {
 		impl DateChar {
 			#[inline(always)]
 			#[must_use]
+			/// # As Char.
+			///
+			/// Return as a single char.
+			pub(crate) const fn as_char(self) -> char {
+				(self as u8) as char
+			}
+
+			#[inline(always)]
+			#[must_use]
 			/// # As Digit.
 			///
 			/// Convert the ASCII back to a real number.
 			pub(crate) const fn as_digit(self) -> u8 {
 				debug_assert!((self as u8 ^ b'0') < 10, "BUG: trying to digit a non-digit!");
 				self as u8 ^ b'0'
-			}
-
-			#[inline(always)]
-			#[must_use]
-			/// # Double Digit.
-			///
-			/// Return the number's last two digits, using zeroes for padding
-			/// as necessary.
-			pub(crate) const fn dd(src: u8) -> [Self; 2] {
-				let a =
-					if 9 < src { Self::from_digit(src.wrapping_div(10) % 10) }
-					else { Self::Digit0 };
-				let b = Self::from_digit(src % 10);
-				[a, b]
-			}
-
-			#[inline(always)]
-			#[must_use]
-			/// # From Digit (Saturating).
-			///
-			/// Convert a single digit (`0..=9`) to the corresponding `DateChar`.
-			pub(crate) const fn from_digit(src: u8) -> Self {
-				match src {
-					0 => Self::Digit0,
-					1 => Self::Digit1,
-					2 => Self::Digit2,
-					3 => Self::Digit3,
-					4 => Self::Digit4,
-					5 => Self::Digit5,
-					6 => Self::Digit6,
-					7 => Self::Digit7,
-					8 => Self::Digit8,
-					_ => Self::Digit9,
-				}
 			}
 
 			#[expect(unsafe_code, reason = "For transmute.")]
@@ -99,6 +74,41 @@ macro_rules! date_chars {
 				// matter how they're sliced up, will always yield valid UTF-8
 				// sequences.
 				unsafe { std::str::from_utf8_unchecked(Self::as_bytes(src)) }
+			}
+
+			#[inline(always)]
+			#[must_use]
+			/// # Double Digit.
+			///
+			/// Return the number's last two digits, using zeroes for padding
+			/// as necessary.
+			pub(crate) const fn dd(src: u8) -> [Self; 2] {
+				[
+					Self::from_digit(src.wrapping_div(10)),
+					Self::from_digit(src),
+				]
+			}
+
+			#[inline(always)]
+			#[must_use]
+			/// # From Digit.
+			///
+			/// "Pop" the last digit from a number, convert it to a `DateChar`,
+			/// and return the result.
+			pub(crate) const fn from_digit(src: u8) -> Self {
+				match src % 10 {
+					0 => Self::Digit0,
+					1 => Self::Digit1,
+					2 => Self::Digit2,
+					3 => Self::Digit3,
+					4 => Self::Digit4,
+					5 => Self::Digit5,
+					6 => Self::Digit6,
+					7 => Self::Digit7,
+					8 => Self::Digit8,
+					9 => Self::Digit9,
+					_ => { unreachable!() },
+				}
 			}
 		}
 	);

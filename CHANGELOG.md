@@ -4,17 +4,44 @@
 
 ## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - TBD
 
+Date/time string parsing has been completely refactored for this release, vastly improving the behavioral consistency — and correctness — across methods and formats.
+
+Behavioral changes can be _tricky_, though, so warrant special attention.
+
+It is recommended that projects using `utc2k`'s string-parsing features retest their integrations after upgrading to make sure everything still works as expected.
+
+If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2k/issues).
+
 ### New
 
 * `FmtUtc2k::LEN`
+* `FmtUtc2k::from_ascii`
+* `FmtUtc2k::from_unixtime`
+* `Utc2k::checked_from_ascii`
+* `Utc2k::from_ascii`
+* impl `From<FmtUtc2k>` for `String`
+* impl `From<Utc2k>` for `String`
 
 ### Changed
 
+* `FmtUtc2k::from_rfc822`/`Utc2k::from_rfc2822` now support date-only variations
 * `FmtUtc2k::set_datetime` is now const
 * `FmtUtc2k::set_parts` is now const
 * `Utc2k::formatted` is now const
-* Refactor byte/string handling; remove all but two `unsafe` blocks
+* Remove all but two `unsafe` blocks!
 * Miscellaneous code cleanup and lints
+
+### Breaking
+
+* The `FmtUtc2k` and `Utc2k` `FromStr`/`TryFrom<&[u8]>`/`TryFrom<&str>` impls are now equivalent to `Utc2k::from_ascii`, changing some previous behaviors:
+  * Random trailing data (after the parsed date/time parts) is no longer allowed and will result in an error;
+  * Squished date/time formats like `YYYYMMDD` can now be parsed;
+  * Trailing `±hhmm` UTC offsets are now supported;
+* Removed `Utc2k::from_datetime_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::from_smooshed_datetime_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::from_date_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::from_smooshed_date_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::parse_time_str`
 
 
 

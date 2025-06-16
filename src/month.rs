@@ -131,6 +131,7 @@ macro_rules! impl_int {
 		}
 
 		impl From<$ty> for Month {
+			#[inline]
 			fn from(src: $ty) -> Self { Self::from_u8((src % 12) as u8) }
 		}
 
@@ -329,31 +330,6 @@ impl Month {
 	/// assert_eq!(Month::now(), Utc2k::now().month());
 	/// ```
 	pub fn now() -> Self { Self::from(Utc2k::now()) }
-
-	/// # From Abbreviation Bytes.
-	///
-	/// This matches the first three non-whitespace bytes, case-insensitively,
-	/// against the `Month` abbreviations.
-	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
-		if let [a, b, c, _rest @ ..] = src.trim_ascii_start() {
-			match [a.to_ascii_lowercase(), b.to_ascii_lowercase(), c.to_ascii_lowercase()] {
-				[b'j', b'a', b'n'] => Some(Self::January),
-				[b'f', b'e', b'b'] => Some(Self::February),
-				[b'm', b'a', b'r'] => Some(Self::March),
-				[b'a', b'p', b'r'] => Some(Self::April),
-				[b'm', b'a', b'y'] => Some(Self::May),
-				[b'j', b'u', b'n'] => Some(Self::June),
-				[b'j', b'u', b'l'] => Some(Self::July),
-				[b'a', b'u', b'g'] => Some(Self::August),
-				[b's', b'e', b'p'] => Some(Self::September),
-				[b'o', b'c', b't'] => Some(Self::October),
-				[b'n', b'o', b'v'] => Some(Self::November),
-				[b'd', b'e', b'c'] => Some(Self::December),
-				_ => None,
-			}
-		}
-		else { None }
-	}
 }
 
 impl Month {
@@ -375,6 +351,7 @@ impl Month {
 		Self::December,
 	];
 
+	#[inline]
 	#[must_use]
 	/// # As Str (Abbreviated).
 	///
@@ -404,6 +381,7 @@ impl Month {
 		}
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Month Size (Days).
 	///
@@ -437,6 +415,7 @@ impl Month {
 		}
 	}
 
+	#[inline]
 	#[must_use]
 	/// # As Str.
 	///
@@ -465,8 +444,34 @@ impl Month {
 			Self::December => "December",
 		}
 	}
+}
+
+impl Month {
+	#[must_use]
+	/// # From Abbreviation Bytes.
+	///
+	/// This matches the first three non-whitespace bytes, case-insensitively,
+	/// against the `Month` abbreviations.
+	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+		match src {
+			[ b'J' | b'j', b'a' | b'A', b'n' | b'N', ..] => Some(Self::January),
+			[ b'F' | b'f', b'e' | b'E', b'b' | b'B', ..] => Some(Self::February),
+			[ b'M' | b'm', b'a' | b'A', b'r' | b'R', ..] => Some(Self::March),
+			[ b'A' | b'a', b'p' | b'P', b'r' | b'R', ..] => Some(Self::April),
+			[ b'M' | b'm', b'a' | b'A', b'y' | b'Y', ..] => Some(Self::May),
+			[ b'J' | b'j', b'u' | b'U', b'n' | b'N', ..] => Some(Self::June),
+			[ b'J' | b'j', b'u' | b'U', b'l' | b'L', ..] => Some(Self::July),
+			[ b'A' | b'a', b'u' | b'U', b'g' | b'G', ..] => Some(Self::August),
+			[ b'S' | b's', b'e' | b'E', b'p' | b'P', ..] => Some(Self::September),
+			[ b'O' | b'o', b'c' | b'C', b't' | b'T', ..] => Some(Self::October),
+			[ b'N' | b'n', b'o' | b'O', b'v' | b'V', ..] => Some(Self::November),
+			[ b'D' | b'd', b'e' | b'E', b'c' | b'C', ..] => Some(Self::December),
+			_ => None,
+		}
+	}
 
 	#[inline]
+	#[must_use]
 	/// # From U8 Unchecked.
 	///
 	/// This is the same as From, but const.
@@ -606,6 +611,7 @@ mod tests {
 		for m in Month::ALL {
 			assert_eq!(Ok(m), Month::try_from(m.abbreviation()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str()));
+			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_lowercase()));
 			assert_eq!(Ok(m), Month::try_from(m.as_str().to_ascii_uppercase()));
 			assert_eq!(Ok(m), m.abbreviation().parse());
 		}
