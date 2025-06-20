@@ -89,6 +89,30 @@ impl Abacus {
 		out
 	}
 
+	#[cfg(feature = "local")]
+	#[must_use]
+	/// # New and Offset.
+	///
+	/// Same as new, but with a UTC offset to "undo".
+	///
+	/// This is only used to convert a `Local2k` into a `Utc2k`.
+	pub(super) const fn new_with_offset(
+		y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8,
+		offset: i32,
+	) -> Self {
+		let mut out = Self {
+			y,
+			m: m as u16,
+			d: d as u16,
+			hh: hh as u16,
+			mm: mm as u16,
+			ss: ss as u16,
+		};
+		out.apply_offset(offset);
+		out.rebalance();
+		out
+	}
+
 	#[must_use]
 	/// # From `Utc2k`
 	pub(super) const fn from_utc2k(src: Utc2k) -> Self {

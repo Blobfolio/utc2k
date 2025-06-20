@@ -13,7 +13,7 @@ UTC2K is a heavily-optimized — and extremely niche — date/time library that 
 
 For the moments between `2000-01-01 00:00:00..=2099-12-31 23:59:59`, it can run circles around crates like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), while still being able to:
 
-* Determine "now"[^1];
+* Determine "now", at least until the final seconds of 2099;
 * Convert to/from Unix timestamps;
 * Convert to/from all sorts of different date/time strings;
 * Perform checked and saturating addition/subtraction;
@@ -58,12 +58,8 @@ assert_eq!(
 
 ## Optional Crate Features
 
-* `local`: Enables the [`LocalOffset`] struct. Refer to the documentation for important caveats and limitations.
+* `local`: Enables the [`Local2k`]/[`FmtLocal2k`] structs. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
-
-
-
-[^1] Up until the final seconds of New Year's Eve, 2099 at least…
 */
 
 #![deny(
@@ -128,9 +124,6 @@ mod weekday;
 
 pub(crate) mod macros;
 
-#[cfg(feature = "local")]
-mod local;
-
 #[cfg(any(test, feature = "serde"))]
 mod serde;
 
@@ -147,7 +140,10 @@ pub use weekday::Weekday;
 
 #[cfg(feature = "local")]
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-pub use local::LocalOffset;
+pub use date::local::{
+	FmtLocal2k,
+	Local2k,
+};
 
 #[cfg(test)] use brunch as _;
 

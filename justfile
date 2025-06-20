@@ -86,6 +86,16 @@ bench BENCH="":
 	just _fix-chown "{{ doc_dir }}"
 
 
+@ex DEMO="local":
+	clear
+	cargo run \
+		-q \
+		--all-features \
+		--release \
+		--example "{{ DEMO }}" \
+		--target-dir "{{ cargo_dir }}"
+
+
 # Miri tests!
 @miri:
 	# Pre-clean.

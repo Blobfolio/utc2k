@@ -4,6 +4,10 @@
 
 mod abacus;
 
+#[cfg(feature = "local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
+pub(super) mod local;
+
 use crate::{
 	DateChar,
 	DAY_IN_SECONDS,
@@ -381,18 +385,6 @@ impl FmtUtc2k {
 	///
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from_utc2k(Utc2k::now()) }
-
-	#[cfg(feature = "local")]
-	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-	#[must_use]
-	/// # Now (Local).
-	///
-	/// This returns an instance using the current, local time as the seed. If
-	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
-	///
-	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
-	/// limitations.
-	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Set Date/Time.
@@ -1255,18 +1247,6 @@ impl Utc2k {
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from_unixtime(unixtime()) }
 
-	#[cfg(feature = "local")]
-	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-	#[must_use]
-	/// # Now (Local).
-	///
-	/// This returns an instance using the current, local time as the seed. If
-	/// no local offset can be determined, this is equivalent to [`Utc2k::now`].
-	///
-	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
-	/// limitations.
-	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
-
 	#[inline]
 	#[must_use]
 	/// # Tomorrow.
@@ -1611,8 +1591,8 @@ impl Utc2k {
 	#[must_use]
 	/// # Seconds From Midnight.
 	///
-	/// Return the number of seconds since midnight. In other words, this adds
-	/// up all of the time bits.
+	/// Return the number of seconds since (the current day's) midnight. In
+	/// other words, this adds up all of the time bits.
 	///
 	/// ## Examples
 	///

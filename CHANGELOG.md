@@ -17,6 +17,7 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * `FmtUtc2k::LEN`
 * `FmtUtc2k::from_ascii`
 * `FmtUtc2k::from_unixtime`
+* `Local2k` (**local** crate feature)
 * `Utc2k::checked_from_ascii`
 * `Utc2k::from_ascii`
 * impl `From<FmtUtc2k>` for `String`
@@ -29,7 +30,7 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * `FmtUtc2k::set_parts` is now const
 * `Utc2k::formatted` is now const
 * Remove all but two `unsafe` blocks!
-* Miscellaneous code cleanup and lints
+* Miscellaneous code cleanup, lints, and test/doc improvements
 
 ### Breaking
 
@@ -37,10 +38,13 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
   * Random trailing data (after the parsed date/time parts) is no longer allowed and will result in an error;
   * Squished date/time formats like `YYYYMMDD` can now be parsed;
   * Trailing `±hhmm` UTC offsets are now supported;
+* Removed `FmtUtc2k::now_local` (use `Local2k::now` instead);
+* Removed `LocalOffset` (use `Local2k` instead);
 * Removed `Utc2k::from_datetime_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_smooshed_datetime_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_date_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_smooshed_date_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::now_local` (use `Local2k::now` instead);
 * Removed `Utc2k::parse_time_str`
 
 

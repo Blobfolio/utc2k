@@ -15,6 +15,7 @@ exclude = [
 	".righteous-sandbox.json",
 	"CREDITS.md",
 	"doc",
+	"examples",
 	"justfile",
 ]
 
@@ -49,12 +50,11 @@ optional = true
 [features]
 default = []
 
-# This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
-# and FmtUtc2k into holding a local datetime rather than a UTC one. This only
-# works on unix, but shouldn't outright break non-unix builds.
+# Enable (barebones) date/time localization support.
 local = [ "tz-rs" ]
 
-# This enables (de)/serialize support for Utc2k and FmtUtc2k.
+# Enable (de)/serialize support for Utc2k, FmtUtc2k, Month, and
+# Weekday.
 serde = [ "dep:serde" ]
 
 [[bench]]

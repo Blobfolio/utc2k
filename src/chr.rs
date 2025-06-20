@@ -6,6 +6,7 @@
 macro_rules! date_chars {
 	($($k:ident $v:literal),+ $(,)*) => (
 		#[repr(u8)]
+		#[cfg_attr(not(feature = "local"), expect(dead_code, reason = "Macro made me do it."))]
 		#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 		/// # Date Characters.
 		///
@@ -116,6 +117,7 @@ macro_rules! date_chars {
 
 date_chars!(
 	Space      b' ',
+	Plus       b'+',
 	Dash       b'-',
 	Digit0     b'0',
 	Digit1     b'1',
