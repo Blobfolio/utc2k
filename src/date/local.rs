@@ -327,7 +327,7 @@ impl FmtLocal2k {
 		out.push(self.inner.0[8].as_char());
 		out.push(self.inner.0[9].as_char());
 		out.push(' ');
-		out.push_str(local.month_enum().abbreviation());
+		out.push_str(local.month().abbreviation());
 		out.push(' ');
 		out.push_str(self.year());
 		out.push(' ');
@@ -741,7 +741,7 @@ impl Local2k {
 		out.push_str(", ");
 		out.push_str(DateChar::as_str(DateChar::dd(self.inner.d).as_slice()));
 		out.push(' ');
-		out.push_str(self.month_enum().abbreviation());
+		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
 		out.push_str(DateChar::as_str(DateChar::dd(self.inner.y).as_slice()));
 		out.push(' ');
@@ -1015,24 +1015,6 @@ impl Local2k {
 
 	#[inline]
 	#[must_use]
-	/// # Month.
-	///
-	/// This returns the month value.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::{Local2k, Utc2k};
-	///
-	/// let utc = Utc2k::new(2010, 5, 15, 16, 30, 1);
-	/// let local = Local2k::from(utc);
-	/// # let local = Local2k::fixed_from_utc2k(utc, -25200);
-	/// assert_eq!(local.month(), 5);
-	/// ```
-	pub const fn month(&self) -> u8 { self.inner.month() }
-
-	#[inline]
-	#[must_use]
 	/// # Month (enum).
 	///
 	/// This returns the month value as a [`Month`].
@@ -1045,9 +1027,9 @@ impl Local2k {
 	/// let utc = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// let local = Local2k::from(utc);
 	/// # let local = Local2k::fixed_from_utc2k(utc, -25200);
-	/// assert_eq!(local.month_enum(), Month::May);
+	/// assert_eq!(local.month(), Month::May);
 	/// ```
-	pub const fn month_enum(&self) -> Month { self.inner.month_enum() }
+	pub const fn month(&self) -> Month { self.inner.month() }
 
 	#[inline]
 	#[must_use]

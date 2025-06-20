@@ -596,7 +596,7 @@ impl FmtUtc2k {
 		out.push(self.0[8].as_char());
 		out.push(self.0[9].as_char());
 		out.push(' ');
-		out.push_str(utc.month_enum().abbreviation());
+		out.push_str(utc.month().abbreviation());
 		out.push(' ');
 		out.push_str(self.year());
 		out.push(' ');
@@ -1381,22 +1381,6 @@ impl Utc2k {
 	#[must_use]
 	/// # Month.
 	///
-	/// This returns the month value.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
-	/// assert_eq!(date.month(), 5);
-	/// ```
-	pub const fn month(self) -> u8 { self.m }
-
-	#[inline]
-	#[must_use]
-	/// # Month (enum).
-	///
 	/// This returns the month value as a [`Month`].
 	///
 	/// ## Examples
@@ -1405,9 +1389,9 @@ impl Utc2k {
 	/// use utc2k::{Month, Utc2k};
 	///
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
-	/// assert_eq!(date.month_enum(), Month::May);
+	/// assert_eq!(date.month(), Month::May);
 	/// ```
-	pub const fn month_enum(self) -> Month { Month::from_u8(self.m) }
+	pub const fn month(self) -> Month { Month::from_u8(self.m) }
 
 	#[inline]
 	#[must_use]
@@ -1498,42 +1482,6 @@ impl Utc2k {
 		LEAP_YEARS[self.y as usize]
 	}
 
-	#[inline]
-	#[must_use]
-	/// # Abbreviated Month Name.
-	///
-	/// Return the abbreviated name of the month, nice and pretty.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
-	/// assert_eq!(date.month_abbreviation(), "Jun");
-	/// ```
-	pub const fn month_abbreviation(self) -> &'static str {
-		self.month_enum().abbreviation()
-	}
-
-	#[inline]
-	#[must_use]
-	/// # Month Name.
-	///
-	/// Return the name of the month, nice and pretty.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
-	/// assert_eq!(date.month_name(), "June");
-	/// ```
-	pub const fn month_name(self) -> &'static str {
-		self.month_enum().as_str()
-	}
-
 	#[must_use]
 	/// # Month Size (Days).
 	///
@@ -1556,7 +1504,7 @@ impl Utc2k {
 	/// ```
 	pub const fn month_size(self) -> u8 {
 		if self.m == 2 && self.leap_year() { 29 }
-		else { self.month_enum().days() }
+		else { self.month().days() }
 	}
 
 	#[must_use]
@@ -1726,7 +1674,7 @@ impl Utc2k {
 		out.push_str(", ");
 		out.push_str(DateChar::as_str(DateChar::dd(self.d).as_slice()));
 		out.push(' ');
-		out.push_str(self.month_enum().abbreviation());
+		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
 		out.push_str(DateChar::as_str(DateChar::dd(self.y).as_slice()));
 		out.push(' ');
@@ -1812,7 +1760,7 @@ impl Utc2k {
 	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
 	/// ```
 	pub const fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
-		Self::from_abacus(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
+		Self::from_abacus(Abacus::new(self.year(), self.m, self.d, hh, mm, ss))
 	}
 }
 

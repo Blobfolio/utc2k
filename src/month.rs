@@ -203,7 +203,7 @@ impl_int!(u16, u32, u64, usize);
 
 impl From<Utc2k> for Month {
 	#[inline]
-	fn from(src: Utc2k) -> Self { Self::from_u8(src.month()) }
+	fn from(src: Utc2k) -> Self { src.month() }
 }
 
 impl FromStr for Month {

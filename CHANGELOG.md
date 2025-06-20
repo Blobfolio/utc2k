@@ -38,12 +38,16 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
   * Random trailing data (after the parsed date/time parts) is no longer allowed and will result in an error;
   * Squished date/time formats like `YYYYMMDD` can now be parsed;
   * Trailing `±hhmm` UTC offsets are now supported;
+* `Utc2k::month` now returns a `Month` instead of a `u8`
 * Removed `FmtUtc2k::now_local` (use `Local2k::now` instead);
 * Removed `LocalOffset` (use `Local2k` instead);
 * Removed `Utc2k::from_datetime_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_smooshed_datetime_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_date_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_smooshed_date_str` (use `Utc2k::from_ascii` instead)
+* Removed `Utc2k::month_abbreviation` (use `Utc2k::month().abbreviation` instead)
+* Removed `Utc2k::month_enum` (use `Utc2k::month` instead)
+* Removed `Utc2k::month_name` (use `Utc2k::month().as_str` instead)
 * Removed `Utc2k::now_local` (use `Local2k::now` instead);
 * Removed `Utc2k::parse_time_str`
 
