@@ -18,6 +18,7 @@ use crate::{
 	unixtime,
 	Utc2kError,
 	Weekday,
+	Year,
 };
 use std::{
 	borrow::Cow,
@@ -409,7 +410,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	/// ```
 	pub const fn set_datetime(&mut self, src: Utc2k) {
-		[self.0[2],  self.0[3]] =  DateChar::dd(src.y);
+		[self.0[2],  self.0[3]] =  src.y.dd();
 		[self.0[5],  self.0[6]] =  src.m.dd();
 		[self.0[8],  self.0[9]] =  DateChar::dd(src.d);
 		[self.0[11], self.0[12]] = DateChar::dd(src.hh);
@@ -650,7 +651,7 @@ impl FmtUtc2k {
 	#[must_use]
 	/// # From `Utc2k`.
 	const fn from_utc2k(src: Utc2k) -> Self {
-		let y = DateChar::dd(src.y);
+		let y = src.y.dd();
 		let m = src.m.dd();
 		let d = DateChar::dd(src.d);
 		let hh = DateChar::dd(src.hh);
@@ -672,8 +673,8 @@ impl FmtUtc2k {
 	/// been applied by the time this method is called.
 	///
 	/// From here, it's just straight ASCII-writing.
-	const fn set_parts_unchecked(&mut self, y: u8, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
-		[self.0[2],  self.0[3]] =  DateChar::dd(y);
+	const fn set_parts_unchecked(&mut self, y: Year, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
+		[self.0[2],  self.0[3]] =  y.dd();
 		[self.0[5],  self.0[6]] =  m.dd();
 		[self.0[8],  self.0[9]] =  DateChar::dd(d);
 		[self.0[11], self.0[12]] = DateChar::dd(hh);
@@ -719,7 +720,7 @@ impl FmtUtc2k {
 /// ```
 pub struct Utc2k {
 	/// # Year.
-	y: u8,
+	y: Year,
 
 	/// # Month.
 	m: Month,
@@ -953,7 +954,7 @@ impl Utc2k {
 	///     "2000-01-01 00:00:00",
 	/// );
 	/// ```
-	pub const MIN: Self = Self { y: 0, m: Month::January, d: 1, hh: 0, mm: 0, ss: 0 };
+	pub const MIN: Self = Self { y: Year::Y2k00, m: Month::January, d: 1, hh: 0, mm: 0, ss: 0 };
 
 	/// # Maximum Date/Time.
 	///
@@ -963,7 +964,7 @@ impl Utc2k {
 	///     "2099-12-31 23:59:59",
 	/// );
 	/// ```
-	pub const MAX: Self = Self { y: 99, m: Month::December, d: 31, hh: 23, mm: 59, ss: 59 };
+	pub const MAX: Self = Self { y: Year::Y2k99, m: Month::December, d: 31, hh: 23, mm: 59, ss: 59 };
 
 	/// # Minimum Unix Timestamp.
 	///
@@ -1392,7 +1393,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.year(), 2010);
 	/// ```
-	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
+	pub const fn year(self) -> u16 { self.y.full() }
 
 	#[inline]
 	#[must_use]
@@ -1493,11 +1494,7 @@ impl Utc2k {
 	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
 	/// assert!(! date.leap_year());
 	/// ```
-	pub const fn leap_year(self) -> bool {
-		/// # This Century's Leap Years.
-		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
-		LEAP_YEARS[self.y as usize]
-	}
+	pub const fn leap_year(self) -> bool { self.y.leap() }
 
 	#[must_use]
 	/// # Month Size (Days).
@@ -1520,7 +1517,7 @@ impl Utc2k {
 	/// assert_eq!(date.month_size(), 29); // Leap!
 	/// ```
 	pub const fn month_size(self) -> u8 {
-		if matches!(self.m, Month::February) && self.leap_year() { 29 }
+		if matches!(self.m, Month::February) && self.y.leap() { 29 }
 		else { self.month().days() }
 	}
 
@@ -1545,7 +1542,7 @@ impl Utc2k {
 	pub const fn ordinal(self) -> u16 {
 		self.d as u16 +
 		self.m.ordinal() +
-		(2 < (self.m as u8) && self.leap_year()) as u16
+		(2 < (self.m as u8) && self.y.leap()) as u16
 	}
 
 	#[inline]
@@ -1594,7 +1591,7 @@ impl Utc2k {
 	/// ```
 	pub const fn weekday(self) -> Weekday {
 		Weekday::from_u8(
-			Weekday::year_begins_on(self.y) as u8 +
+			Weekday::year_begins_on(self.y as u8) as u8 +
 			((self.ordinal() - 1) % 7) as u8
 		)
 	}
@@ -1679,7 +1676,7 @@ impl Utc2k {
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
-		out.push_str(DateChar::as_str(DateChar::dd(self.y).as_slice()));
+		out.push_str(DateChar::as_str(self.y.dd().as_slice()));
 		out.push(' ');
 		out.push_str(DateChar::as_str(DateChar::dd(self.hh).as_slice()));
 		out.push(':');
@@ -1729,20 +1726,14 @@ impl Utc2k {
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
 	pub const fn unixtime(self) -> u32 {
-		/// # Seconds from the new year up to the start of the month.
-		const MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
-
-		/// # Seconds *before* the new year.
-		const YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
-
 		// Add up everything as it would be in a non-leap year.
-		let time = YEAR_SECONDS[self.y as usize] +
-			MONTH_SECONDS[self.m as usize - 1] +
+		let time = self.y.unixtime() +
+			self.m.ordinal_seconds() +
 			self.seconds_from_midnight() +
 			DAY_IN_SECONDS * (self.d as u32 - 1);
 
 		// Add a day's worth of seconds if we need to.
-		if 2 < (self.m as u8) && self.leap_year() { time + DAY_IN_SECONDS }
+		if 2 < (self.m as u8) && self.y.leap() { time + DAY_IN_SECONDS }
 		else { time }
 	}
 
@@ -1963,7 +1954,7 @@ impl Utc2k {
 	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
 	/// ```
 	pub const fn cmp_date(self, other: Self) -> Ordering {
-		if self.y == other.y {
+		if (self.y as u8) == (other.y as u8) {
 			if (self.m as u8) == (other.m as u8) {
 				if self.d == other.d { Ordering::Equal }
 				else if self.d < other.d { Ordering::Less }
@@ -1972,7 +1963,7 @@ impl Utc2k {
 			else if (self.m as u8) < (other.m as u8) { Ordering::Less }
 			else { Ordering::Greater }
 		}
-		else if self.y < other.y { Ordering::Less }
+		else if (self.y as u8) < (other.y as u8) { Ordering::Less }
 		else { Ordering::Greater }
 	}
 

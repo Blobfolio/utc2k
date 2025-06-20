@@ -743,7 +743,7 @@ impl Local2k {
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
-		out.push_str(DateChar::as_str(DateChar::dd(self.inner.y).as_slice()));
+		out.push_str(DateChar::as_str(self.inner.y.dd().as_slice()));
 		out.push(' ');
 		out.push_str(DateChar::as_str(DateChar::dd(self.inner.hh).as_slice()));
 		out.push(':');

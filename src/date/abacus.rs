@@ -9,6 +9,7 @@ use crate::{
 	Month,
 	Utc2k,
 	Utc2kError,
+	Year,
 };
 
 
@@ -126,12 +127,12 @@ impl Abacus {
 	///
 	/// Return the individual parts, nice and balanced, ready for consumption
 	/// by [`Utc2k`]. (Only the last two digits of the year are returned.)
-	pub(super) const fn parts(&self) -> (u8, Month, u8, u8, u8, u8) {
-		if self.y < 2000 { (0, Month::January, 1, 0, 0, 0) }
-		else if 2099 < self.y { (99, Month::December, 31, 23, 59, 59) }
+	pub(super) const fn parts(&self) -> (Year, Month, u8, u8, u8, u8) {
+		if self.y < 2000 { (Year::Y2k00, Month::January, 1, 0, 0, 0) }
+		else if 2099 < self.y { (Year::Y2k99, Month::December, 31, 23, 59, 59) }
 		else {
 			(
-				(self.y - 2000) as u8,
+				Year::from_u8((self.y - 2000) as u8),
 				Month::from_u8(self.m as u8),
 				self.d as u8,
 				self.hh as u8,
@@ -147,12 +148,12 @@ impl Abacus {
 	/// Return the individual parts, nice and balanced, ready for consumption
 	/// by [`Utc2k`], unless out of range.
 	pub(super) const fn parts_checked(&self)
-	-> Result<(u8, Month, u8, u8, u8, u8), Utc2kError> {
+	-> Result<(Year, Month, u8, u8, u8, u8), Utc2kError> {
 		if self.y < 2000 { Err(Utc2kError::Underflow) }
 		else if 2099 < self.y { Err(Utc2kError::Overflow) }
 		else {
 			Ok((
-				(self.y - 2000) as u8,
+				Year::from_u8((self.y - 2000) as u8),
 				Month::from_u8(self.m as u8),
 				self.d as u8,
 				self.hh as u8,
@@ -648,10 +649,10 @@ mod tests {
 	/// # Addition.
 	fn t_addition() {
 		macro_rules! add {
-			($($start:ident + $num:literal = ($y2:literal, $m2:ident, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal)),+) => ($(
+			($($start:ident + $num:literal = ($y2:ident, $m2:ident, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal)),+) => ($(
 				assert_eq!(
 					$start.plus_seconds($num).parts(),
-					($y2, Month::$m2, $d2, $hh2, $mm2, $ss2)
+					(Year::$y2, Month::$m2, $d2, $hh2, $mm2, $ss2)
 				);
 			)+);
 		}
@@ -659,13 +660,13 @@ mod tests {
 		// Add nothing.
 		let start = Abacus::new(2000, 1, 1, 0, 0, 0);
 		add!(
-			start + 0 = (0, January, 1, 0, 0, 0),
-			start + 1 = (0, January, 1, 0, 0, 1),
-			start + 60 = (0, January, 1, 0, 1, 0),
-			start + 3600 = (0, January, 1, 1, 0, 0),
-			start + 3661 = (0, January, 1, 1, 1, 1),
-			start + 31_622_400 = (1, January, 1, 0, 0, 0),
-			start + 4_294_967_295 = (99, December, 31, 23, 59, 59)
+			start + 0 = (Y2k00, January, 1, 0, 0, 0),
+			start + 1 = (Y2k00, January, 1, 0, 0, 1),
+			start + 60 = (Y2k00, January, 1, 0, 1, 0),
+			start + 3600 = (Y2k00, January, 1, 1, 0, 0),
+			start + 3661 = (Y2k00, January, 1, 1, 1, 1),
+			start + 31_622_400 = (Y2k01, January, 1, 0, 0, 0),
+			start + 4_294_967_295 = (Y2k99, December, 31, 23, 59, 59)
 		);
 
 		// Let's verify nothing explodes if we try to add the most number of
@@ -675,7 +676,7 @@ mod tests {
 		let end = start.plus_seconds(Abacus::MAX_SECONDS);
 		assert_eq!(
 			end.parts(),
-			(99, Month::December, 31, 23, 59, 59)
+			(Year::Y2k99, Month::December, 31, 23, 59, 59)
 		);
 
 		// Similarly, let's verify that the biggest possible offset added to
@@ -692,7 +693,7 @@ mod tests {
 		start.rebalance();
 		assert_eq!(
 			start.parts(),
-			(99, Month::December, 31, 23, 59, 59)
+			(Year::Y2k99, Month::December, 31, 23, 59, 59)
 		);
 
 		// And the reverse, a nothing date with the smallest possible offset.
@@ -706,7 +707,7 @@ mod tests {
 		start.rebalance();
 		assert_eq!(
 			start.parts(),
-			(0, Month::January, 1, 0, 0, 0)
+			(Year::Y2k00, Month::January, 1, 0, 0, 0)
 		);
 	}
 
@@ -716,28 +717,28 @@ mod tests {
 	/// This helps ensure we're doing the math correctly.
 	fn t_carries() {
 		macro_rules! carry {
-			($(($y:literal, $m:literal, $d:literal, $hh:literal, $mm:literal, $ss:literal) ($y2:literal, $m2:ident, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal) $fail:literal),+) => ($(
+			($(($y:literal, $m:literal, $d:literal, $hh:literal, $mm:literal, $ss:literal) ($y2:ident, $m2:ident, $d2:literal, $hh2:literal, $mm2:literal, $ss2:literal) $fail:literal),+) => ($(
 				assert_eq!(
 					Abacus::new($y, $m, $d, $hh, $mm, $ss).parts(),
-					($y2, Month::$m2, $d2, $hh2, $mm2, $ss2),
+					(Year::$y2, Month::$m2, $d2, $hh2, $mm2, $ss2),
 					$fail
 				);
 			)+);
 		}
 
 		carry!(
-			(2000, 13, 32, 24, 60, 60) (01, February, 2, 1, 1, 0) "Overage of one everywhere.",
-			(2000, 25, 99, 1, 1, 1) (02, April, 9, 1, 1, 1) "Large month/day overages.",
-			(2000, 1, 1, 99, 99, 99) (00, January, 5, 4, 40, 39) "Large time overflows.",
-			(2000, 255, 255, 255, 255, 255) (21, November, 20, 19, 19, 15) "Max overflows.",
-			(1970, 25, 99, 1, 1, 1) (00, January, 1, 0, 0, 0) "Saturating low.",
-			(3000, 25, 99, 1, 1, 1) (99, December, 31, 23, 59, 59) "Saturating high #1.",
-			(2099, 25, 99, 1, 1, 1) (99, December, 31, 23, 59, 59) "Saturating high #2.",
-			(2010, 0, 0, 1, 1, 1) (09, November, 30, 1, 1, 1) "Zero month, zero day.",
-			(2010, 0, 32, 1, 1, 1) (10, January, 1, 1, 1, 1) "Zero month, overflowing day.",
-			(2010, 1, 0, 1, 1, 1) (09, December, 31, 1, 1, 1) "Zero day into zero month.",
-			(2010, 2, 30, 1, 1, 1) (10, March, 2, 1, 1, 1) "Too many days for month.",
-			(2010, 24, 1, 1, 1, 1) (11, December, 1, 1, 1, 1) "Exactly 24 months."
+			(2000, 13, 32, 24, 60, 60) (Y2k01, February, 2, 1, 1, 0) "Overage of one everywhere.",
+			(2000, 25, 99, 1, 1, 1) (Y2k02, April, 9, 1, 1, 1) "Large month/day overages.",
+			(2000, 1, 1, 99, 99, 99) (Y2k00, January, 5, 4, 40, 39) "Large time overflows.",
+			(2000, 255, 255, 255, 255, 255) (Y2k21, November, 20, 19, 19, 15) "Max overflows.",
+			(1970, 25, 99, 1, 1, 1) (Y2k00, January, 1, 0, 0, 0) "Saturating low.",
+			(3000, 25, 99, 1, 1, 1) (Y2k99, December, 31, 23, 59, 59) "Saturating high #1.",
+			(2099, 25, 99, 1, 1, 1) (Y2k99, December, 31, 23, 59, 59) "Saturating high #2.",
+			(2010, 0, 0, 1, 1, 1) (Y2k09, November, 30, 1, 1, 1) "Zero month, zero day.",
+			(2010, 0, 32, 1, 1, 1) (Y2k10, January, 1, 1, 1, 1) "Zero month, overflowing day.",
+			(2010, 1, 0, 1, 1, 1) (Y2k09, December, 31, 1, 1, 1) "Zero day into zero month.",
+			(2010, 2, 30, 1, 1, 1) (Y2k10, March, 2, 1, 1, 1) "Too many days for month.",
+			(2010, 24, 1, 1, 1, 1) (Y2k11, December, 1, 1, 1, 1) "Exactly 24 months."
 		);
 	}
 

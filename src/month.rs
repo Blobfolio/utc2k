@@ -535,6 +535,30 @@ impl Month {
 			Self::December => 334,
 		}
 	}
+
+	#[inline]
+	#[must_use]
+	/// # Ordinal Seconds (Naive).
+	///
+	/// Return the total number of seconds from previous months.
+	///
+	/// Note this is _not_ leap aware.
+	pub(crate) const fn ordinal_seconds(self) -> u32 {
+		match self {
+			Self::January => 0,
+			Self::February => 2_678_400,
+			Self::March => 5_097_600,
+			Self::April => 7_776_000,
+			Self::May => 10_368_000,
+			Self::June => 13_046_400,
+			Self::July => 15_638_400,
+			Self::August => 18_316_800,
+			Self::September => 20_995_200,
+			Self::October => 23_587_200,
+			Self::November => 26_265_600,
+			Self::December => 28_857_600,
+		}
+	}
 }
 
 
