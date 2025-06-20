@@ -1169,6 +1169,16 @@ impl Utc2k {
 	///         (2003, 7, 1, 10, 52, 37),
 	///     );
 	/// }
+	/// #
+	/// # // For the offset sign, and _only_ the offset sign, this method
+	/// # // will accept a Unicode "Minus Sign" as being the same as an
+	/// # // regular ASCII `'-'`.
+	/// # assert_eq!(
+	/// #     Utc2k::from_rfc2822(
+	/// #         "Tue, 01 Jul 2003 03:52:37\u{2212}0700".as_bytes(),
+	/// #     ).unwrap().parts(),
+	/// #         (2003, 7, 1, 10, 52, 37),
+	/// # );
 	///
 	/// // The same variation exists for date-only representations too.
 	/// let dates: [&[u8]; 5] = [

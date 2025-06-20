@@ -548,7 +548,8 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 		[] => return Some(offset),
 
 		// A fixed offset?
-		[ rest @ .., sign @ (b'+' | b'-'), a, b, c, d ] => {
+		[ rest @ .., sign @ (b'+' | b'-'), a, b, c, d ] |
+		[ rest @ .., sign @ 226, 136, 146, a, b, c, d ] => {
 			// By temporarily re-imagining the four offset bytes as a `u32`,
 			// we can flip the ASCII bits and verify the results en masse.
 			let chunk = u32::from_le_bytes([*a, *b, *c, *d]) ^ 0x3030_3030;
@@ -564,7 +565,7 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 			offset %= DAY_IN_SECONDS as i32;
 
 			// If the sign was negative, invert it.
-			if *sign == b'-' { offset = 0_i32 - offset; }
+			if *sign == b'-' || *sign == 226 { offset = 0_i32 - offset; }
 
 			rest.trim_ascii_end()
 		},
@@ -756,5 +757,20 @@ mod tests {
 				"Disagreement over February {i}: {days} ({leap})",
 			);
 		}
+	}
+
+	#[test]
+	/// # Minus Sign.
+	///
+	/// Make sure we've got our bytes right!
+	fn t_minus_sign() {
+		assert_eq!(
+			"−".as_bytes(),
+			&[226, 136, 146],
+		);
+		assert_eq!(
+			"\u{2212}".as_bytes(),
+			&[226, 136, 146],
+		);
 	}
 }
