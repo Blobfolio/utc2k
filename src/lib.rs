@@ -221,7 +221,7 @@ pub fn year() -> u16 {
 /// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
 ///
 /// (Our version is a little simpler as we aren't worried about old times.)
-const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
+const fn date_seconds(mut z: u32) -> (u8, Month, u8) {
 	z += JULIAN_EPOCH - 1_721_119;
 	let h: u32 = 100 * z - 25;
 	let mut a: u32 = h.wrapping_div(3_652_425);
@@ -232,10 +232,10 @@ const fn date_seconds(mut z: u32) -> (u8, u8, u8) {
 	let day: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
 
 	if month > 12 {
-		((year - 1999) as u8, month as u8 - 12, day)
+		((year - 1999) as u8, Month::from_u8(month as u8 - 12), day)
 	}
 	else {
-		((year - 2000) as u8, month as u8, day)
+		((year - 2000) as u8, Month::from_u8(month as u8), day)
 	}
 }
 

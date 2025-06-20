@@ -386,7 +386,6 @@ impl FmtUtc2k {
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from_utc2k(Utc2k::now()) }
 
-	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 	/// # Set Date/Time.
 	///
 	/// This can be used to recycle an existing buffer.
@@ -403,12 +402,19 @@ impl FmtUtc2k {
 	/// let mut fmt = FmtUtc2k::default();
 	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	///
-	/// fmt.set_datetime(Utc2k::from(Utc2k::MAX_UNIXTIME));
+	/// fmt.set_datetime(Utc2k::MAX);
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	///
+	/// fmt.set_datetime(Utc2k::MIN);
+	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	/// ```
 	pub const fn set_datetime(&mut self, src: Utc2k) {
-		let (y, m, d, hh, mm, ss) = src.parts();
-		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
+		[self.0[2],  self.0[3]] =  DateChar::dd(src.y);
+		[self.0[5],  self.0[6]] =  src.m.dd();
+		[self.0[8],  self.0[9]] =  DateChar::dd(src.d);
+		[self.0[11], self.0[12]] = DateChar::dd(src.hh);
+		[self.0[14], self.0[15]] = DateChar::dd(src.mm);
+		[self.0[17], self.0[18]] = DateChar::dd(src.ss);
 	}
 
 	/// # Set Parts.
@@ -644,9 +650,20 @@ impl FmtUtc2k {
 	#[must_use]
 	/// # From `Utc2k`.
 	const fn from_utc2k(src: Utc2k) -> Self {
-		let mut out = Self::MIN;
-		out.set_datetime(src);
-		out
+		let y = DateChar::dd(src.y);
+		let m = src.m.dd();
+		let d = DateChar::dd(src.d);
+		let hh = DateChar::dd(src.hh);
+		let mm = DateChar::dd(src.mm);
+		let ss = DateChar::dd(src.ss);
+		Self([
+			DateChar::Digit2, DateChar::Digit0, y[0], y[1],
+			DateChar::Dash, m[0], m[1], DateChar::Dash, d[0], d[1],
+			DateChar::Space,
+			hh[0], hh[1], DateChar::Colon,
+			mm[0], mm[1], DateChar::Colon,
+			ss[0], ss[1]
+		])
 	}
 
 	/// # Set Parts (Unchecked).
@@ -655,9 +672,9 @@ impl FmtUtc2k {
 	/// been applied by the time this method is called.
 	///
 	/// From here, it's just straight ASCII-writing.
-	const fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+	const fn set_parts_unchecked(&mut self, y: u8, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
 		[self.0[2],  self.0[3]] =  DateChar::dd(y);
-		[self.0[5],  self.0[6]] =  DateChar::dd(m);
+		[self.0[5],  self.0[6]] =  m.dd();
 		[self.0[8],  self.0[9]] =  DateChar::dd(d);
 		[self.0[11], self.0[12]] = DateChar::dd(hh);
 		[self.0[14], self.0[15]] = DateChar::dd(mm);
@@ -705,7 +722,7 @@ pub struct Utc2k {
 	y: u8,
 
 	/// # Month.
-	m: u8,
+	m: Month,
 
 	/// # Day.
 	d: u8,
@@ -936,7 +953,7 @@ impl Utc2k {
 	///     "2000-01-01 00:00:00",
 	/// );
 	/// ```
-	pub const MIN: Self = Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 };
+	pub const MIN: Self = Self { y: 0, m: Month::January, d: 1, hh: 0, mm: 0, ss: 0 };
 
 	/// # Maximum Date/Time.
 	///
@@ -946,7 +963,7 @@ impl Utc2k {
 	///     "2099-12-31 23:59:59",
 	/// );
 	/// ```
-	pub const MAX: Self = Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
+	pub const MAX: Self = Self { y: 99, m: Month::December, d: 31, hh: 23, mm: 59, ss: 59 };
 
 	/// # Minimum Unix Timestamp.
 	///
@@ -1317,7 +1334,7 @@ impl Utc2k {
 	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
 		(
 			self.year(),
-			self.m,
+			self.m as u8,
 			self.d,
 			self.hh,
 			self.mm,
@@ -1341,7 +1358,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.ymd(), (2010, 5, 5));
 	/// ```
-	pub const fn ymd(self) -> (u16, u8, u8) { (self.year(), self.m, self.d) }
+	pub const fn ymd(self) -> (u16, u8, u8) { (self.year(), self.m as u8, self.d) }
 
 	#[inline]
 	#[must_use]
@@ -1391,7 +1408,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.month(), Month::May);
 	/// ```
-	pub const fn month(self) -> Month { Month::from_u8(self.m) }
+	pub const fn month(self) -> Month { self.m }
 
 	#[inline]
 	#[must_use]
@@ -1503,10 +1520,11 @@ impl Utc2k {
 	/// assert_eq!(date.month_size(), 29); // Leap!
 	/// ```
 	pub const fn month_size(self) -> u8 {
-		if self.m == 2 && self.leap_year() { 29 }
+		if matches!(self.m, Month::February) && self.leap_year() { 29 }
 		else { self.month().days() }
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Ordinal.
 	///
@@ -1525,24 +1543,9 @@ impl Utc2k {
 	/// assert_eq!(date.ordinal(), 15);
 	/// ```
 	pub const fn ordinal(self) -> u16 {
-		let days = self.d as u16 +
-			match self.m {
-				2 => 31,
-				3 => 59,
-				4 => 90,
-				5 => 120,
-				6 => 151,
-				7 => 181,
-				8 => 212,
-				9 => 243,
-				10 => 273,
-				11 => 304,
-				12 => 334,
-				_ => 0,
-			};
-
-		if 2 < self.m && self.leap_year() { days + 1 }
-		else { days }
+		self.d as u16 +
+		self.m.ordinal() +
+		(2 < (self.m as u8) && self.leap_year()) as u16
 	}
 
 	#[inline]
@@ -1711,6 +1714,7 @@ impl Utc2k {
 	/// ```
 	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from_utc2k(*self).to_rfc3339() }
 
+	#[inline]
 	#[must_use]
 	/// # Unix Timestamp.
 	///
@@ -1738,7 +1742,7 @@ impl Utc2k {
 			DAY_IN_SECONDS * (self.d as u32 - 1);
 
 		// Add a day's worth of seconds if we need to.
-		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
+		if 2 < (self.m as u8) && self.leap_year() { time + DAY_IN_SECONDS }
 		else { time }
 	}
 
@@ -1760,7 +1764,7 @@ impl Utc2k {
 	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
 	/// ```
 	pub const fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
-		Self::from_abacus(Abacus::new(self.year(), self.m, self.d, hh, mm, ss))
+		Self::from_abacus(Abacus::new(self.year(), self.m as u8, self.d, hh, mm, ss))
 	}
 }
 
@@ -1960,12 +1964,12 @@ impl Utc2k {
 	/// ```
 	pub const fn cmp_date(self, other: Self) -> Ordering {
 		if self.y == other.y {
-			if self.m == other.m {
+			if (self.m as u8) == (other.m as u8) {
 				if self.d == other.d { Ordering::Equal }
 				else if self.d < other.d { Ordering::Less }
 				else { Ordering::Greater }
 			}
-			else if self.m < other.m { Ordering::Less }
+			else if (self.m as u8) < (other.m as u8) { Ordering::Less }
 			else { Ordering::Greater }
 		}
 		else if self.y < other.y { Ordering::Less }

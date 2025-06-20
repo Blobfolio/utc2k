@@ -5,6 +5,7 @@
 #![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
 
 use crate::{
+	DateChar,
 	macros,
 	Utc2k,
 	Utc2kError,
@@ -448,6 +449,25 @@ impl Month {
 
 impl Month {
 	#[must_use]
+	/// # Double Digit.
+	pub(crate) const fn dd(self) -> [DateChar; 2] {
+		match self {
+			Self::January =>   [DateChar::Digit0, DateChar::Digit1],
+			Self::February =>  [DateChar::Digit0, DateChar::Digit2],
+			Self::March =>     [DateChar::Digit0, DateChar::Digit3],
+			Self::April =>     [DateChar::Digit0, DateChar::Digit4],
+			Self::May =>       [DateChar::Digit0, DateChar::Digit5],
+			Self::June =>      [DateChar::Digit0, DateChar::Digit6],
+			Self::July =>      [DateChar::Digit0, DateChar::Digit7],
+			Self::August =>    [DateChar::Digit0, DateChar::Digit8],
+			Self::September => [DateChar::Digit0, DateChar::Digit9],
+			Self::October =>   [DateChar::Digit1, DateChar::Digit0],
+			Self::November =>  [DateChar::Digit1, DateChar::Digit1],
+			Self::December =>  [DateChar::Digit1, DateChar::Digit2],
+		}
+	}
+
+	#[must_use]
 	/// # From Abbreviation Bytes.
 	///
 	/// This matches the first three non-whitespace bytes, case-insensitively,
@@ -489,6 +509,30 @@ impl Month {
 			9  => Self::September,
 			10 => Self::October,
 			_ =>  Self::November,
+		}
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Ordinal (Naive).
+	///
+	/// Return the total number of days from previous months.
+	///
+	/// Note this is _not_ leap aware.
+	pub(crate) const fn ordinal(self) -> u16 {
+		match self {
+			Self::January => 0,
+			Self::February => 31,
+			Self::March => 59,
+			Self::April => 90,
+			Self::May => 120,
+			Self::June => 151,
+			Self::July => 181,
+			Self::August => 212,
+			Self::September => 243,
+			Self::October => 273,
+			Self::November => 304,
+			Self::December => 334,
 		}
 	}
 }
@@ -540,8 +584,16 @@ mod tests {
 	#[test]
 	/// # Test Fromness.
 	fn t_abbr() {
-		for d in Month::ALL {
-			assert_eq!(d.abbreviation(), &d.as_str()[..3]);
+		for m in Month::ALL {
+			assert_eq!(m.abbreviation(), &m.as_str()[..3]);
+		}
+	}
+
+	#[test]
+	/// # Test DD.
+	fn t_dd() {
+		for m in Month::ALL {
+			assert_eq!(m.dd(), DateChar::dd(m as u8));
 		}
 	}
 
