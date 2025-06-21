@@ -411,7 +411,7 @@ impl FmtUtc2k {
 	/// ```
 	pub const fn set_datetime(&mut self, src: Utc2k) {
 		[self.0[2],  self.0[3]] =  src.y.dd();
-		[self.0[5],  self.0[6]] =  src.m.dd();
+		[self.0[5],  self.0[6]] =  DateChar::dd(src.m as u8);
 		[self.0[8],  self.0[9]] =  DateChar::dd(src.d);
 		[self.0[11], self.0[12]] = DateChar::dd(src.hh);
 		[self.0[14], self.0[15]] = DateChar::dd(src.mm);
@@ -652,7 +652,7 @@ impl FmtUtc2k {
 	/// # From `Utc2k`.
 	const fn from_utc2k(src: Utc2k) -> Self {
 		let y = src.y.dd();
-		let m = src.m.dd();
+		let m = DateChar::dd(src.m as u8);
 		let d = DateChar::dd(src.d);
 		let hh = DateChar::dd(src.hh);
 		let mm = DateChar::dd(src.mm);
@@ -675,7 +675,7 @@ impl FmtUtc2k {
 	/// From here, it's just straight ASCII-writing.
 	const fn set_parts_unchecked(&mut self, y: Year, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
 		[self.0[2],  self.0[3]] =  y.dd();
-		[self.0[5],  self.0[6]] =  m.dd();
+		[self.0[5],  self.0[6]] =  DateChar::dd(m as u8);
 		[self.0[8],  self.0[9]] =  DateChar::dd(d);
 		[self.0[11], self.0[12]] = DateChar::dd(hh);
 		[self.0[14], self.0[15]] = DateChar::dd(mm);
@@ -1672,17 +1672,17 @@ impl Utc2k {
 
 		out.push_str(self.weekday().abbreviation());
 		out.push_str(", ");
-		out.push_str(DateChar::as_str(DateChar::dd(self.d).as_slice()));
+		out.push_str(DateChar::dd_str(self.d));
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
 		out.push_str(DateChar::as_str(self.y.dd().as_slice()));
 		out.push(' ');
-		out.push_str(DateChar::as_str(DateChar::dd(self.hh).as_slice()));
+		out.push_str(DateChar::dd_str(self.hh));
 		out.push(':');
-		out.push_str(DateChar::as_str(DateChar::dd(self.mm).as_slice()));
+		out.push_str(DateChar::dd_str(self.mm));
 		out.push(':');
-		out.push_str(DateChar::as_str(DateChar::dd(self.ss).as_slice()));
+		out.push_str(DateChar::dd_str(self.ss));
 		out.push_str(" +0000");
 
 		out

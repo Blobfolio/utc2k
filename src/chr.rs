@@ -81,34 +81,145 @@ macro_rules! date_chars {
 			#[must_use]
 			/// # Double Digit.
 			///
-			/// Return the number's last two digits, using zeroes for padding
-			/// as necessary.
+			/// Return the number as two digits.
+			///
+			/// Note: this is used by non-year date/time pieces, so maxes out
+			/// at fifty-nine.
 			pub(crate) const fn dd(src: u8) -> [Self; 2] {
-				[
-					Self::from_digit(src.wrapping_div(10)),
-					Self::from_digit(src),
-				]
+				match src {
+					 0 => [DateChar::Digit0, DateChar::Digit0],
+					 1 => [DateChar::Digit0, DateChar::Digit1],
+					 2 => [DateChar::Digit0, DateChar::Digit2],
+					 3 => [DateChar::Digit0, DateChar::Digit3],
+					 4 => [DateChar::Digit0, DateChar::Digit4],
+					 5 => [DateChar::Digit0, DateChar::Digit5],
+					 6 => [DateChar::Digit0, DateChar::Digit6],
+					 7 => [DateChar::Digit0, DateChar::Digit7],
+					 8 => [DateChar::Digit0, DateChar::Digit8],
+					 9 => [DateChar::Digit0, DateChar::Digit9],
+					10 => [DateChar::Digit1, DateChar::Digit0],
+					11 => [DateChar::Digit1, DateChar::Digit1],
+					12 => [DateChar::Digit1, DateChar::Digit2],
+					13 => [DateChar::Digit1, DateChar::Digit3],
+					14 => [DateChar::Digit1, DateChar::Digit4],
+					15 => [DateChar::Digit1, DateChar::Digit5],
+					16 => [DateChar::Digit1, DateChar::Digit6],
+					17 => [DateChar::Digit1, DateChar::Digit7],
+					18 => [DateChar::Digit1, DateChar::Digit8],
+					19 => [DateChar::Digit1, DateChar::Digit9],
+					20 => [DateChar::Digit2, DateChar::Digit0],
+					21 => [DateChar::Digit2, DateChar::Digit1],
+					22 => [DateChar::Digit2, DateChar::Digit2],
+					23 => [DateChar::Digit2, DateChar::Digit3],
+					24 => [DateChar::Digit2, DateChar::Digit4],
+					25 => [DateChar::Digit2, DateChar::Digit5],
+					26 => [DateChar::Digit2, DateChar::Digit6],
+					27 => [DateChar::Digit2, DateChar::Digit7],
+					28 => [DateChar::Digit2, DateChar::Digit8],
+					29 => [DateChar::Digit2, DateChar::Digit9],
+					30 => [DateChar::Digit3, DateChar::Digit0],
+					31 => [DateChar::Digit3, DateChar::Digit1],
+					32 => [DateChar::Digit3, DateChar::Digit2],
+					33 => [DateChar::Digit3, DateChar::Digit3],
+					34 => [DateChar::Digit3, DateChar::Digit4],
+					35 => [DateChar::Digit3, DateChar::Digit5],
+					36 => [DateChar::Digit3, DateChar::Digit6],
+					37 => [DateChar::Digit3, DateChar::Digit7],
+					38 => [DateChar::Digit3, DateChar::Digit8],
+					39 => [DateChar::Digit3, DateChar::Digit9],
+					40 => [DateChar::Digit4, DateChar::Digit0],
+					41 => [DateChar::Digit4, DateChar::Digit1],
+					42 => [DateChar::Digit4, DateChar::Digit2],
+					43 => [DateChar::Digit4, DateChar::Digit3],
+					44 => [DateChar::Digit4, DateChar::Digit4],
+					45 => [DateChar::Digit4, DateChar::Digit5],
+					46 => [DateChar::Digit4, DateChar::Digit6],
+					47 => [DateChar::Digit4, DateChar::Digit7],
+					48 => [DateChar::Digit4, DateChar::Digit8],
+					49 => [DateChar::Digit4, DateChar::Digit9],
+					50 => [DateChar::Digit5, DateChar::Digit0],
+					51 => [DateChar::Digit5, DateChar::Digit1],
+					52 => [DateChar::Digit5, DateChar::Digit2],
+					53 => [DateChar::Digit5, DateChar::Digit3],
+					54 => [DateChar::Digit5, DateChar::Digit4],
+					55 => [DateChar::Digit5, DateChar::Digit5],
+					56 => [DateChar::Digit5, DateChar::Digit6],
+					57 => [DateChar::Digit5, DateChar::Digit7],
+					58 => [DateChar::Digit5, DateChar::Digit8],
+					_ => [DateChar::Digit5, DateChar::Digit9],
+				}
 			}
 
 			#[inline(always)]
 			#[must_use]
-			/// # From Digit.
+			/// # Double Digit (String).
 			///
-			/// "Pop" the last digit from a number, convert it to a `DateChar`,
-			/// and return the result.
-			pub(crate) const fn from_digit(src: u8) -> Self {
-				match src % 10 {
-					0 => Self::Digit0,
-					1 => Self::Digit1,
-					2 => Self::Digit2,
-					3 => Self::Digit3,
-					4 => Self::Digit4,
-					5 => Self::Digit5,
-					6 => Self::Digit6,
-					7 => Self::Digit7,
-					8 => Self::Digit8,
-					9 => Self::Digit9,
-					_ => { unreachable!() },
+			/// Return the nubmer as a two-digit string.
+			///
+			/// Note: this is used by non-year date/time pieces, so maxes out
+			/// at fifty-nine.
+			pub(crate) const fn dd_str(src: u8) -> &'static str {
+				match src {
+					 0 => "00",
+					 1 => "01",
+					 2 => "02",
+					 3 => "03",
+					 4 => "04",
+					 5 => "05",
+					 6 => "06",
+					 7 => "07",
+					 8 => "08",
+					 9 => "09",
+					10 => "10",
+					11 => "11",
+					12 => "12",
+					13 => "13",
+					14 => "14",
+					15 => "15",
+					16 => "16",
+					17 => "17",
+					18 => "18",
+					19 => "19",
+					20 => "20",
+					21 => "21",
+					22 => "22",
+					23 => "23",
+					24 => "24",
+					25 => "25",
+					26 => "26",
+					27 => "27",
+					28 => "28",
+					29 => "29",
+					30 => "30",
+					31 => "31",
+					32 => "32",
+					33 => "33",
+					34 => "34",
+					35 => "35",
+					36 => "36",
+					37 => "37",
+					38 => "38",
+					39 => "39",
+					40 => "40",
+					41 => "41",
+					42 => "42",
+					43 => "43",
+					44 => "44",
+					45 => "45",
+					46 => "46",
+					47 => "47",
+					48 => "48",
+					49 => "49",
+					50 => "50",
+					51 => "51",
+					52 => "52",
+					53 => "53",
+					54 => "54",
+					55 => "55",
+					56 => "56",
+					57 => "57",
+					58 => "58",
+					_ => "59",
 				}
 			}
 		}

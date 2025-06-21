@@ -739,17 +739,17 @@ impl Local2k {
 
 		out.push_str(self.weekday().abbreviation());
 		out.push_str(", ");
-		out.push_str(DateChar::as_str(DateChar::dd(self.inner.d).as_slice()));
+		out.push_str(DateChar::dd_str(self.inner.d));
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(" 20");
 		out.push_str(DateChar::as_str(self.inner.y.dd().as_slice()));
 		out.push(' ');
-		out.push_str(DateChar::as_str(DateChar::dd(self.inner.hh).as_slice()));
+		out.push_str(DateChar::dd_str(self.inner.hh));
 		out.push(':');
-		out.push_str(DateChar::as_str(DateChar::dd(self.inner.mm).as_slice()));
+		out.push_str(DateChar::dd_str(self.inner.mm));
 		out.push(':');
-		out.push_str(DateChar::as_str(DateChar::dd(self.inner.ss).as_slice()));
+		out.push_str(DateChar::dd_str(self.inner.ss));
 
 		if let Some(offset) = offset_suffix(self.offset) {
 			out.push(' ');
@@ -1251,6 +1251,7 @@ const fn offset_suffix(offset: Option<NonZeroI32>) -> Option<[DateChar; 5]> {
 			else { DateChar::Plus };
 
 		let offset = offset.get().unsigned_abs();
+
 		let hh = DateChar::dd(offset.wrapping_div(HOUR_IN_SECONDS) as u8);
 		let mm = DateChar::dd((offset % HOUR_IN_SECONDS).wrapping_div(MINUTE_IN_SECONDS) as u8);
 
