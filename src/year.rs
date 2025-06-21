@@ -2,15 +2,29 @@
 # UTC2K - Year
 */
 
+#![expect(clippy::inline_always, reason = "Foundational.")]
+
 use crate::DateChar;
 
 
 
 /// # Helper: Define Enum.
 macro_rules! year {
+	(@as_str 0) => ( " 2000 " );
+	(@as_str 1) => ( " 2001 " );
+	(@as_str 2) => ( " 2002 " );
+	(@as_str 3) => ( " 2003 " );
+	(@as_str 4) => ( " 2004 " );
+	(@as_str 5) => ( " 2005 " );
+	(@as_str 6) => ( " 2006 " );
+	(@as_str 7) => ( " 2007 " );
+	(@as_str 8) => ( " 2008 " );
+	(@as_str 9) => ( " 2009 " );
+	(@as_str $tt:tt) => ( concat!(" 20", $tt, " ") );
+
 	(
-		$($k:ident $v:literal $d1:ident $d2:ident $sec:literal),+,
-		@last $last_k:ident $last_v:literal $last_d1:ident $last_d2:ident $last_sec:literal
+		$($k:ident $v:tt $d1:ident $d2:ident $sec:literal),+,
+		@last $last_k:ident $last_v:tt $last_d1:ident $last_d2:ident $last_sec:literal
 		$(,)?
 	) => (
 		#[repr(u8)]
@@ -25,6 +39,18 @@ macro_rules! year {
 		}
 
 		impl Year {
+			/// # As String.
+			///
+			/// Return the year as a string with both a leading and trailing
+			/// space, since this is only actually used for the RFC2822
+			/// methods.
+			pub(crate) const fn as_str(self) -> &'static str {
+				match self {
+					$( Self::$k => year!(@as_str $v) ),+,
+					Self::$last_k => year!(@as_str $last_v),
+				}
+			}
+
 			#[inline(always)]
 			/// # Double Digit.
 			///
@@ -46,13 +72,6 @@ macro_rules! year {
 					_ => Self::$last_k,
 				}
 			}
-
-			#[inline(always)]
-			/// # Full Year.
-			///
-			/// Convert our two-digit year abbreviation back to a proper
-			/// four-digit masterpiece.
-			pub(crate) const fn full(self) -> u16 { self as u16 + 2000 }
 
 			#[inline(always)]
 			/// # Cumulative Unixtime.
@@ -176,6 +195,14 @@ year!{
 }
 
 impl Year {
+	#[inline(always)]
+	/// # Full Year.
+	///
+	/// Convert our two-digit year abbreviation back to a proper
+	/// four-digit masterpiece.
+	pub(crate) const fn full(self) -> u16 { self as u16 + 2000 }
+
+	#[inline(always)]
 	/// # Leap Year?
 	pub(crate) const fn leap(self) -> bool {
 		matches!(

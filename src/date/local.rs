@@ -742,9 +742,7 @@ impl Local2k {
 		out.push_str(DateChar::dd_str(self.inner.d));
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
-		out.push_str(" 20");
-		out.push_str(DateChar::as_str(self.inner.y.dd().as_slice()));
-		out.push(' ');
+		out.push_str(self.inner.y.as_str()); // Includes spaces on either end.
 		out.push_str(DateChar::dd_str(self.inner.hh));
 		out.push(':');
 		out.push_str(DateChar::dd_str(self.inner.mm));

@@ -1675,9 +1675,7 @@ impl Utc2k {
 		out.push_str(DateChar::dd_str(self.d));
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
-		out.push_str(" 20");
-		out.push_str(DateChar::as_str(self.y.dd().as_slice()));
-		out.push(' ');
+		out.push_str(self.y.as_str()); // Includes spaces on either side.
 		out.push_str(DateChar::dd_str(self.hh));
 		out.push(':');
 		out.push_str(DateChar::dd_str(self.mm));
@@ -2015,14 +2013,14 @@ impl Utc2k {
 	#[must_use]
 	/// # From `FmtUtc2k`.
 	const fn from_fmtutc2k(src: FmtUtc2k) -> Self {
-		Self::new(
-			2000 + (src.0[2].as_digit() * 10 + src.0[3].as_digit()) as u16,
-			src.0[5].as_digit() * 10 + src.0[6].as_digit(),
-			src.0[8].as_digit() * 10 + src.0[9].as_digit(),
-			src.0[11].as_digit() * 10 + src.0[12].as_digit(),
-			src.0[14].as_digit() * 10 + src.0[15].as_digit(),
-			src.0[17].as_digit() * 10 + src.0[18].as_digit(),
-		)
+		Self {
+			y: Year::from_u8(src.0[2].as_digit() * 10 + src.0[3].as_digit()),
+			m: Month::from_u8(src.0[5].as_digit() * 10 + src.0[6].as_digit()),
+			d: src.0[8].as_digit() * 10 + src.0[9].as_digit(),
+			hh: src.0[11].as_digit() * 10 + src.0[12].as_digit(),
+			mm: src.0[14].as_digit() * 10 + src.0[15].as_digit(),
+			ss: src.0[17].as_digit() * 10 + src.0[18].as_digit(),
+		}
 	}
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
