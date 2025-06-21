@@ -5,11 +5,13 @@
 #![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
 
 use crate::{
+	ASCII_LOWER,
 	macros,
 	Utc2k,
 	Utc2kError,
 };
 use std::{
+	borrow::Cow,
 	cmp::Ordering,
 	ops::{
 		Add,
@@ -286,35 +288,27 @@ impl TryFrom<&[u8]> for Month {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
+		if 2 < src.len() {
+			Self::from_abbreviation(src[0], src[1], src[2]).ok_or(Utc2kError::Invalid)
+		}
+		else { Err(Utc2kError::Invalid) }
 	}
 }
 
-impl TryFrom<&str> for Month {
-	type Error = Utc2kError;
-
-	#[inline]
-	/// # From Str.
-	///
-	/// Note: this is a lazy match, using only the first three characters.
-	/// "Decimal", for example, will match `Month::December`.
-	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
-	}
+/// # Helper: `TryFrom` Wrappers.
+macro_rules! try_from {
+	($($ty:ty)+) => ($(
+		impl TryFrom<$ty> for Month {
+			type Error = Utc2kError;
+			#[inline]
+			fn try_from(src: $ty) -> Result<Self, Self::Error> {
+				Self::try_from(src.as_bytes())
+			}
+		}
+	)+);
 }
 
-impl TryFrom<String> for Month {
-	type Error = Utc2kError;
-
-	#[inline]
-	/// # From Str.
-	///
-	/// Note: this is a lazy match, using only the first three characters.
-	/// "Decimal", for example, will match `Month::December`.
-	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
-	}
-}
+try_from! { &str &String String &Cow<'_, str> Cow<'_, str> &Box<str> Box<str> }
 
 impl Month {
 	#[must_use]
@@ -452,20 +446,21 @@ impl Month {
 	///
 	/// This matches the first three non-whitespace bytes, case-insensitively,
 	/// against the `Month` abbreviations.
-	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+	pub(crate) const fn from_abbreviation(a: u8, b: u8, c: u8) -> Option<Self> {
+		let src = u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER;
 		match src {
-			[ b'J' | b'j', b'a' | b'A', b'n' | b'N', ..] => Some(Self::January),
-			[ b'F' | b'f', b'e' | b'E', b'b' | b'B', ..] => Some(Self::February),
-			[ b'M' | b'm', b'a' | b'A', b'r' | b'R', ..] => Some(Self::March),
-			[ b'A' | b'a', b'p' | b'P', b'r' | b'R', ..] => Some(Self::April),
-			[ b'M' | b'm', b'a' | b'A', b'y' | b'Y', ..] => Some(Self::May),
-			[ b'J' | b'j', b'u' | b'U', b'n' | b'N', ..] => Some(Self::June),
-			[ b'J' | b'j', b'u' | b'U', b'l' | b'L', ..] => Some(Self::July),
-			[ b'A' | b'a', b'u' | b'U', b'g' | b'G', ..] => Some(Self::August),
-			[ b'S' | b's', b'e' | b'E', b'p' | b'P', ..] => Some(Self::September),
-			[ b'O' | b'o', b'c' | b'C', b't' | b'T', ..] => Some(Self::October),
-			[ b'N' | b'n', b'o' | b'O', b'v' | b'V', ..] => Some(Self::November),
-			[ b'D' | b'd', b'e' | b'E', b'c' | b'C', ..] => Some(Self::December),
+			1_650_812_416 => Some(Self::February),
+			1_667_589_120 => Some(Self::December),
+			1_735_745_792 => Some(Self::August),
+			1_819_634_176 => Some(Self::July),
+			1_851_877_888 => Some(Self::January),
+			1_853_188_608 => Some(Self::June),
+			1_885_696_768 => Some(Self::September),
+			1_918_987_520 => Some(Self::March),
+			1_919_967_488 => Some(Self::April),
+			1_952_673_536 => Some(Self::October),
+			1_987_014_144 => Some(Self::November),
+			2_036_428_032 => Some(Self::May),
 			_ => None,
 		}
 	}

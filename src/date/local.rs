@@ -1289,3 +1289,38 @@ fn unixtime_offset(unixtime: u32) -> Option<NonZeroI32> {
 				.and_then(|tz| nonzero_offset(tz.ut_offset()))
 		)
 }
+
+
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn t_lossless() {
+		// Make sure the first couple days of the century can be losslessly
+		// converted to/from utc/local with both positive and negative offsets.
+		for i in Utc2k::MIN_UNIXTIME..=Utc2k::MIN_UNIXTIME + DAY_IN_SECONDS * 2 {
+			let utc = Utc2k::from_unixtime(i);
+			let local = Local2k::fixed_from_utc2k(utc, -28860);
+			assert_eq!(utc, local);
+			assert_eq!(utc, local.to_utc2k());
+
+			let local = Local2k::fixed_from_utc2k(utc, 28860);
+			assert_eq!(utc, local);
+			assert_eq!(utc, local.to_utc2k());
+		}
+
+		// Now the same for the end.
+		for i in Utc2k::MAX_UNIXTIME - DAY_IN_SECONDS * 2..=Utc2k::MAX_UNIXTIME {
+			let utc = Utc2k::from_unixtime(i);
+			let local = Local2k::fixed_from_utc2k(utc, -28860);
+			assert_eq!(utc, local);
+			assert_eq!(utc, local.to_utc2k());
+
+			let local = Local2k::fixed_from_utc2k(utc, 28860);
+			assert_eq!(utc, local);
+			assert_eq!(utc, local.to_utc2k());
+		}
+	}
+}

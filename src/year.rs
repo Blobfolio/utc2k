@@ -4,7 +4,10 @@
 
 #![expect(clippy::inline_always, reason = "Foundational.")]
 
-use crate::DateChar;
+use crate::{
+	DateChar,
+	Weekday,
+};
 
 
 
@@ -213,5 +216,41 @@ impl Year {
 			Self::Y2k60 | Self::Y2k64 | Self::Y2k68 | Self::Y2k72 | Self::Y2k76 |
 			Self::Y2k80 | Self::Y2k84 | Self::Y2k88 | Self::Y2k92 | Self::Y2k96
 		)
+	}
+
+	/// # Weekday.
+	///
+	/// Return the weekday the year starts on.
+	pub(crate) const fn weekday(self) -> Weekday {
+		match self {
+			Self::Y2k00 | Self::Y2k05 | Self::Y2k11 | Self::Y2k22 | Self::Y2k28 | Self::Y2k33 | Self::Y2k39 | Self::Y2k50 | Self::Y2k56 | Self::Y2k61 | Self::Y2k67 | Self::Y2k78 | Self::Y2k84 | Self::Y2k89 | Self::Y2k95 => Weekday::Saturday,
+			Self::Y2k01 | Self::Y2k07 | Self::Y2k18 | Self::Y2k24 | Self::Y2k29 | Self::Y2k35 | Self::Y2k46 | Self::Y2k52 | Self::Y2k57 | Self::Y2k63 | Self::Y2k74 | Self::Y2k80 | Self::Y2k85 | Self::Y2k91 => Weekday::Monday,
+			Self::Y2k02 | Self::Y2k08 | Self::Y2k13 | Self::Y2k19 | Self::Y2k30 | Self::Y2k36 | Self::Y2k41 | Self::Y2k47 | Self::Y2k58 | Self::Y2k64 | Self::Y2k69 | Self::Y2k75 | Self::Y2k86 | Self::Y2k92 | Self::Y2k97 => Weekday::Tuesday,
+			Self::Y2k03 | Self::Y2k14 | Self::Y2k20 | Self::Y2k25 | Self::Y2k31 | Self::Y2k42 | Self::Y2k48 | Self::Y2k53 | Self::Y2k59 | Self::Y2k70 | Self::Y2k76 | Self::Y2k81 | Self::Y2k87 | Self::Y2k98 => Weekday::Wednesday,
+			Self::Y2k04 | Self::Y2k09 | Self::Y2k15 | Self::Y2k26 | Self::Y2k32 | Self::Y2k37 | Self::Y2k43 | Self::Y2k54 | Self::Y2k60 | Self::Y2k65 | Self::Y2k71 | Self::Y2k82 | Self::Y2k88 | Self::Y2k93 | Self::Y2k99 => Weekday::Thursday,
+			Self::Y2k06 | Self::Y2k12 | Self::Y2k17 | Self::Y2k23 | Self::Y2k34 | Self::Y2k40 | Self::Y2k45 | Self::Y2k51 | Self::Y2k62 | Self::Y2k68 | Self::Y2k73 | Self::Y2k79 | Self::Y2k90 | Self::Y2k96 => Weekday::Sunday,
+			_ => Weekday::Friday,
+		}
+	}
+}
+
+
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	/// # Test First of Year.
+	fn t_year_start() {
+		for y in 0..=99_u8 {
+			let c = time::Date::from_calendar_date(y as i32 + 2000, time::Month::January, 1)
+				.expect("Unable to create time::Date.");
+			assert_eq!(
+				Year::from_u8(y).weekday().as_str(),
+				c.weekday().to_string(),
+				"Failed with year {y}"
+			);
+		}
 	}
 }

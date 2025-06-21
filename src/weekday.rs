@@ -5,11 +5,13 @@
 #![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
 
 use crate::{
+	ASCII_LOWER,
 	macros,
 	Utc2k,
 	Utc2kError,
 };
 use std::{
+	borrow::Cow,
 	cmp::Ordering,
 	ops::{
 		Add,
@@ -26,12 +28,8 @@ use std::{
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Weekday.
 ///
-/// This is a simple enum representing days of the week.
-///
-/// While not particularly useful on its own, you can use it for wrapping
-/// addition operations.
-///
-/// Otherwise this is only really used by [`Utc2k::weekday`].
+/// This is a simple enum representing days of the week, useful, perhaps, for
+/// printing weekday names or abbreviations.
 pub enum Weekday {
 	#[default]
 	/// # Sunday.
@@ -267,35 +265,27 @@ impl TryFrom<&[u8]> for Weekday {
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src).ok_or(Utc2kError::Invalid)
+		if 2 < src.len() {
+			Self::from_abbreviation(src[0], src[1], src[2]).ok_or(Utc2kError::Invalid)
+		}
+		else { Err(Utc2kError::Invalid) }
 	}
 }
 
-impl TryFrom<&str> for Weekday {
-	type Error = Utc2kError;
-
-	#[inline]
-	/// # From Str.
-	///
-	/// Note: this is a lazy match, using only the first three characters.
-	/// "Saturnalia", for example, will match `Weekday::Saturday`.
-	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
-	}
+/// # Helper: `TryFrom` Wrappers.
+macro_rules! try_from {
+	($($ty:ty)+) => ($(
+		impl TryFrom<$ty> for Weekday {
+			type Error = Utc2kError;
+			#[inline]
+			fn try_from(src: $ty) -> Result<Self, Self::Error> {
+				Self::try_from(src.as_bytes())
+			}
+		}
+	)+);
 }
 
-impl TryFrom<String> for Weekday {
-	type Error = Utc2kError;
-
-	#[inline]
-	/// # From Str.
-	///
-	/// Note: this is a lazy match, using only the first three characters.
-	/// "Saturnalia", for example, will match `Weekday::Saturday`.
-	fn try_from(src: String) -> Result<Self, Self::Error> {
-		Self::from_abbreviation(src.as_bytes()).ok_or(Utc2kError::Invalid)
-	}
-}
+try_from! { &str &String String &Cow<'_, str> Cow<'_, str> &Box<str> Box<str> }
 
 impl Weekday {
 	/// # All Weekdays.
@@ -534,15 +524,16 @@ impl Weekday {
 	///
 	/// This matches the first three non-whitespace bytes, case-insensitively,
 	/// against the `Weekday` abbreviations.
-	pub(crate) const fn from_abbreviation(src: &[u8]) -> Option<Self> {
+	pub(crate) const fn from_abbreviation(a: u8, b: u8, c: u8) -> Option<Self> {
+		let src = u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER;
 		match src {
-			[ b'S' | b's', b'U' | b'u', b'N' | b'n', .. ] => Some(Self::Sunday),
-			[ b'M' | b'm', b'O' | b'o', b'N' | b'n', .. ] => Some(Self::Monday),
-			[ b'T' | b't', b'U' | b'u', b'E' | b'e', .. ] => Some(Self::Tuesday),
-			[ b'W' | b'w', b'E' | b'e', b'D' | b'd', .. ] => Some(Self::Wednesday),
-			[ b'T' | b't', b'H' | b'h', b'U' | b'u', .. ] => Some(Self::Thursday),
-			[ b'F' | b'f', b'R' | b'r', b'I' | b'i', .. ] => Some(Self::Friday),
-			[ b'S' | b's', b'A' | b'a', b'T' | b't', .. ] => Some(Self::Saturday),
+			1_684_371_200 => Some(Self::Wednesday),
+			1_702_196_224 => Some(Self::Tuesday),
+			1_769_104_896 => Some(Self::Friday),
+			1_852_796_160 => Some(Self::Monday),
+			1_853_190_912 => Some(Self::Sunday),
+			1_952_543_488 => Some(Self::Saturday),
+			1_969_779_712 => Some(Self::Thursday),
 			_ => None,
 		}
 	}
@@ -558,25 +549,6 @@ impl Weekday {
 			3 => Self::Tuesday,
 			4 => Self::Wednesday,
 			5 => Self::Thursday,
-			_ => Self::Friday,
-		}
-	}
-
-	#[must_use]
-	/// # Start of Year.
-	///
-	/// Return the first day of the given year.
-	///
-	/// Note: this only matches the years `2000..=2099`. Anything outside that
-	/// range is counted as a Friday.
-	pub(crate) const fn year_begins_on(y: u8) -> Self {
-		match y {
-			0 | 5 | 11 | 22 | 28 | 33 | 39 | 50 | 56 | 61 | 67 | 78 | 84 | 89 | 95 => Self::Saturday,
-			1 | 7 | 18 | 24 | 29 | 35 | 46 | 52 | 57 | 63 | 74 | 80 | 85 | 91 => Self::Monday,
-			2 | 8 | 13 | 19 | 30 | 36 | 41 | 47 | 58 | 64 | 69 | 75 | 86 | 92 | 97 => Self::Tuesday,
-			3 | 14 | 20 | 25 | 31 | 42 | 48 | 53 | 59 | 70 | 76 | 81 | 87 | 98 => Self::Wednesday,
-			4 | 9 | 15 | 26 | 32 | 37 | 43 | 54 | 60 | 65 | 71 | 82 | 88 | 93 | 99 => Self::Thursday,
-			6 | 12 | 17 | 23 | 34 | 40 | 45 | 51 | 62 | 68 | 73 | 79 | 90 | 96 => Self::Sunday,
 			_ => Self::Friday,
 		}
 	}
@@ -620,20 +592,6 @@ impl Iterator for RepeatingWeekdayIter {
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	#[test]
-	/// # Test First of Year.
-	fn t_year_start() {
-		for y in 2000..=2099 {
-			let c = time::Date::from_calendar_date(y, time::Month::January, 1)
-				.expect("Unable to create time::Date.");
-			assert_eq!(
-				Weekday::year_begins_on((y - 2000) as u8).as_ref(),
-				c.weekday().to_string(),
-				"Failed with year {y}"
-			);
-		}
-	}
 
 	#[test]
 	/// # Test Fromness.

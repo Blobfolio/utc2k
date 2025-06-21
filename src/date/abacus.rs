@@ -625,7 +625,7 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 
 	// What remains should always look like "Mon YYYY".
 	if let [ m1, m2, m3, b' ', y1, y2, y3, y4, rest @ .. ] = src {
-		if let Some(m) = Month::from_abbreviation(&[*m1, *m2, *m3]) {
+		if let Some(m) = Month::from_abbreviation(*m1, *m2, *m3) {
 			// By temporarily re-imagining the four year bytes as a `u32`,
 			// we can flip the ASCII bits and verify the results en masse.
 			let chunk = u32::from_le_bytes([*y1, *y2, *y3, *y4]) ^ 0x3030_3030;

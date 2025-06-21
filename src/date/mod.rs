@@ -1590,10 +1590,7 @@ impl Utc2k {
 	/// assert_eq!(date.weekday().as_ref(), "Thursday");
 	/// ```
 	pub const fn weekday(self) -> Weekday {
-		Weekday::from_u8(
-			Weekday::year_begins_on(self.y as u8) as u8 +
-			((self.ordinal() - 1) % 7) as u8
-		)
+		Weekday::from_u8(self.y.weekday() as u8 + ((self.ordinal() - 1) % 7) as u8)
 	}
 }
 

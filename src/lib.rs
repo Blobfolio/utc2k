@@ -165,6 +165,12 @@ pub const WEEK_IN_SECONDS: u32 = 604_800;
 /// # Seconds per (Normal) Year.
 pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 
+/// # ASCII Lower Mask.
+///
+/// Used when case-insensitively matching [`Month`] and [`Weekday`]
+/// abbreviations.
+pub(crate) const ASCII_LOWER: u32 = 0x2020_2000;
+
 /// # Julian Day Epoch.
 ///
 /// This is used internally when parsing date components from days.
@@ -276,6 +282,28 @@ const fn time_seconds(mut src: u32) -> (u8, u8, u8) {
 mod test {
 	use super::*;
 	use std::time::SystemTime;
+
+	#[test]
+	fn t_ascii_lower() {
+		// The ASCII lower bit mask is meant to apply to the last three bytes
+		// (LE).
+		assert_eq!(
+			ASCII_LOWER.to_le_bytes(),
+			[0, 0b0010_0000, 0b0010_0000, 0b0010_0000],
+		);
+
+		// We lowercase month/weekday abbreviation search needles
+		// unconditionally — non-letters won't match regardless — so just need
+		// to make sure it works for upper/lower letters.
+		assert_eq!(
+			u32::from_le_bytes([0, b'J', b'E', b'B']) | ASCII_LOWER,
+			u32::from_le_bytes([0, b'j', b'e', b'b']),
+		);
+		assert_eq!(
+			u32::from_le_bytes([0, b'j', b'e', b'b']) | ASCII_LOWER,
+			u32::from_le_bytes([0, b'j', b'e', b'b']),
+		);
+	}
 
 	#[test]
 	fn t_unixtime() {
