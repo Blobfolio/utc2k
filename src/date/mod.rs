@@ -91,21 +91,52 @@ macros::display_str!(as_str FmtUtc2k);
 
 impl From<u32> for FmtUtc2k {
 	#[inline]
+	/// # From Unixtime.
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from(1_750_620_170),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn from(src: u32) -> Self { Self::from(Utc2k::from_unixtime(src)) }
 }
 
 impl From<&Utc2k> for FmtUtc2k {
 	#[inline]
-	fn from(src: &Utc2k) -> Self { Self::from_utc2k(*src) }
+	fn from(src: &Utc2k) -> Self { Self::from(*src) }
 }
 
 impl From<Utc2k> for FmtUtc2k {
 	#[inline]
+	/// # From [`Utc2k`]
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let utc = Utc2k::new(2025, 6, 22, 19, 22, 50);
+	/// assert_eq!(
+	///     FmtUtc2k::from(utc),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn from(src: Utc2k) -> Self { Self::from_utc2k(src) }
 }
 
 impl From<FmtUtc2k> for String {
 	#[inline]
+	/// # Into String.
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     String::from(FmtUtc2k::from(1_750_620_170)),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn from(src: FmtUtc2k) -> Self { src.as_str().to_owned() }
 }
 
@@ -163,7 +194,7 @@ macro_rules! fmt_try_from {
 	)+);
 }
 
-fmt_try_from! { &[u8] &OsStr &str u64 usize i32 i64 isize }
+fmt_try_from! { &[u8] &OsStr &str }
 
 /// ## Min/Max.
 impl FmtUtc2k {
@@ -743,6 +774,22 @@ impl Add<u32> for Utc2k {
 	type Output = Self;
 
 	#[inline]
+	/// # Add Seconds.
+	///
+	/// ```
+	/// use utc2k::{DAY_IN_SECONDS, Utc2k};
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	///
+	/// assert_eq!(
+	///     (utc + DAY_IN_SECONDS * 2).parts(),
+	///     (2025, 6, 24, 19, 22, 50),
+	/// );
+	/// ```
 	fn add(self, other: u32) -> Self {
 		Self::from_abacus(Abacus::from_utc2k(self).plus_seconds(other))
 	}
@@ -750,6 +797,23 @@ impl Add<u32> for Utc2k {
 
 impl AddAssign<u32> for Utc2k {
 	#[inline]
+	/// # Add Seconds.
+	///
+	/// ```
+	/// use utc2k::{DAY_IN_SECONDS, Utc2k};
+	///
+	/// let mut utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	///
+	/// utc += DAY_IN_SECONDS * 2;
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 24, 19, 22, 50),
+	/// );
+	/// ```
 	fn add_assign(&mut self, other: u32) { *self = *self + other; }
 }
 
@@ -760,6 +824,17 @@ impl Default for Utc2k {
 
 impl fmt::Display for Utc2k {
 	#[inline]
+	/// # Display.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.to_string(),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from_utc2k(*self), f)
 	}
@@ -790,11 +865,34 @@ impl From<&FmtUtc2k> for Utc2k {
 
 impl From<FmtUtc2k> for Utc2k {
 	#[inline]
+	/// # From [`FmtUtc2k`].
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(1_750_620_170);
+	/// let utc = Utc2k::from(fmt);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	/// ```
 	fn from(src: FmtUtc2k) -> Self { Self::from_fmtutc2k(src) }
 }
 
 impl From<Utc2k> for String {
 	#[inline]
+	/// # Into String.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     String::from(utc),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn from(src: Utc2k) -> Self { Self::from(FmtUtc2k::from_utc2k(src)) }
 }
 
@@ -821,6 +919,7 @@ impl Ord for Utc2k {
 	///
 	/// assert!(date1 > date2);
 	/// assert!(date1 < date3);
+	/// assert!(date2 < date3);
 	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
 		let other = *other;
@@ -878,23 +977,6 @@ impl SubAssign<u32> for Utc2k {
 	fn sub_assign(&mut self, other: u32) { *self = *self - other; }
 }
 
-/// # Helper: `TryFrom` Unixtime For Non-u32 Formats.
-macro_rules! try_from_unixtime {
-	($($ty:ty)+) => ($(
-		impl TryFrom<$ty> for Utc2k {
-			type Error = Utc2kError;
-			#[inline]
-			fn try_from(src: $ty) -> Result<Self, Self::Error> {
-				u32::try_from(src)
-					.map(Self::from)
-					.map_err(|_| Utc2kError::Invalid)
-			}
-		}
-	)+);
-}
-
-try_from_unixtime! { u64 usize i32 i64 isize }
-
 impl TryFrom<&OsStr> for Utc2k {
 	type Error = Utc2kError;
 
@@ -935,6 +1017,17 @@ impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
 	#[inline]
+	/// # From String.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::try_from("2025-06-22 19:22:50");
+	/// assert_eq!(
+	///     utc.unwrap().parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		Self::try_from(src.as_bytes())
 	}
@@ -942,6 +1035,17 @@ impl TryFrom<&str> for Utc2k {
 
 impl From<Utc2k> for u32 {
 	#[inline]
+	/// # From Unixtime.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170_u32);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	/// ```
 	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
 
@@ -2092,9 +2196,19 @@ mod tests {
 
 			// Make sure back-and-forth conversions work as expected.
 			assert_eq!(
+				FmtUtc2k::from($i),
+				f,
+				"Fmt from Utc different than from {}", $i,
+			);
+			assert_eq!(
 				Utc2k::from(f),
 				u,
 				"Fmt/Utc back-and-forth failed for {}", $i,
+			);
+			assert_eq!(
+				Some(u),
+				Utc2k::from_ascii(f.as_bytes()),
+				"Fmt/Utc back-and-forth (bytes) failed for {}", $i,
 			);
 
 			assert_eq!(

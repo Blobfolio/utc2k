@@ -40,6 +40,7 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
   * Trailing `±hhmm` UTC offsets are now supported;
 * `Utc2k::month` now returns a `Month` instead of a `u8`
 * Removed `FmtUtc2k::now_local` (use `Local2k::now` instead);
+* Removed `FmtUtc2k::try_from<i32, i64, isize, u64, usize>` (use `From<u32>` instead)
 * Removed `LocalOffset` (use `Local2k` instead);
 * Removed `Utc2k::from_datetime_str` (use `Utc2k::from_ascii` instead)
 * Removed `Utc2k::from_smooshed_datetime_str` (use `Utc2k::from_ascii` instead)
@@ -50,6 +51,7 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * Removed `Utc2k::month_name` (use `Utc2k::month().as_str` instead)
 * Removed `Utc2k::now_local` (use `Local2k::now` instead);
 * Removed `Utc2k::parse_time_str`
+* Removed `Utc2k::try_from<i32, i64, isize, u64, usize>` (use `From<u32>` instead)
 
 
 

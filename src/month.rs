@@ -2,7 +2,11 @@
 # UTC2K - Month
 */
 
-#![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
+#![expect(
+	clippy::cast_possible_truncation,
+	trivial_numeric_casts,
+	reason = "Macros made me do it.",
+)]
 
 use crate::{
 	ASCII_LOWER,
@@ -69,52 +73,9 @@ pub enum Month {
 	December = 12_u8,
 }
 
-impl Add<u8> for Month {
-	type Output = Self;
-
-	#[inline]
-	fn add(self, other: u8) -> Self {
-		Self::from_u8(self as u8 + other % 12)
-	}
-}
-
-impl AddAssign<u8> for Month {
-	#[inline]
-	fn add_assign(&mut self, other: u8) { *self = *self + other; }
-}
-
 macros::as_ref_borrow_cast!(Month: as_str str);
 
 macros::display_str!(as_str Month);
-
-impl From<u8> for Month {
-	#[inline]
-	fn from(src: u8) -> Self { Self::from_u8(src) }
-}
-
-impl From<Month> for u8 {
-	#[inline]
-	/// # As `u8`
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Month;
-	///
-	/// // January is one.
-	/// assert_eq!(
-	///     u8::from(Month::January),
-	///     1,
-	/// );
-	///
-	/// // As casts work too.
-	/// assert_eq!(
-	///     u8::from(Month::January),
-	///     Month::January as u8,
-	/// );
-	/// ```
-	fn from(src: Month) -> Self { src as Self }
-}
 
 /// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
@@ -122,6 +83,34 @@ macro_rules! impl_int {
 		impl Add<$ty> for Month {
 			type Output = Self;
 			#[inline]
+			#[doc = concat!("# (Wrapping) Add `", stringify!($ty), "`")]
+			///
+			/// Months range from `1..=12`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			/// let start = Month::January;
+			#[doc = concat!("assert_eq!(start + 0_", stringify!($ty), ",  Month::January);  // Noop.")]
+			#[doc = concat!("assert_eq!(start + 1_", stringify!($ty), ",  Month::February);")]
+			#[doc = concat!("assert_eq!(start + 2_", stringify!($ty), ",  Month::March);")]
+			#[doc = concat!("assert_eq!(start + 3_", stringify!($ty), ",  Month::April);")]
+			#[doc = concat!("assert_eq!(start + 4_", stringify!($ty), ",  Month::May);")]
+			#[doc = concat!("assert_eq!(start + 5_", stringify!($ty), ",  Month::June);")]
+			#[doc = concat!("assert_eq!(start + 6_", stringify!($ty), ",  Month::July);")]
+			#[doc = concat!("assert_eq!(start + 7_", stringify!($ty), ",  Month::August);")]
+			#[doc = concat!("assert_eq!(start + 8_", stringify!($ty), ",  Month::September);")]
+			#[doc = concat!("assert_eq!(start + 9_", stringify!($ty), ",  Month::October);")]
+			#[doc = concat!("assert_eq!(start + 10_", stringify!($ty), ", Month::November);")]
+			#[doc = concat!("assert_eq!(start + 11_", stringify!($ty), ", Month::December);")]
+			#[doc = concat!("assert_eq!(start + 12_", stringify!($ty), ", Month::January);  // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 13_", stringify!($ty), ", Month::February); // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 14_", stringify!($ty), ", Month::March);    // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 15_", stringify!($ty), ", Month::April);    // Wrap.")]
+			/// // …
+			/// ```
 			fn add(self, other: $ty) -> Self {
 				Self::from(<$ty>::from(self) + other % 12)
 			}
@@ -134,6 +123,33 @@ macro_rules! impl_int {
 
 		impl From<$ty> for Month {
 			#[inline]
+			#[doc = concat!("# From `", stringify!($ty), "`")]
+			///
+			/// Months range from `1..=12`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			#[doc = concat!("assert_eq!(Month::from(0_", stringify!($ty), "),  Month::December);  // Wrap.")]
+			#[doc = concat!("assert_eq!(Month::from(1_", stringify!($ty), "),  Month::January);")]
+			#[doc = concat!("assert_eq!(Month::from(2_", stringify!($ty), "),  Month::February);")]
+			#[doc = concat!("assert_eq!(Month::from(3_", stringify!($ty), "),  Month::March);")]
+			#[doc = concat!("assert_eq!(Month::from(4_", stringify!($ty), "),  Month::April);")]
+			#[doc = concat!("assert_eq!(Month::from(5_", stringify!($ty), "),  Month::May);")]
+			#[doc = concat!("assert_eq!(Month::from(6_", stringify!($ty), "),  Month::June);")]
+			#[doc = concat!("assert_eq!(Month::from(7_", stringify!($ty), "),  Month::July);")]
+			#[doc = concat!("assert_eq!(Month::from(8_", stringify!($ty), "),  Month::August);")]
+			#[doc = concat!("assert_eq!(Month::from(9_", stringify!($ty), "),  Month::September);")]
+			#[doc = concat!("assert_eq!(Month::from(10_", stringify!($ty), "), Month::October);")]
+			#[doc = concat!("assert_eq!(Month::from(11_", stringify!($ty), "), Month::November);")]
+			#[doc = concat!("assert_eq!(Month::from(12_", stringify!($ty), "), Month::December);")]
+			#[doc = concat!("assert_eq!(Month::from(13_", stringify!($ty), "), Month::January);  // Wrap.")]
+			#[doc = concat!("assert_eq!(Month::from(14_", stringify!($ty), "), Month::February); // Wrap.")]
+			#[doc = concat!("assert_eq!(Month::from(15_", stringify!($ty), "), Month::March);    // Wrap.")]
+			/// // …
+			/// ```
 			fn from(src: $ty) -> Self { Self::from_u8((src % 12) as u8) }
 		}
 
@@ -146,17 +162,14 @@ macro_rules! impl_int {
 			/// ```
 			/// use utc2k::Month;
 			///
-			/// // January is one.
-			/// assert_eq!(
-			#[doc = concat!("    ", stringify!($ty), "::from(Month::January),")]
-			///     1,
-			/// );
+			/// // January is one, December is twelve.
+			#[doc = concat!("assert_eq!(", stringify!($ty), "::from(Month::January), 1);")]
+			#[doc = concat!("assert_eq!(", stringify!($ty), "::from(Month::December), 12);")]
 			///
 			/// // As casts work too.
-			/// assert_eq!(
-			#[doc = concat!("    ", stringify!($ty), "::from(Month::January),")]
-			#[doc = concat!("    Month::January as ", stringify!($ty), ",")]
-			/// );
+			/// for m in Month::ALL {
+			#[doc = concat!("    assert_eq!(", stringify!($ty), "::from(m), m as ", stringify!($ty),");")]
+			/// }
 			/// ```
 			fn from(src: Month) -> Self {
 				match src {
@@ -176,10 +189,63 @@ macro_rules! impl_int {
 			}
 		}
 
+		impl PartialEq<$ty> for Month {
+			#[inline]
+			#[doc = concat!("# Equality w/ `", stringify!($ty), "`")]
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			#[doc = concat!("assert_eq!(Month::January, 1_", stringify!($ty), ");")]
+			#[doc = concat!("assert_eq!(Month::December, 12_", stringify!($ty), ");")]
+			/// ```
+			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
+		}
+		impl PartialEq<Month> for $ty {
+			#[inline]
+			#[doc = concat!("# Equality w/ `", stringify!($ty), "`")]
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			#[doc = concat!("assert_eq!(1_", stringify!($ty), ", Month::January);")]
+			#[doc = concat!("assert_eq!(12_", stringify!($ty), ", Month::December);")]
+			/// ```
+			fn eq(&self, other: &Month) -> bool { <Month as PartialEq<$ty>>::eq(other, self) }
+		}
+
 		impl Sub<$ty> for Month {
 			type Output = Self;
 
 			#[inline]
+			#[doc = concat!("# (Wrapping) Sub `", stringify!($ty), "`")]
+			///
+			/// Months range from `1..=12`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Month;
+			///
+			/// let start = Month::January;
+			#[doc = concat!("assert_eq!(start - 0_", stringify!($ty), ",  Month::January);  // Noop.")]
+			#[doc = concat!("assert_eq!(start - 1_", stringify!($ty), ",  Month::December);")]
+			#[doc = concat!("assert_eq!(start - 2_", stringify!($ty), ",  Month::November);")]
+			#[doc = concat!("assert_eq!(start - 3_", stringify!($ty), ",  Month::October);")]
+			#[doc = concat!("assert_eq!(start - 4_", stringify!($ty), ",  Month::September);")]
+			#[doc = concat!("assert_eq!(start - 5_", stringify!($ty), ",  Month::August);")]
+			#[doc = concat!("assert_eq!(start - 6_", stringify!($ty), ",  Month::July);")]
+			#[doc = concat!("assert_eq!(start - 7_", stringify!($ty), ",  Month::June);")]
+			#[doc = concat!("assert_eq!(start - 8_", stringify!($ty), ",  Month::May);")]
+			#[doc = concat!("assert_eq!(start - 9_", stringify!($ty), ",  Month::April);")]
+			#[doc = concat!("assert_eq!(start - 10_", stringify!($ty), ", Month::March);")]
+			#[doc = concat!("assert_eq!(start - 11_", stringify!($ty), ", Month::February);")]
+			#[doc = concat!("assert_eq!(start - 12_", stringify!($ty), ", Month::January);  // Full circle!")]
+			#[doc = concat!("assert_eq!(start - 13_", stringify!($ty), ", Month::December); // Wrap #2.")]
+			#[doc = concat!("assert_eq!(start - 14_", stringify!($ty), ", Month::November); // Wrap #2.")]
+			#[doc = concat!("assert_eq!(start - 15_", stringify!($ty), ", Month::October);  // Wrap #2.")]
+			/// // …
+			/// ```
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 12;
@@ -201,10 +267,23 @@ macro_rules! impl_int {
 	)+);
 }
 
-impl_int!(u16, u32, u64, usize);
+impl_int!(u8, u16, u32, u64, usize);
 
 impl From<Utc2k> for Month {
 	#[inline]
+	/// # From [`Utc2k`].
+	///
+	/// This is equivalent to calling [`Utc2k::month`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Month, Utc2k};
+	///
+	/// let utc = Utc2k::new(2030, 3, 17, 0, 0, 0);
+	/// assert_eq!(utc.month(),      Month::March);
+	/// assert_eq!(Month::from(utc), Month::March);
+	/// ```
 	fn from(src: Utc2k) -> Self { src.month() }
 }
 
@@ -224,11 +303,42 @@ impl IntoIterator for Month {
 	///
 	/// Return an iterator that will cycle endlessly through the years,
 	/// starting from this `Month`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Month;
+	///
+	/// let mut iter = Month::March.into_iter();
+	/// assert_eq!(iter.next(), Some(Month::March));
+	/// assert_eq!(iter.next(), Some(Month::April));
+	/// assert_eq!(iter.next(), Some(Month::May));
+	/// assert_eq!(iter.next(), Some(Month::June));
+	/// assert_eq!(iter.next(), Some(Month::July));
+	/// assert_eq!(iter.next(), Some(Month::August));
+	/// assert_eq!(iter.next(), Some(Month::September));
+	/// assert_eq!(iter.next(), Some(Month::October));
+	/// assert_eq!(iter.next(), Some(Month::November));
+	/// assert_eq!(iter.next(), Some(Month::December));
+	/// assert_eq!(iter.next(), Some(Month::January));
+	/// assert_eq!(iter.next(), Some(Month::February));
+	/// assert_eq!(iter.next(), Some(Month::March)); // Back around again!
+	/// // …
+	/// ```
 	fn into_iter(self) -> Self::IntoIter { RepeatingMonthIter(self) }
 }
 
 impl Ord for Month {
 	#[inline]
+	/// # Ordering.
+	///
+	/// ```
+	/// use utc2k::Month;
+	///
+	/// for pair in Month::ALL.windows(2) {
+	///     assert!(pair[0] < pair[1]);
+	/// }
+	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
 		let a = *self as u8;
 		let b = *other as u8;
@@ -236,47 +346,9 @@ impl Ord for Month {
 	}
 }
 
-/// # Helper: Reciprocal `PartialEq`.
-macro_rules! eq {
-	($($ty:ty),+) => ($(
-		impl PartialEq<$ty> for Month {
-			#[inline]
-			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
-		}
-		impl PartialEq<Month> for $ty {
-			#[inline]
-			fn eq(&self, other: &Month) -> bool { <Month as PartialEq<$ty>>::eq(other, self) }
-		}
-	)+);
-}
-eq!(u8, u16, u32, u64, usize);
-
 impl PartialOrd for Month {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
-}
-
-impl Sub<u8> for Month {
-	type Output = Self;
-
-	#[inline]
-	fn sub(self, other: u8) -> Self {
-		let mut lhs = self as u8;
-		let mut rhs = other % 12;
-
-		while rhs > 0 {
-			rhs -= 1;
-			if lhs == 1 { lhs = 12; }
-			else { lhs -= 1; }
-		}
-
-		Self::from_u8(lhs)
-	}
-}
-
-impl SubAssign<u8> for Month {
-	#[inline]
-	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
 impl TryFrom<&[u8]> for Month {
@@ -287,6 +359,39 @@ impl TryFrom<&[u8]> for Month {
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Decimal", for example, will match `Month::December`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Month;
+	///
+	/// // Case doesn't matter.
+	/// assert_eq!(
+	///     Month::try_from(b"january".as_slice()),
+	///     Ok(Month::January),
+	/// );
+	/// assert_eq!(
+	///     Month::try_from(b"January".as_slice()),
+	///     Ok(Month::January),
+	/// );
+	/// assert_eq!(
+	///     Month::try_from(b"JANUARY".as_slice()),
+	///     Ok(Month::January),
+	/// );
+	///
+	/// // Only the first three bytes are actually inspected.
+	/// assert_eq!(
+	///     Month::try_from(b"Jan".as_slice()),
+	///     Ok(Month::January),
+	/// );
+	/// assert_eq!(
+	///     Month::try_from(b"janissary".as_slice()), // Close enough!
+	///     Ok(Month::January),
+	/// );
+	///
+	/// // Wrong is wrong.
+	/// assert!(Month::try_from(b"jebruary".as_slice()).is_err());
+	/// ```
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
 		if 2 < src.len() {
 			Self::from_abbreviation(src[0], src[1], src[2]).ok_or(Utc2kError::Invalid)
@@ -323,7 +428,7 @@ impl Month {
 	///
 	/// assert_eq!(Month::now(), Utc2k::now().month());
 	/// ```
-	pub fn now() -> Self { Self::from(Utc2k::now()) }
+	pub fn now() -> Self { Utc2k::now().month() }
 }
 
 impl Month {
@@ -349,14 +454,20 @@ impl Month {
 	#[must_use]
 	/// # As Str (Abbreviated).
 	///
-	/// Return a string slice representing the month's abbreviated name.
+	/// Return a string slice representing the month's abbreviated name, i.e.
+	/// the first three letters.
 	///
 	/// ## Examples.
 	///
 	/// ```
 	/// use utc2k::Month;
 	///
-	/// assert_eq!(Month::January.abbreviation(), "Jan");
+	/// for m in Month::ALL {
+	///     assert_eq!(
+	///         &m.as_str()[..3],
+	///         m.abbreviation(),
+	///     );
+	/// }
 	/// ```
 	pub const fn abbreviation(self) -> &'static str {
 		match self {
@@ -391,6 +502,10 @@ impl Month {
 	/// use utc2k::Month;
 	///
 	/// assert_eq!(Month::January.days(), 31);
+	/// assert_eq!(Month::February.days(), 28); // Not leap-aware.
+	/// assert_eq!(Month::March.days(), 31);
+	/// assert_eq!(Month::April.days(), 30);
+	/// // …
 	/// ```
 	pub const fn days(self) -> u8 {
 		match self {
@@ -543,6 +658,8 @@ impl Month {
 ///
 /// This iterator yields an infinite number of `Month`s, in order, starting
 /// from any arbitrary month.
+///
+/// See [`Month::into_iter`] for more details.
 pub struct RepeatingMonthIter(Month);
 
 impl Iterator for RepeatingMonthIter {

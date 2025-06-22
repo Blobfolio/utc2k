@@ -2,8 +2,6 @@
 # UTC2K - Weekday
 */
 
-#![expect(clippy::cast_possible_truncation, reason = "Macros made me do it.")]
-
 use crate::{
 	ASCII_LOWER,
 	macros,
@@ -54,49 +52,8 @@ pub enum Weekday {
 	Saturday = 7_u8,
 }
 
-impl Add<u8> for Weekday {
-	type Output = Self;
-
-	#[inline]
-	fn add(self, other: u8) -> Self { Self::from_u8(self as u8 + other % 7) }
-}
-
-impl AddAssign<u8> for Weekday {
-	#[inline]
-	fn add_assign(&mut self, other: u8) { *self = *self + other; }
-}
-
 macros::as_ref_borrow_cast!(Weekday: as_str str);
 macros::display_str!(as_str Weekday);
-
-impl From<u8> for Weekday {
-	#[inline]
-	fn from(src: u8) -> Self { Self::from_u8(src) }
-}
-
-impl From<Weekday> for u8 {
-	#[inline]
-	/// # As `u8`
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Weekday;
-	///
-	/// // Starts on Sunday, and at one.
-	/// assert_eq!(
-	///     u8::from(Weekday::Sunday),
-	///     1,
-	/// );
-	///
-	/// // As casts work too.
-	/// assert_eq!(
-	///     u8::from(Weekday::Sunday),
-	///     Weekday::Sunday as u8,
-	/// );
-	/// ```
-	fn from(src: Weekday) -> Self { src as Self }
-}
 
 /// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
@@ -104,6 +61,29 @@ macro_rules! impl_int {
 		impl Add<$ty> for Weekday {
 			type Output = Self;
 			#[inline]
+			#[doc = concat!("# (Wrapping) Add `", stringify!($ty), "`")]
+			///
+			/// Weekdays range from `1..=7`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			/// let start = Weekday::Sunday;
+			#[doc = concat!("assert_eq!(start + 0_", stringify!($ty), ",  Weekday::Sunday);    // Noop.")]
+			#[doc = concat!("assert_eq!(start + 1_", stringify!($ty), ",  Weekday::Monday);")]
+			#[doc = concat!("assert_eq!(start + 2_", stringify!($ty), ",  Weekday::Tuesday);")]
+			#[doc = concat!("assert_eq!(start + 3_", stringify!($ty), ",  Weekday::Wednesday);")]
+			#[doc = concat!("assert_eq!(start + 4_", stringify!($ty), ",  Weekday::Thursday);")]
+			#[doc = concat!("assert_eq!(start + 5_", stringify!($ty), ",  Weekday::Friday);")]
+			#[doc = concat!("assert_eq!(start + 6_", stringify!($ty), ",  Weekday::Saturday);")]
+			#[doc = concat!("assert_eq!(start + 7_", stringify!($ty), ",  Weekday::Sunday);    // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 8_", stringify!($ty), ",  Weekday::Monday);    // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 9_", stringify!($ty), ",  Weekday::Tuesday);   // Wrap.")]
+			#[doc = concat!("assert_eq!(start + 10_", stringify!($ty), ", Weekday::Wednesday); // Wrap.")]
+			/// // …
+			/// ```
 			fn add(self, other: $ty) -> Self {
 				Self::from(<$ty>::from(self) + other % 7)
 			}
@@ -116,7 +96,39 @@ macro_rules! impl_int {
 
 		impl From<$ty> for Weekday {
 			#[inline]
-			fn from(src: $ty) -> Self { Self::from((src % 7) as u8) }
+			#[doc = concat!("# From `", stringify!($ty), "`")]
+			///
+			/// Weekdays range from `1..=7`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			#[doc = concat!("assert_eq!(Weekday::from(0_", stringify!($ty), "),  Weekday::Saturday); // Wrap.")]
+			#[doc = concat!("assert_eq!(Weekday::from(1_", stringify!($ty), "),  Weekday::Sunday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(2_", stringify!($ty), "),  Weekday::Monday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(3_", stringify!($ty), "),  Weekday::Tuesday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(4_", stringify!($ty), "),  Weekday::Wednesday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(5_", stringify!($ty), "),  Weekday::Thursday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(6_", stringify!($ty), "),  Weekday::Friday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(7_", stringify!($ty), "),  Weekday::Saturday);")]
+			#[doc = concat!("assert_eq!(Weekday::from(8_", stringify!($ty), "),  Weekday::Sunday);   // Wrap.")]
+			#[doc = concat!("assert_eq!(Weekday::from(9_", stringify!($ty), "),  Weekday::Monday);   // Wrap.")]
+			#[doc = concat!("assert_eq!(Weekday::from(10_", stringify!($ty), "), Weekday::Tuesday);  // Wrap.")]
+			/// // …
+			/// ```
+			fn from(src: $ty) -> Self {
+				match src % 7 {
+					1  => Self::Sunday,
+					2  => Self::Monday,
+					3  => Self::Tuesday,
+					4  => Self::Wednesday,
+					5  => Self::Thursday,
+					6  => Self::Friday,
+					_ => Self::Saturday,
+				}
+			}
 		}
 
 		impl From<Weekday> for $ty {
@@ -128,17 +140,14 @@ macro_rules! impl_int {
 			/// ```
 			/// use utc2k::Weekday;
 			///
-			/// // Starts on Sunday, and at one.
-			/// assert_eq!(
-			#[doc = concat!("    ", stringify!($ty), "::from(Weekday::Sunday),")]
-			///     1,
-			/// );
+			/// // Sunday is one, Saturday is seven.
+			#[doc = concat!("assert_eq!(", stringify!($ty), "::from(Weekday::Sunday), 1);")]
+			#[doc = concat!("assert_eq!(", stringify!($ty), "::from(Weekday::Saturday), 7);")]
 			///
 			/// // As casts work too.
-			/// assert_eq!(
-			#[doc = concat!("    ", stringify!($ty), "::from(Weekday::Sunday),")]
-			#[doc = concat!("    Weekday::Sunday as ", stringify!($ty), ",")]
-			/// );
+			/// for w in Weekday::ALL {
+			#[doc = concat!("    assert_eq!(", stringify!($ty), "::from(w), w as ", stringify!($ty),");")]
+			/// }
 			/// ```
 			fn from(src: Weekday) -> Self {
 				match src {
@@ -153,10 +162,58 @@ macro_rules! impl_int {
 			}
 		}
 
+		impl PartialEq<$ty> for Weekday {
+			#[inline]
+			#[doc = concat!("# Equality w/ `", stringify!($ty), "`")]
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			#[doc = concat!("assert_eq!(Weekday::Sunday, 1_", stringify!($ty), ");")]
+			#[doc = concat!("assert_eq!(Weekday::Saturday, 7_", stringify!($ty), ");")]
+			/// ```
+			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
+		}
+		impl PartialEq<Weekday> for $ty {
+			#[inline]
+			#[doc = concat!("# Equality w/ `", stringify!($ty), "`")]
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			#[doc = concat!("assert_eq!(1_", stringify!($ty), ", Weekday::Sunday);")]
+			#[doc = concat!("assert_eq!(7_", stringify!($ty), ", Weekday::Saturday);")]
+			/// ```
+			fn eq(&self, other: &Weekday) -> bool { <Weekday as PartialEq<$ty>>::eq(other, self) }
+		}
+
 		impl Sub<$ty> for Weekday {
 			type Output = Self;
 
 			#[inline]
+			#[doc = concat!("# (Wrapping) Sub `", stringify!($ty), "`")]
+			///
+			/// Weekdays range from `1..=7`.
+			///
+			/// ## Examples
+			///
+			/// ```
+			/// use utc2k::Weekday;
+			///
+			/// let start = Weekday::Sunday;
+			#[doc = concat!("assert_eq!(start - 0_", stringify!($ty), ",  Weekday::Sunday);  // Noop.")]
+			#[doc = concat!("assert_eq!(start - 1_", stringify!($ty), ",  Weekday::Saturday);")]
+			#[doc = concat!("assert_eq!(start - 2_", stringify!($ty), ",  Weekday::Friday);")]
+			#[doc = concat!("assert_eq!(start - 3_", stringify!($ty), ",  Weekday::Thursday);")]
+			#[doc = concat!("assert_eq!(start - 4_", stringify!($ty), ",  Weekday::Wednesday);")]
+			#[doc = concat!("assert_eq!(start - 5_", stringify!($ty), ",  Weekday::Tuesday);")]
+			#[doc = concat!("assert_eq!(start - 6_", stringify!($ty), ",  Weekday::Monday);")]
+			#[doc = concat!("assert_eq!(start - 7_", stringify!($ty), ",  Weekday::Sunday);   // Full circle!")]
+			#[doc = concat!("assert_eq!(start - 8_", stringify!($ty), ",  Weekday::Saturday); // Wrap #2.")]
+			#[doc = concat!("assert_eq!(start - 9_", stringify!($ty), ",  Weekday::Friday);   // Wrap #2.")]
+			#[doc = concat!("assert_eq!(start - 10_", stringify!($ty), ", Weekday::Thursday); // Wrap #2.")]
+			/// // …
+			/// ```
 			fn sub(self, other: $ty) -> Self {
 				let mut lhs = <$ty>::from(self);
 				let mut rhs = other % 7;
@@ -178,10 +235,23 @@ macro_rules! impl_int {
 	)+);
 }
 
-impl_int!(u16, u32, u64, usize);
+impl_int!(u8, u16, u32, u64, usize);
 
 impl From<Utc2k> for Weekday {
 	#[inline]
+	/// # From [`Utc2k`].
+	///
+	/// This is equivalent to calling [`Utc2k::weekday`].
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Weekday, Utc2k};
+	///
+	/// let utc = Utc2k::new(2025, 6, 22, 0, 0, 0);
+	/// assert_eq!(utc.weekday(),      Weekday::Sunday);
+	/// assert_eq!(Weekday::from(utc), Weekday::Sunday);
+	/// ```
 	fn from(src: Utc2k) -> Self { src.weekday() }
 }
 
@@ -199,13 +269,42 @@ impl IntoIterator for Weekday {
 	#[inline]
 	/// # Repeating Iterator.
 	///
-	/// Return an iterator that will cycle endlessly through the weeks,
+	/// Return an iterator that will cycle endlessly through the years,
 	/// starting from this `Weekday`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Weekday;
+	///
+	/// let mut iter = Weekday::Wednesday.into_iter();
+	/// assert_eq!(iter.next(), Some(Weekday::Wednesday));
+	/// assert_eq!(iter.next(), Some(Weekday::Thursday));
+	/// assert_eq!(iter.next(), Some(Weekday::Friday));
+	/// assert_eq!(iter.next(), Some(Weekday::Saturday));
+	/// assert_eq!(iter.next(), Some(Weekday::Sunday));
+	/// assert_eq!(iter.next(), Some(Weekday::Monday));
+	/// assert_eq!(iter.next(), Some(Weekday::Tuesday));
+	/// assert_eq!(iter.next(), Some(Weekday::Wednesday)); // Full circle!
+	/// assert_eq!(iter.next(), Some(Weekday::Thursday));
+	/// assert_eq!(iter.next(), Some(Weekday::Friday));
+	/// assert_eq!(iter.next(), Some(Weekday::Saturday));
+	/// // …
+	/// ```
 	fn into_iter(self) -> Self::IntoIter { RepeatingWeekdayIter(self) }
 }
 
 impl Ord for Weekday {
 	#[inline]
+	/// # Ordering.
+	///
+	/// ```
+	/// use utc2k::Weekday;
+	///
+	/// for pair in Weekday::ALL.windows(2) {
+	///     assert!(pair[0] < pair[1]);
+	/// }
+	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
 		let a = *self as u8;
 		let b = *other as u8;
@@ -213,47 +312,9 @@ impl Ord for Weekday {
 	}
 }
 
-/// # Helper: Reciprocal `PartialEq`.
-macro_rules! eq {
-	($($ty:ty),+) => ($(
-		impl PartialEq<$ty> for Weekday {
-			#[inline]
-			fn eq(&self, other: &$ty) -> bool { (*self as $ty) == *other }
-		}
-		impl PartialEq<Weekday> for $ty {
-			#[inline]
-			fn eq(&self, other: &Weekday) -> bool { <Weekday as PartialEq<$ty>>::eq(other, self) }
-		}
-	)+);
-}
-eq!(u8, u16, u32, u64, usize);
-
 impl PartialOrd for Weekday {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
-}
-
-impl Sub<u8> for Weekday {
-	type Output = Self;
-
-	#[inline]
-	fn sub(self, other: u8) -> Self {
-		let mut lhs = self as u8;
-		let mut rhs = other % 7;
-
-		while rhs > 0 {
-			rhs -= 1;
-			if lhs == 1 { lhs = 7; }
-			else { lhs -= 1; }
-		}
-
-		Self::from_u8(lhs)
-	}
-}
-
-impl SubAssign<u8> for Weekday {
-	#[inline]
-	fn sub_assign(&mut self, other: u8) { *self = *self - other; }
 }
 
 impl TryFrom<&[u8]> for Weekday {
@@ -264,6 +325,39 @@ impl TryFrom<&[u8]> for Weekday {
 	///
 	/// Note: this is a lazy match, using only the first three characters.
 	/// "Saturnalia", for example, will match `Weekday::Saturday`.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Weekday;
+	///
+	/// // Case doesn't matter.
+	/// assert_eq!(
+	///     Weekday::try_from(b"monday".as_slice()),
+	///     Ok(Weekday::Monday),
+	/// );
+	/// assert_eq!(
+	///     Weekday::try_from(b"Monday".as_slice()),
+	///     Ok(Weekday::Monday),
+	/// );
+	/// assert_eq!(
+	///     Weekday::try_from(b"MONDAY".as_slice()),
+	///     Ok(Weekday::Monday),
+	/// );
+	///
+	/// // Only the first three bytes are actually inspected.
+	/// assert_eq!(
+	///     Weekday::try_from(b"Mon".as_slice()),
+	///     Ok(Weekday::Monday),
+	/// );
+	/// assert_eq!(
+	///     Weekday::try_from(b"money".as_slice()), // Close enough!
+	///     Ok(Weekday::Monday),
+	/// );
+	///
+	/// // Wrong is wrong.
+	/// assert!(Weekday::try_from(b"moonday".as_slice()).is_err());
+	/// ```
 	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
 		if 2 < src.len() {
 			Self::from_abbreviation(src[0], src[1], src[2]).ok_or(Utc2kError::Invalid)
@@ -305,14 +399,20 @@ impl Weekday {
 	#[must_use]
 	/// # As Str (Abbreviated).
 	///
-	/// Return a string slice representing the day's abbreviated name.
+	/// Return a string slice representing the day's abbreviated name, i.e.
+	/// the first three letters.
 	///
 	/// ## Examples.
 	///
 	/// ```
 	/// use utc2k::Weekday;
 	///
-	/// assert_eq!(Weekday::Sunday.abbreviation(), "Sun");
+	/// for w in Weekday::ALL {
+	///     assert_eq!(
+	///         &w.as_str()[..3],
+	///         w.abbreviation(),
+	///     );
+	/// }
 	/// ```
 	pub const fn abbreviation(self) -> &'static str {
 		match self {
@@ -561,6 +661,8 @@ impl Weekday {
 ///
 /// This iterator yields an infinite number of `Weekday`s, in order, starting
 /// from any arbitrary day.
+///
+/// See [`Weekday::into_iter`] for more details.
 pub struct RepeatingWeekdayIter(Weekday);
 
 impl Iterator for RepeatingWeekdayIter {

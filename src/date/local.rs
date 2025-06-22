@@ -500,6 +500,18 @@ impl Ord for Local2k {
 
 impl PartialEq for Local2k {
 	#[inline]
+	/// # Equality.
+	///
+	/// ```
+	/// use utc2k::{Local2k, Utc2k};
+	///
+	/// let utc = Utc2k::new(2001, 1, 15, 0, 0, 0);
+	/// let local = Local2k::from(utc);
+	///
+	/// // Offsets don't affect equality.
+	/// assert_eq!(utc, local);
+	/// assert_eq!(local, local);
+	/// ```
 	fn eq(&self, other: &Self) -> bool {
 		if self.offset == other.offset { self.inner == other.inner }
 		else { self.unixtime() == other.unixtime() }
