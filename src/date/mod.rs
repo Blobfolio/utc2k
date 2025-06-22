@@ -1153,7 +1153,8 @@ impl Utc2k {
 	/// Complete datetimes can optionally end with "Z", " UT", " UTC", or
 	/// " GMT" — all of which are ignored — or a fixed UTC offset of the
 	/// `±hhmm` variety which, if present, will be parsed and factored into
-	/// the result.
+	/// the result. (Fixed offsets can also be written like "GMT±hhmm" or
+	/// "UTC±hhmm".)
 	///
 	/// Parsing will fail for sources containing any _other_ random trailing
 	/// data, including things like "CST"-style time zone abbreviations.
@@ -1180,15 +1181,16 @@ impl Utc2k {
 	/// }
 	///
 	/// // Same for datetimes.
-	/// let datetimes: [&[u8]; 10] = [
+	/// let datetimes: [&[u8]; 11] = [
 	///     b"20250615123001",
 	///     b"2025-06-15 12:30:01",
 	///     b"2025-06-15T12:30:01Z",
 	///     b"2025/06/15:12:30:01 GMT",
-	///     b"2025/06/15:12:30:01GMT", // Space-insensitive.
+	///     b"2025/06/15:12:30:01 GMT+0000", // Redundant.
+	///     b"2025/06/15:12:30:01gmt", // Space/case-insensitive.
 	///     b"2025/06/15:12:30:01 UT",
 	///     b"2025/06/15:12:30:01 UTC",
-	///     b"2025/06/15:12:30:01 utc", // Case-insensitive.
+	///     b"2025/06/15:12:30:01 UTC+0000", // Redundant.
 	///     b"2025/06/15 12:30:01.000 +0000",
 	///     b"2025/06/15 12:30:01+0000",
 	/// ];
@@ -1292,16 +1294,6 @@ impl Utc2k {
 	///         (2003, 7, 1, 10, 52, 37),
 	///     );
 	/// }
-	/// #
-	/// # // For the offset sign, and _only_ the offset sign, this method
-	/// # // will accept a Unicode "Minus Sign" as being the same as an
-	/// # // regular ASCII `'-'`.
-	/// # assert_eq!(
-	/// #     Utc2k::from_rfc2822(
-	/// #         "Tue, 01 Jul 2003 03:52:37\u{2212}0700".as_bytes(),
-	/// #     ).unwrap().parts(),
-	/// #         (2003, 7, 1, 10, 52, 37),
-	/// # );
 	///
 	/// // The same variation exists for date-only representations too.
 	/// let dates: [&[u8]; 5] = [

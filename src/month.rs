@@ -9,7 +9,6 @@
 )]
 
 use crate::{
-	ASCII_LOWER,
 	macros,
 	Utc2k,
 	Utc2kError,
@@ -562,8 +561,7 @@ impl Month {
 	/// This matches the first three non-whitespace bytes, case-insensitively,
 	/// against the `Month` abbreviations.
 	pub(crate) const fn from_abbreviation(a: u8, b: u8, c: u8) -> Option<Self> {
-		let src = u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER;
-		match src {
+		match crate::needle3(a, b, c) {
 			1_650_812_416 => Some(Self::February),
 			1_667_589_120 => Some(Self::December),
 			1_735_745_792 => Some(Self::August),

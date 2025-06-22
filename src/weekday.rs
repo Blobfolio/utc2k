@@ -3,7 +3,6 @@
 */
 
 use crate::{
-	ASCII_LOWER,
 	macros,
 	Utc2k,
 	Utc2kError,
@@ -625,8 +624,7 @@ impl Weekday {
 	/// This matches the first three non-whitespace bytes, case-insensitively,
 	/// against the `Weekday` abbreviations.
 	pub(crate) const fn from_abbreviation(a: u8, b: u8, c: u8) -> Option<Self> {
-		let src = u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER;
-		match src {
+		match crate::needle3(a, b, c) {
 			1_684_371_200 => Some(Self::Wednesday),
 			1_702_196_224 => Some(Self::Tuesday),
 			1_769_104_896 => Some(Self::Friday),

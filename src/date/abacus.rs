@@ -547,61 +547,45 @@ impl Abacus {
 ///
 /// Returns `None` if the remainder is non-empty.
 const fn parse_offset(src: &[u8]) -> Option<i32> {
-	// Zero will be the default.
-	let mut offset = 0_i32;
-
-	// What do we have?
-	let src = match src {
-		// Empty? Done!
-		[] => return Some(offset),
-
-		// A fixed offset?
-		[ rest @ .., sign @ (b'+' | b'-'), a, b, c, d ] |
-		[ rest @ .., sign @ 226, 136, 146, a, b, c, d ] => {
-			// By temporarily re-imagining the four offset bytes as a `u32`,
-			// we can flip the ASCII bits and verify the results en masse.
-			let chunk = u32::from_le_bytes([*a, *b, *c, *d]) ^ 0x3030_3030_u32;
-			if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) != 0 {
-				return None;
-			}
-
-			let chunk = chunk.to_le_bytes();
-			offset += merge_digits!(chunk 0 1) as i32 * HOUR_IN_SECONDS as i32;
-			offset += merge_digits!(chunk 2 3) as i32 * MINUTE_IN_SECONDS as i32;
-
-			// Normalize to within a day.
-			offset %= DAY_IN_SECONDS as i32;
-
-			// If the sign was negative, invert it.
-			if *sign == b'-' || *sign == 226 { offset = 0_i32 - offset; }
-
-			rest.trim_ascii_end()
-		},
-
-		// Redundant identifiers? (Z, UT, GMT, UTC)
-		[ rest @ ..,                           b'Z' | b'z' ] |
-		[ rest @ ..,              b'U' | b'u', b'T' | b't' ] |
-		[ rest @ .., b'G' | b'g', b'M' | b'm', b'T' | b't' ] |
-		[ rest @ .., b'U' | b'u', b'T' | b't', b'C' | b'c' ] => { rest.trim_ascii_end() },
-
-		// Dunno?
-		_ => src,
-	};
-
-	// Empty's good!
-	if src.is_empty() { Some(offset) }
-
-	// Fractional seconds are not supported, but aren't disqualifying either.
-	// If the first thing is a dot and everything else is a digit, we'll allow
-	// it.
-	else if let [ b'.', rest @ .. ] = src {
-		let mut src = rest;
-		while let [ b'0'..=b'9', rest @ .. ] = src { src = rest; }
-		if src.is_empty() { Some(offset) }
-		else { None }
+	/// # Ends With "GMT" or "UTC"?
+	const fn is_gmt_utc(a: u8, b: u8, c: u8) -> bool {
+		matches!(crate::needle3(a, b, c), 1_668_576_512_u32 | 1_953_326_848_u32)
 	}
 
-	// Anything else is a deal breaker.
+	let src = strip_fractional_seconds(src);
+	let (sign, chunk) = match src.len() {
+		// Empty is fine.
+		0 => return Some(0),
+		// One is fine if it's a Z.
+		1 if src[0] == b'Z' || src[0] == b'z' => return Some(0),
+		// Two is fine if it's UT.
+		2 if (src[0] == b'U' || src[0] == b'u') && (src[1] == b'T' || src[1] == b't') => return Some(0),
+		// Three is fine if it's GMT or UTC.
+		3 if is_gmt_utc(src[0], src[1], src[2]) => return Some(0),
+		5 => (src[0], [src[1], src[2], src[3], src[4]]),
+		8 if is_gmt_utc(src[0], src[1], src[2]) => (src[3], [src[4], src[5], src[6], src[7]]),
+		_ => return None,
+	};
+
+	// By temporarily re-imagining the four offset bytes as a `u32`,
+	// we can flip the ASCII bits and verify the results en masse.
+	let chunk = u32::from_le_bytes(chunk) ^ 0x3030_3030_u32;
+	if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) != 0 {
+		return None;
+	}
+
+	let chunk = chunk.to_le_bytes();
+	let offset: i32 =
+		(
+			merge_digits!(chunk 0 1) as i32 * HOUR_IN_SECONDS as i32 +
+			merge_digits!(chunk 2 3) as i32 * MINUTE_IN_SECONDS as i32
+		) % DAY_IN_SECONDS as i32;
+
+	// If the sign was negative, invert it.
+	if sign == b'-' { Some(0_i32 - offset) }
+	// Positive passes through.
+	else if sign == b'+' { Some(offset) }
+	// Anything else is wrong!
 	else { None }
 }
 
@@ -646,6 +630,18 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 	}
 
 	None
+}
+
+/// # Strip Fractional Seconds.
+///
+/// If the post-datetime string starts with a dot and a decimal, strip them
+/// and all remaining decimals.
+const fn strip_fractional_seconds(mut src: &[u8]) -> &[u8] {
+	if let [ b'.', b'0'..=b'9', rest @ .. ] = src {
+		src = rest;
+		while let [ b'0'..=b'9', rest @ .. ] = src { src = rest }
+	}
+	src.trim_ascii_start()
 }
 
 
@@ -767,20 +763,5 @@ mod tests {
 				"Disagreement over February {i}: {days} ({leap})",
 			);
 		}
-	}
-
-	#[test]
-	/// # Minus Sign.
-	///
-	/// Make sure we've got our bytes right!
-	fn t_minus_sign() {
-		assert_eq!(
-			"−".as_bytes(),
-			&[226, 136, 146],
-		);
-		assert_eq!(
-			"\u{2212}".as_bytes(),
-			&[226, 136, 146],
-		);
 	}
 }

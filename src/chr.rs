@@ -2,9 +2,11 @@
 # UTC2K: Printable Characters.
 */
 
+
 /// # Helper: `DateChar` Definition.
 macro_rules! date_chars {
 	($($k:ident $v:literal),+ $(,)*) => (
+		#[cfg_attr(not(feature = "local"), expect(dead_code, reason = "Macro made me do it."))]
 		#[repr(u8)]
 		#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 		/// # Date Characters.

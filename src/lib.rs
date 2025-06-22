@@ -123,14 +123,14 @@ mod month;
 mod weekday;
 mod year;
 
-pub(crate) mod macros;
+mod macros;
 
 #[cfg(any(test, feature = "serde"))]
 mod serde;
 
 
 
-pub(crate) use chr::DateChar;
+use chr::DateChar;
 pub use date::{
 	FmtUtc2k,
 	Utc2k,
@@ -138,7 +138,7 @@ pub use date::{
 pub use error::Utc2kError;
 pub use month::Month;
 pub use weekday::Weekday;
-pub(crate) use year::Year;
+use year::Year;
 
 #[cfg(feature = "local")]
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
@@ -169,12 +169,12 @@ pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 ///
 /// Used when case-insensitively matching [`Month`] and [`Weekday`]
 /// abbreviations.
-pub(crate) const ASCII_LOWER: u32 = 0x2020_2000;
+const ASCII_LOWER: u32 = 0x2020_2000;
 
 /// # Julian Day Epoch.
 ///
 /// This is used internally when parsing date components from days.
-pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
+const JULIAN_EPOCH: u32 = 2_440_588;
 
 
 
@@ -247,6 +247,20 @@ const fn date_seconds(mut z: u32) -> (Year, Month, u8) {
 	}
 }
 
+#[expect(clippy::inline_always, reason = "Foundational.")]
+#[inline(always)]
+#[must_use]
+/// # Case-Insensitive Needle.
+///
+/// This method lower cases three (presumed letters) into a single `u32` for
+/// lightweight comparison.
+///
+/// This is used for matching [`Month`] and [`Weekday`] abbreviations, and
+/// `"UTC"`/`"GMT"` offset markers.
+const fn needle3(a: u8, b: u8, c: u8) -> u32 {
+	u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER
+}
+
 #[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 #[must_use]
 /// # Parse Time From Seconds.
@@ -284,7 +298,7 @@ mod test {
 	use std::time::SystemTime;
 
 	#[test]
-	fn t_ascii_lower() {
+	fn t_needle3() {
 		// The ASCII lower bit mask is meant to apply to the last three bytes
 		// (LE).
 		assert_eq!(
@@ -296,11 +310,11 @@ mod test {
 		// unconditionally — non-letters won't match regardless — so just need
 		// to make sure it works for upper/lower letters.
 		assert_eq!(
-			u32::from_le_bytes([0, b'J', b'E', b'B']) | ASCII_LOWER,
+			needle3(b'J', b'E', b'B'),
 			u32::from_le_bytes([0, b'j', b'e', b'b']),
 		);
 		assert_eq!(
-			u32::from_le_bytes([0, b'j', b'e', b'b']) | ASCII_LOWER,
+			needle3(b'j', b'e', b'b'),
 			u32::from_le_bytes([0, b'j', b'e', b'b']),
 		);
 	}

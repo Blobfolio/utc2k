@@ -57,7 +57,20 @@ bench BENCH="":
 # Clippy.
 @clippy:
 	clear
-	cargo clippy \
+
+	RUSTFLAGS="-D warnings" cargo clippy --release --target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
+		--release \
+		--features local \
+		--target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
+		--release \
+		--features serde \
+		--target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
 		--release \
 		--all-features \
 		--target-dir "{{ cargo_dir }}"
