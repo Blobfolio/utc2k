@@ -647,19 +647,18 @@ impl FmtUtc2k {
 	#[must_use]
 	/// # From `Utc2k`.
 	const fn from_utc2k(src: Utc2k) -> Self {
-		let y = DateChar::dd(src.y as u8);
-		let m = DateChar::dd(src.m as u8);
-		let d = DateChar::dd(src.d);
-		let hh = DateChar::dd(src.hh);
-		let mm = DateChar::dd(src.mm);
-		let ss = DateChar::dd(src.ss);
 		Self([
-			DateChar::Digit2, DateChar::Digit0, y[0], y[1],
-			DateChar::Dash, m[0], m[1], DateChar::Dash, d[0], d[1],
+			DateChar::Digit2, DateChar::Digit0, DateChar::from_digit(src.y as u8 / 10), DateChar::from_digit(src.y as u8),
+			DateChar::Dash,
+			DateChar::from_digit(src.m as u8 / 10), DateChar::from_digit(src.m as u8),
+			DateChar::Dash,
+			DateChar::from_digit(src.d / 10), DateChar::from_digit(src.d),
 			DateChar::Space,
-			hh[0], hh[1], DateChar::Colon,
-			mm[0], mm[1], DateChar::Colon,
-			ss[0], ss[1]
+			DateChar::from_digit(src.hh / 10), DateChar::from_digit(src.hh),
+			DateChar::Colon,
+			DateChar::from_digit(src.mm / 10), DateChar::from_digit(src.mm),
+			DateChar::Colon,
+			DateChar::from_digit(src.ss / 10), DateChar::from_digit(src.ss)
 		])
 	}
 
@@ -670,12 +669,18 @@ impl FmtUtc2k {
 	///
 	/// From here, it's just straight ASCII-writing.
 	const fn set_parts_unchecked(&mut self, y: Year, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
-		[self.0[2],  self.0[3]] =  DateChar::dd(y as u8);
-		[self.0[5],  self.0[6]] =  DateChar::dd(m as u8);
-		[self.0[8],  self.0[9]] =  DateChar::dd(d);
-		[self.0[11], self.0[12]] = DateChar::dd(hh);
-		[self.0[14], self.0[15]] = DateChar::dd(mm);
-		[self.0[17], self.0[18]] = DateChar::dd(ss);
+		self.0[2] =  DateChar::from_digit(y as u8 / 10);
+		self.0[3] =  DateChar::from_digit(y as u8);
+		self.0[5] =  DateChar::from_digit(m as u8 / 10);
+		self.0[6] =  DateChar::from_digit(m as u8);
+		self.0[8] =  DateChar::from_digit(d / 10);
+		self.0[9] =  DateChar::from_digit(d);
+		self.0[11] = DateChar::from_digit(hh / 10);
+		self.0[12] = DateChar::from_digit(hh);
+		self.0[14] = DateChar::from_digit(mm / 10);
+		self.0[15] = DateChar::from_digit(mm);
+		self.0[17] = DateChar::from_digit(ss / 10);
+		self.0[18] = DateChar::from_digit(ss);
 	}
 }
 

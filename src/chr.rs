@@ -6,7 +6,6 @@
 macro_rules! date_chars {
 	($($k:ident $v:literal),+ $(,)*) => (
 		#[repr(u8)]
-		#[expect(dead_code, reason = "Macro made me do it.")]
 		#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 		/// # Date Characters.
 		///
@@ -14,7 +13,7 @@ macro_rules! date_chars {
 		/// datetime strings. (It's an alternative to unqualified `u8`.)
 		///
 		/// This adds some complication to the data population side of things,
-		/// but reduces the "unsafe" footprint to just three methods, all
+		/// but reduces the "unsafe" footprint to just two methods, both
 		/// located here and easy to verify.
 		///
 		/// TODO: replace this with `AsciiChar` once stable.
@@ -76,28 +75,21 @@ macro_rules! date_chars {
 			}
 
 			#[inline(always)]
-			#[must_use]
-			/// # Double Digit.
-			///
-			/// Return the number as two digits.
-			///
-			/// ```
-			/// // It's true!
-			/// for (num, ascii) in (0..=9_u8).zip(b'0'..=b'9') {
-			///     assert_eq!(num | b'0', ascii);
-			/// }
-			/// ```
-			pub(crate) const fn dd(src: u8) -> [Self; 2] {
-				#[expect(unsafe_code, reason = "Foundational.")]
-				/// # One Digit.
-				const fn d(src: u8) -> DateChar {
-					// Safety: ASCII digits conveniently share the lower bits
-					// of their numerical counterparts, and the upper bits with
-					// each other.
-					unsafe { std::mem::transmute::<u8, DateChar>((src % 10) | b'0') }
+			/// # One Digit.
+			pub(crate) const fn from_digit(src: u8) -> Self {
+				match (src % 10) | b'0' {
+					b'0' => Self::Digit0,
+					b'1' => Self::Digit1,
+					b'2' => Self::Digit2,
+					b'3' => Self::Digit3,
+					b'4' => Self::Digit4,
+					b'5' => Self::Digit5,
+					b'6' => Self::Digit6,
+					b'7' => Self::Digit7,
+					b'8' => Self::Digit8,
+					b'9' => Self::Digit9,
+					_ => unreachable!(),
 				}
-
-				[d(src / 10), d(src)]
 			}
 		}
 	);

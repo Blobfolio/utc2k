@@ -29,7 +29,7 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * `FmtUtc2k::set_datetime` is now const
 * `FmtUtc2k::set_parts` is now const
 * `Utc2k::formatted` is now const
-* Remove all but three `unsafe` blocks!
+* Remove all but two `unsafe` blocks!
 * Miscellaneous code cleanup, lints, and test/doc improvements
 
 ### Breaking

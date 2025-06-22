@@ -1252,12 +1252,18 @@ const fn offset_suffix(offset: Option<NonZeroI32>) -> Option<[DateChar; 5]> {
 			if offset.get() < 0 { DateChar::Dash }
 			else { DateChar::Plus };
 
+		// Offsets that make it here are less than a day.
 		let offset = offset.get().unsigned_abs();
+		let hh = offset.wrapping_div(HOUR_IN_SECONDS) as u8;
+		let mm = (offset % HOUR_IN_SECONDS).wrapping_div(MINUTE_IN_SECONDS) as u8;
 
-		let hh = DateChar::dd(offset.wrapping_div(HOUR_IN_SECONDS) as u8);
-		let mm = DateChar::dd((offset % HOUR_IN_SECONDS).wrapping_div(MINUTE_IN_SECONDS) as u8);
-
-		Some([sign, hh[0], hh[1], mm[0], mm[1]])
+		Some([
+			sign,
+			DateChar::from_digit(hh / 10),
+			DateChar::from_digit(hh),
+			DateChar::from_digit(mm / 10),
+			DateChar::from_digit(mm),
+		])
 	}
 	else { None }
 }
