@@ -647,7 +647,7 @@ impl FmtUtc2k {
 	#[must_use]
 	/// # From `Utc2k`.
 	const fn from_utc2k(src: Utc2k) -> Self {
-		let y = src.y.dd();
+		let y = DateChar::dd(src.y as u8);
 		let m = DateChar::dd(src.m as u8);
 		let d = DateChar::dd(src.d);
 		let hh = DateChar::dd(src.hh);
@@ -670,7 +670,7 @@ impl FmtUtc2k {
 	///
 	/// From here, it's just straight ASCII-writing.
 	const fn set_parts_unchecked(&mut self, y: Year, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
-		[self.0[2],  self.0[3]] =  y.dd();
+		[self.0[2],  self.0[3]] =  DateChar::dd(y as u8);
 		[self.0[5],  self.0[6]] =  DateChar::dd(m as u8);
 		[self.0[8],  self.0[9]] =  DateChar::dd(d);
 		[self.0[11], self.0[12]] = DateChar::dd(hh);
@@ -1663,17 +1663,21 @@ impl Utc2k {
 	pub fn to_rfc2822(&self) -> String {
 		let mut out = String::with_capacity(31);
 
+		macro_rules! push {
+			($($expr:expr),+) => ($( out.push(((($expr) % 10) | b'0') as char); )+);
+		}
+
 		out.push_str(self.weekday().abbreviation());
 		out.push_str(", ");
-		out.push_str(DateChar::dd_str(self.d));
+		push!(self.d / 10, self.d);
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(self.y.as_str()); // Includes spaces on either side.
-		out.push_str(DateChar::dd_str(self.hh));
+		push!(self.hh / 10, self.hh);
 		out.push(':');
-		out.push_str(DateChar::dd_str(self.mm));
+		push!(self.mm / 10, self.mm);
 		out.push(':');
-		out.push_str(DateChar::dd_str(self.ss));
+		push!(self.ss / 10, self.ss);
 		out.push_str(" +0000");
 
 		out

@@ -543,13 +543,13 @@ impl Weekday {
 	/// # From `u8`.
 	pub(crate) const fn from_u8(src: u8) -> Self {
 		match src % 7 {
-			0 => Self::Saturday,
 			1 => Self::Sunday,
 			2 => Self::Monday,
 			3 => Self::Tuesday,
 			4 => Self::Wednesday,
 			5 => Self::Thursday,
-			_ => Self::Friday,
+			6 => Self::Friday,
+			_ => Self::Saturday,
 		}
 	}
 }

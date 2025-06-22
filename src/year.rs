@@ -4,10 +4,7 @@
 
 #![expect(clippy::inline_always, reason = "Foundational.")]
 
-use crate::{
-	DateChar,
-	Weekday,
-};
+use crate::Weekday;
 
 
 
@@ -51,17 +48,6 @@ macro_rules! year {
 				match self {
 					$( Self::$k => year!(@as_str $v) ),+,
 					Self::$last_k => year!(@as_str $last_v),
-				}
-			}
-
-			#[inline(always)]
-			/// # Double Digit.
-			///
-			/// Return the year as two digits.
-			pub(crate) const fn dd(self) -> [DateChar; 2] {
-				match self {
-					$(Self::$k => [DateChar::$d1, DateChar::$d2]),+,
-					Self::$last_k => [DateChar::$last_d1, DateChar::$last_d2],
 				}
 			}
 

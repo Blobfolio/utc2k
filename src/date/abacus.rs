@@ -612,6 +612,8 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 /// RFC2822-formatted string, returning them along with the remainder of the
 /// source slice.
 const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
+	const MASK: u8 = 0b0000_1111;
+
 	// Strip the leading weekday, if any; it's pointless.
 	if let [ _, _, _, b',', b' ', rest @ .. ] = src { src = rest; }
 
@@ -621,11 +623,11 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 		[                  b @ b'0'..=b'9', b' ', rest @ .. ] |
 		[ b' ',            b @ b'0'..=b'9', b' ', rest @ .. ] => {
 			src = rest;
-			*b ^ b'0'
+			*b & MASK
 		},
 		[ a @ b'0'..=b'9', b @ b'0'..=b'9', b' ', rest @ .. ] => {
 			src = rest;
-			(*a ^ b'0') * 10 + (*b ^ b'0')
+			(*a & MASK) * 10 + (*b & MASK)
 		},
 		_ => return None,
 	};

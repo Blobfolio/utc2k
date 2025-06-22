@@ -737,17 +737,21 @@ impl Local2k {
 	pub fn to_rfc2822(&self) -> String {
 		let mut out = String::with_capacity(31);
 
+		macro_rules! push {
+			($($expr:expr),+) => ($( out.push(((($expr) % 10) | b'0') as char); )+);
+		}
+
 		out.push_str(self.weekday().abbreviation());
 		out.push_str(", ");
-		out.push_str(DateChar::dd_str(self.inner.d));
+		push!(self.inner.d / 10, self.inner.d);
 		out.push(' ');
 		out.push_str(self.month().abbreviation());
 		out.push_str(self.inner.y.as_str()); // Includes spaces on either end.
-		out.push_str(DateChar::dd_str(self.inner.hh));
+		push!(self.inner.hh / 10, self.inner.hh);
 		out.push(':');
-		out.push_str(DateChar::dd_str(self.inner.mm));
+		push!(self.inner.mm / 10, self.inner.mm);
 		out.push(':');
-		out.push_str(DateChar::dd_str(self.inner.ss));
+		push!(self.inner.ss / 10, self.inner.ss);
 
 		if let Some(offset) = offset_suffix(self.offset) {
 			out.push(' ');

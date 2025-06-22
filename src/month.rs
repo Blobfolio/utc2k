@@ -472,7 +472,6 @@ impl Month {
 	/// This is the same as From, but const.
 	pub(crate) const fn from_u8(src: u8) -> Self {
 		match src % 12 {
-			0 =>  Self::December,
 			1  => Self::January,
 			2  => Self::February,
 			3  => Self::March,
@@ -483,7 +482,8 @@ impl Month {
 			8  => Self::August,
 			9  => Self::September,
 			10 => Self::October,
-			_ =>  Self::November,
+			11 =>  Self::November,
+			_ => Self::December,
 		}
 	}
 
