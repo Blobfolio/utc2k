@@ -387,6 +387,7 @@ impl FmtUtc2k {
 	/// This returns an instance using the current unixtime as the seed.
 	pub fn now() -> Self { Self::from_utc2k(Utc2k::now()) }
 
+	#[inline]
 	/// # Set Date/Time.
 	///
 	/// This can be used to recycle an existing buffer.
@@ -410,12 +411,7 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	/// ```
 	pub const fn set_datetime(&mut self, src: Utc2k) {
-		[self.0[2],  self.0[3]] =  src.y.dd();
-		[self.0[5],  self.0[6]] =  DateChar::dd(src.m as u8);
-		[self.0[8],  self.0[9]] =  DateChar::dd(src.d);
-		[self.0[11], self.0[12]] = DateChar::dd(src.hh);
-		[self.0[14], self.0[15]] = DateChar::dd(src.mm);
-		[self.0[17], self.0[18]] = DateChar::dd(src.ss);
+		self.set_parts_unchecked(src.y, src.m, src.d, src.hh, src.mm, src.ss);
 	}
 
 	/// # Set Parts.

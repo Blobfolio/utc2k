@@ -118,7 +118,14 @@ impl Abacus {
 	/// # From `Utc2k`
 	pub(super) const fn from_utc2k(src: Utc2k) -> Self {
 		let (y, m, d, hh, mm, ss) = src.parts();
-		Self::new(y, m, d, hh, mm, ss)
+		Self {
+			y,
+			m: m as u16,
+			d: d as u16,
+			hh: hh as u16,
+			mm: mm as u16,
+			ss: ss as u16,
+		}
 	}
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
@@ -553,7 +560,7 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 		[ rest @ .., sign @ 226, 136, 146, a, b, c, d ] => {
 			// By temporarily re-imagining the four offset bytes as a `u32`,
 			// we can flip the ASCII bits and verify the results en masse.
-			let chunk = u32::from_le_bytes([*a, *b, *c, *d]) ^ 0x3030_3030;
+			let chunk = u32::from_le_bytes([*a, *b, *c, *d]) ^ 0x3030_3030_u32;
 			if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) != 0 {
 				return None;
 			}
@@ -628,7 +635,7 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 		if let Some(m) = Month::from_abbreviation(*m1, *m2, *m3) {
 			// By temporarily re-imagining the four year bytes as a `u32`,
 			// we can flip the ASCII bits and verify the results en masse.
-			let chunk = u32::from_le_bytes([*y1, *y2, *y3, *y4]) ^ 0x3030_3030;
+			let chunk = u32::from_le_bytes([*y1, *y2, *y3, *y4]) ^ 0x3030_3030_u32;
 			if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) == 0 {
 				let chunk = chunk.to_le_bytes();
 				return Some((merge_digits!(chunk 0 1 2 3), m, d, rest));
