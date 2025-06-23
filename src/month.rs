@@ -2,12 +2,6 @@
 # UTC2K - Month
 */
 
-#![expect(
-	clippy::cast_possible_truncation,
-	trivial_numeric_casts,
-	reason = "Macros made me do it.",
-)]
-
 use crate::{
 	macros,
 	Utc2k,
@@ -149,7 +143,22 @@ macro_rules! impl_int {
 			#[doc = concat!("assert_eq!(Month::from(15_", stringify!($ty), "), Month::March);    // Wrap.")]
 			/// // …
 			/// ```
-			fn from(src: $ty) -> Self { Self::from_u8((src % 12) as u8) }
+			fn from(src: $ty) -> Self {
+				match src % 12 {
+					1  => Self::January,
+					2  => Self::February,
+					3  => Self::March,
+					4  => Self::April,
+					5  => Self::May,
+					6  => Self::June,
+					7  => Self::July,
+					8  => Self::August,
+					9  => Self::September,
+					10 => Self::October,
+					11 =>  Self::November,
+					_ => Self::December,
+				}
+			}
 		}
 
 		impl From<Month> for $ty {
@@ -322,6 +331,14 @@ impl IntoIterator for Month {
 	/// assert_eq!(iter.next(), Some(Month::January));
 	/// assert_eq!(iter.next(), Some(Month::February));
 	/// assert_eq!(iter.next(), Some(Month::March)); // Back around again!
+	/// // …
+	///
+	/// // You can also go backwards.
+	/// let mut iter = Month::March.into_iter().rev();
+	/// assert_eq!(iter.next(), Some(Month::March));
+	/// assert_eq!(iter.next(), Some(Month::February));
+	/// assert_eq!(iter.next(), Some(Month::January));
+	/// assert_eq!(iter.next(), Some(Month::December)); // Wrap!
 	/// // …
 	/// ```
 	fn into_iter(self) -> Self::IntoIter { RepeatingMonthIter(self) }
@@ -666,20 +683,7 @@ impl Iterator for RepeatingMonthIter {
 	/// # Next Month.
 	fn next(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = match next {
-			Month::January => Month::February,
-			Month::February => Month::March,
-			Month::March => Month::April,
-			Month::April => Month::May,
-			Month::May => Month::June,
-			Month::June => Month::July,
-			Month::July => Month::August,
-			Month::August => Month::September,
-			Month::September => Month::October,
-			Month::October => Month::November,
-			Month::November => Month::December,
-			Month::December => Month::January,
-		};
+		self.0 = Month::from_u8(self.0 as u8 + 1);
 		Some(next)
 	}
 
@@ -687,6 +691,15 @@ impl Iterator for RepeatingMonthIter {
 	///
 	/// This iterator never stops!
 	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+impl DoubleEndedIterator for RepeatingMonthIter {
+	/// # Previous Month.
+	fn next_back(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = Month::from_u8(self.0 as u8 - 1);
+		Some(next)
+	}
 }
 
 

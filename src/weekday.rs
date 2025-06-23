@@ -286,8 +286,14 @@ impl IntoIterator for Weekday {
 	/// assert_eq!(iter.next(), Some(Weekday::Tuesday));
 	/// assert_eq!(iter.next(), Some(Weekday::Wednesday)); // Full circle!
 	/// assert_eq!(iter.next(), Some(Weekday::Thursday));
-	/// assert_eq!(iter.next(), Some(Weekday::Friday));
-	/// assert_eq!(iter.next(), Some(Weekday::Saturday));
+	/// // …
+	///
+	/// // You can also go backwards.
+	/// let mut iter = Weekday::Tuesday.into_iter().rev();
+	/// assert_eq!(iter.next(), Some(Weekday::Tuesday));
+	/// assert_eq!(iter.next(), Some(Weekday::Monday));
+	/// assert_eq!(iter.next(), Some(Weekday::Sunday));
+	/// assert_eq!(iter.next(), Some(Weekday::Saturday)); // Wrap!
 	/// // …
 	/// ```
 	fn into_iter(self) -> Self::IntoIter { RepeatingWeekdayIter(self) }
@@ -669,15 +675,7 @@ impl Iterator for RepeatingWeekdayIter {
 	/// # Next Weekday.
 	fn next(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = match next {
-			Weekday::Sunday => Weekday::Monday,
-			Weekday::Monday => Weekday::Tuesday,
-			Weekday::Tuesday => Weekday::Wednesday,
-			Weekday::Wednesday => Weekday::Thursday,
-			Weekday::Thursday => Weekday::Friday,
-			Weekday::Friday => Weekday::Saturday,
-			Weekday::Saturday => Weekday::Sunday,
-		};
+		self.0 = Weekday::from_u8(self.0 as u8 + 1);
 		Some(next)
 	}
 
@@ -685,6 +683,15 @@ impl Iterator for RepeatingWeekdayIter {
 	///
 	/// This iterator never stops!
 	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+}
+
+impl DoubleEndedIterator for RepeatingWeekdayIter {
+	/// # Previous Weekday.
+	fn next_back(&mut self) -> Option<Self::Item> {
+		let next = self.0;
+		self.0 = Weekday::from_u8(self.0 as u8 - 1);
+		Some(next)
+	}
 }
 
 

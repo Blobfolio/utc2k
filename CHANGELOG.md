@@ -20,6 +20,8 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * `Local2k` (**local** crate feature)
 * `Utc2k::checked_from_ascii`
 * `Utc2k::from_ascii`
+* impl `DoubleEndedIterator` for `RepeatingMonthIter`
+* impl `DoubleEndedIterator` for `RepeatingWeekdayIter`
 * impl `From<FmtUtc2k>` for `String`
 * impl `From<Utc2k>` for `String`
 
