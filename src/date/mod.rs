@@ -2234,7 +2234,14 @@ mod tests {
 			assert_eq!(u.ordinal(), c.ordinal(), "Ordinal mismatch for unixtime {}", $i);
 
 			// Make sure the weekdays match.
-			assert_eq!(u.weekday().as_ref(), c.weekday().to_string());
+			assert_eq!(u.weekday().as_str(), c.weekday().to_string());
+
+			// And make sure we agree on leap years.
+			assert_eq!(
+				u.leap_year(),
+				time::util::is_leap_year(u.year() as i32),
+				"Leap year mismatch for {}", u.year(),
+			);
 
 			// We already checked the parts so they should match as a whole
 			// too, but it shouldn't hurt (too much) to be exhaustive.

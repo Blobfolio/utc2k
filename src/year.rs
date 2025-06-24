@@ -180,7 +180,8 @@ year!{
 	Y2k96 96 Digit9 Digit6 3_976_214_400,
 	Y2k97 97 Digit9 Digit7 4_007_836_800,
 	Y2k98 98 Digit9 Digit8 4_039_372_800,
-	@last Y2k99 99 Digit9 Digit9 4_070_908_800,
+	@last
+	Y2k99 99 Digit9 Digit9 4_070_908_800,
 }
 
 impl Year {
@@ -193,16 +194,10 @@ impl Year {
 
 	#[inline(always)]
 	/// # Leap Year?
-	pub(crate) const fn leap(self) -> bool {
-		matches!(
-			self,
-			Self::Y2k00 | Self::Y2k04 | Self::Y2k08 | Self::Y2k12 | Self::Y2k16 |
-			Self::Y2k20 | Self::Y2k24 | Self::Y2k28 | Self::Y2k32 | Self::Y2k36 |
-			Self::Y2k40 | Self::Y2k44 | Self::Y2k48 | Self::Y2k52 | Self::Y2k56 |
-			Self::Y2k60 | Self::Y2k64 | Self::Y2k68 | Self::Y2k72 | Self::Y2k76 |
-			Self::Y2k80 | Self::Y2k84 | Self::Y2k88 | Self::Y2k92 | Self::Y2k96
-		)
-	}
+	///
+	/// Thanks to the type constraints, we can ignore the 100/400 nuance; all
+	/// multiples of four are leaped.
+	pub(crate) const fn leap(self) -> bool { (self as u8).is_multiple_of(4) }
 
 	/// # Weekday.
 	///
