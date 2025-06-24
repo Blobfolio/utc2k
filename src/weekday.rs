@@ -2,6 +2,12 @@
 # UTC2K - Weekday
 */
 
+#![expect(
+	clippy::cast_possible_truncation,
+	trivial_numeric_casts,
+	reason = "False positive.",
+)]
+
 use crate::{
 	macros,
 	Utc2k,
@@ -214,16 +220,16 @@ macro_rules! impl_int {
 			/// // …
 			/// ```
 			fn sub(self, other: $ty) -> Self {
-				let mut lhs = <$ty>::from(self);
-				let mut rhs = other % 7;
-
-				while rhs > 0 {
-					rhs -= 1;
-					if lhs == 1 { lhs = 7; }
-					else { lhs -= 1; }
+				match (self as u8 - 1).wrapping_sub((other % 7) as u8) {
+					0 =>       Self::Sunday,
+					1 | 250 => Self::Monday,
+					2 | 251 => Self::Tuesday,
+					3 | 252 => Self::Wednesday,
+					4 | 253 => Self::Thursday,
+					5 | 254 => Self::Friday,
+					6 | 255 => Self::Saturday,
+					_ => unreachable!(),
 				}
-
-				Self::from(lhs)
 			}
 		}
 
@@ -672,13 +678,15 @@ pub struct RepeatingWeekdayIter(Weekday);
 impl Iterator for RepeatingWeekdayIter {
 	type Item = Weekday;
 
+	#[inline]
 	/// # Next Weekday.
 	fn next(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = Weekday::from_u8(self.0 as u8 + 1);
+		self.0 = next + 1_u8;
 		Some(next)
 	}
 
+	#[inline]
 	/// # Infinity.
 	///
 	/// This iterator never stops!
@@ -686,10 +694,11 @@ impl Iterator for RepeatingWeekdayIter {
 }
 
 impl DoubleEndedIterator for RepeatingWeekdayIter {
+	#[inline]
 	/// # Previous Weekday.
 	fn next_back(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = Weekday::from_u8(self.0 as u8 - 1);
+		self.0 = next - 1_u8;
 		Some(next)
 	}
 }

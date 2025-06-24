@@ -2,6 +2,12 @@
 # UTC2K - Month
 */
 
+#![expect(
+	clippy::cast_possible_truncation,
+	trivial_numeric_casts,
+	reason = "False positive.",
+)]
+
 use crate::{
 	macros,
 	Utc2k,
@@ -255,16 +261,21 @@ macro_rules! impl_int {
 			/// // …
 			/// ```
 			fn sub(self, other: $ty) -> Self {
-				let mut lhs = <$ty>::from(self);
-				let mut rhs = other % 12;
-
-				while rhs > 0 {
-					rhs -= 1;
-					if lhs == 1 { lhs = 12; }
-					else { lhs -= 1; }
+				match (self as u8 - 1).wrapping_sub((other % 12) as u8) {
+					0 =>        Self::January,
+					1 | 245 =>  Self::February,
+					2 | 246 =>  Self::March,
+					3 | 247 =>  Self::April,
+					4 | 248 =>  Self::May,
+					5 | 249 =>  Self::June,
+					6 | 250 =>  Self::July,
+					7 | 251 =>  Self::August,
+					8 | 252 =>  Self::September,
+					9 | 253 =>  Self::October,
+					10 | 254 => Self::November,
+					11 | 255 => Self::December,
+					_ => unreachable!(),
 				}
-
-				Self::from(lhs)
 			}
 		}
 
@@ -680,13 +691,15 @@ pub struct RepeatingMonthIter(Month);
 impl Iterator for RepeatingMonthIter {
 	type Item = Month;
 
+	#[inline]
 	/// # Next Month.
 	fn next(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = Month::from_u8(self.0 as u8 + 1);
+		self.0 = next + 1_u8;
 		Some(next)
 	}
 
+	#[inline]
 	/// # Infinity.
 	///
 	/// This iterator never stops!
@@ -694,10 +707,11 @@ impl Iterator for RepeatingMonthIter {
 }
 
 impl DoubleEndedIterator for RepeatingMonthIter {
+	#[inline]
 	/// # Previous Month.
 	fn next_back(&mut self) -> Option<Self::Item> {
 		let next = self.0;
-		self.0 = Month::from_u8(self.0 as u8 - 1);
+		self.0 = next - 1_u8;
 		Some(next)
 	}
 }

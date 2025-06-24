@@ -22,9 +22,37 @@ benches!(
 
 	Bench::spacer(),
 
+	Bench::new("utc2k::Weekday::Sunday + 1_u8")
+		.run(|| Weekday::Sunday + 1_u8),
+
+	Bench::new("utc2k::Weekday::Sunday + 77_u8")
+		.run(|| Weekday::Sunday + 77_u8),
+
+	Bench::new("utc2k::Weekday::Sunday - 1_u8")
+		.run(|| Weekday::Sunday - 1_u8),
+
+	Bench::new("utc2k::Weekday::Sunday - 77_u8")
+		.run(|| Weekday::Sunday - 77_u8),
+
+	Bench::spacer(),
+
 	Bench::new("utc2k::Month::try_from(jun)")
 		.run(|| Month::try_from("jun")),
 
 	Bench::new("utc2k::Month::try_from(June)")
 		.run(|| Month::try_from("June")),
+
+	Bench::spacer(),
+
+	Bench::new("utc2k::Month::January + 1_u8")
+		.run(|| Month::January + 1_u8),
+
+	Bench::new("utc2k::Month::January + 77_u8")
+		.run(|| Month::January + 77_u8),
+
+	Bench::new("utc2k::Month::January - 1_u8")
+		.run(|| Month::January - 1_u8),
+
+	Bench::new("utc2k::Month::January - 77_u8")
+		.run(|| Month::January - 77_u8),
 );
