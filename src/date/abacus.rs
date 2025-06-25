@@ -11,6 +11,7 @@ use crate::{
 	Utc2kError,
 	Year,
 };
+use std::num::NonZeroU32;
 
 
 
@@ -193,14 +194,8 @@ impl Abacus {
 			self.hh %= 24;
 		}
 
-		// Day balancing can require recursion, so the date parts need to be
-		// tackled as a group.
-		if
-			0 == self.m || 12 < self.m || 0 == self.d ||
-			(28 < self.d && self.month_days() < self.d)
-		{
-			self.rebalance_date();
-		}
+		// Date balancing is a little more annoying.
+		self.rebalance_date();
 	}
 
 	/// # Rebalance Date.
@@ -211,69 +206,68 @@ impl Abacus {
 	/// will "rewind" to accommodate. For example, a year/month of `2000-00`
 	/// becomes `1999-12`; a month/day of '06-00' becomes '05-31'.
 	const fn rebalance_date(&mut self) {
-		loop {
-			// Short circuit if we're way off base!
-			if self.y <= 1900 { return self.rebalance_underflow(); }
-			if 2200 <= self.y { return self.rebalance_overflow(); }
+		// ASCII-set years can be 0-9999, but rebalancing will never add more
+		// than eight years or remove more than one, so we can bail early if
+		// we're beyond saving.
+		if self.y < 1992 || 2100 < self.y {
+			return self.rebalance_over_under(2100 < self.y);
+		}
 
-			// Rewind the year.
-			if self.m == 0 {
+		// Rewind the year.
+		if self.m == 0 {
+			self.y -= 1;
+			self.m = 12;
+		}
+		// Carry excess months over to years.
+		else if 12 < self.m {
+			let div = (self.m - 1).wrapping_div(12);
+			self.y += div;
+			self.m -= div * 12;
+		}
+
+		// Rewind the month.
+		if self.d == 0 {
+			// If the month was January, we need to rewind the year too. Might
+			// as well handle all rewinds in one go.
+			if self.m == 1 {
 				self.y -= 1;
 				self.m = 12;
+				self.d = 31;
 			}
-			// Carry excess months over to years.
-			else if 12 < self.m {
-				let div = (self.m - 1).wrapping_div(12);
-				self.y += div;
-				self.m -= div * 12;
+			else {
+				self.m -= 1;
+				self.d = self.month_days();
 			}
-
-			// Rewind the month.
-			if self.d == 0 {
-				// If the month was January, we need to rewind the year too. Might
-				// as well handle all rewinds in one go.
-				if self.m == 1 {
-					self.y -= 1;
-					self.m = 12;
-					self.d = 31;
-				}
-				else {
-					self.m -= 1;
-					self.d = self.month_days();
-				}
-			}
-			// All months can hold at least 28 days, but if we've got 29+,
-			// we'll need to do some sanity checks and maybe recurse.
-			else if 28 < self.d {
+		}
+		// Day size varies by month, so it might take a few passes to handle
+		// all the carries.
+		else {
+			loop {
 				let size = self.month_days();
 				if size < self.d {
-					self.m += 1;
 					self.d -= size;
-					continue; // Recurse.
+					if self.m == 12 {
+						self.y += 1;
+						self.m = 1;
+					}
+					else { self.m += 1; }
 				}
+				// Done!
+				else { return; }
 			}
-
-			return;
 		}
 	}
 
-	/// # Rebalance to Overflow.
-	///
-	/// Set all components to an out-of-range date on the upper end.
-	const fn rebalance_overflow(&mut self) {
-		self.y = 2200;
-		self.m = 1;
-		self.d = 1;
-		self.hh = 0;
-		self.mm = 0;
-		self.ss = 0;
-	}
+	#[inline(never)]
+	/// # Rebalance Date (Cold).
+	const fn rebalance_date_cold(&mut self) { self.rebalance_date(); }
 
-	/// # Rebalance to Underflow.
+	#[inline(never)]
+	/// # Rebalance Over/Under.
 	///
-	/// Set all components to an out-of-range date on the lower end.
-	const fn rebalance_underflow(&mut self) {
-		self.y = 1900;
+	/// Clean up out-of-range dates.
+	const fn rebalance_over_under(&mut self, over: bool) {
+		self.y = if over { 2200 } else { 1900 };
 		self.m = 1;
 		self.d = 1;
 		self.hh = 0;
@@ -315,20 +309,19 @@ impl Abacus {
 			// If the offset itself is too big for `Utc2k`, overflow is
 			// inevitable. Let's just skip to the end!
 			if Self::MAX_SECONDS < offset {
-				self.rebalance_overflow();
+				self.rebalance_over_under(true);
 				return self;
 			}
 
-			self.d += offset.wrapping_div(DAY_IN_SECONDS) as u16;
-			offset %= DAY_IN_SECONDS;
+			if let Some(more) = ss_split_off_days(&mut offset) {
+				self.d += more.get() as u16;
+			}
 		}
-		if HOUR_IN_SECONDS <= offset {
-			self.hh += offset.wrapping_div(HOUR_IN_SECONDS) as u16;
-			offset %= HOUR_IN_SECONDS;
+		if let Some(more) = ss_split_off_hours(&mut offset) {
+			self.hh += more.get() as u16;
 		}
-		if MINUTE_IN_SECONDS <= offset {
-			self.mm += offset.wrapping_div(MINUTE_IN_SECONDS) as u16;
-			offset %= MINUTE_IN_SECONDS;
+		if let Some(more) = ss_split_off_minutes(&mut offset) {
+			self.mm += more.get() as u16;
 		}
 		self.ss += offset as u16;
 		self.rebalance();
@@ -354,23 +347,20 @@ impl Abacus {
 
 		// Positive offsets require subtraction, which is super annoying.
 		if 0 < signed_offset {
-			// The time parts are easiest to shift, so let's figure out how
-			// many seconds that buys us, and (temporarily) shift the lot to
-			// a working variable.
+			// The time parts are easiest to shift, so let's temporarily move
+			// the hours and minutes to see what that does.
 			let mut balance =
-				self.ss as u32 +
 				self.mm as u32 * MINUTE_IN_SECONDS +
 				self.hh as u32 * HOUR_IN_SECONDS;
 
-			self.ss = 0;
 			self.hh = 0;
 			self.mm = 0;
 
 			// If the offset is bigger, we'll need to steal a day too.
 			if balance < offset {
-				// If we don't have any days, rebalancing (just the date) will
-				// always yield at least one.
-				if 0 == self.d { self.rebalance_date(); }
+				// If there aren't any, a rebalance will yield one.
+				if 0 == self.d { self.rebalance_date_cold(); }
+
 				balance += DAY_IN_SECONDS;
 				self.d -= 1;
 			}
@@ -383,17 +373,14 @@ impl Abacus {
 		}
 
 		// Negative offsets require addition; much easier!
-		if DAY_IN_SECONDS <= offset {
-			self.d += offset.wrapping_div(DAY_IN_SECONDS) as u16;
-			offset %= DAY_IN_SECONDS;
+		if let Some(more) = ss_split_off_days(&mut offset) {
+			self.d += more.get() as u16;
 		}
-		if HOUR_IN_SECONDS <= offset {
-			self.hh += offset.wrapping_div(HOUR_IN_SECONDS) as u16;
-			offset %= HOUR_IN_SECONDS;
+		if let Some(more) = ss_split_off_days(&mut offset) {
+			self.hh += more.get() as u16;
 		}
-		if MINUTE_IN_SECONDS <= offset {
-			self.mm += offset.wrapping_div(MINUTE_IN_SECONDS) as u16;
-			offset %= MINUTE_IN_SECONDS;
+		if let Some(more) = ss_split_off_minutes(&mut offset) {
+			self.mm += more.get() as u16;
 		}
 		self.ss += offset as u16;
 	}
@@ -478,7 +465,8 @@ impl Abacus {
 
 					// Check/apply the UTC offset, if any, and make sure the
 					// slice ends where it's supposed to.
-					if let Some(offset) = parse_offset(rest) {
+					if rest.is_empty() { return Some(out); }
+					if let Some(offset) = parse_offset_cold(rest) {
 						out.apply_offset(offset);
 						return Some(out);
 					}
@@ -538,7 +526,6 @@ impl Abacus {
 
 
 
-#[expect(clippy::cast_possible_wrap, reason = "False positive.")]
 #[must_use]
 /// # Parse End.
 ///
@@ -553,20 +540,32 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 	}
 
 	let src = strip_fractional_seconds(src);
-	let (sign, chunk) = match src.len() {
+	match src.len() {
 		// Empty is fine.
-		0 => return Some(0),
+		0 => Some(0),
 		// One is fine if it's a Z.
-		1 if src[0] == b'Z' || src[0] == b'z' => return Some(0),
+		1 if src[0] == b'Z' || src[0] == b'z' => Some(0),
 		// Two is fine if it's UT.
-		2 if (src[0] == b'U' || src[0] == b'u') && (src[1] == b'T' || src[1] == b't') => return Some(0),
+		2 if (src[0] == b'U' || src[0] == b'u') && (src[1] == b'T' || src[1] == b't') => Some(0),
 		// Three is fine if it's GMT or UTC.
-		3 if is_gmt_utc(src[0], src[1], src[2]) => return Some(0),
-		5 => (src[0], [src[1], src[2], src[3], src[4]]),
-		8 if is_gmt_utc(src[0], src[1], src[2]) => (src[3], [src[4], src[5], src[6], src[7]]),
-		_ => return None,
-	};
+		3 if is_gmt_utc(src[0], src[1], src[2]) => Some(0),
+		5 => parse_offset_fixed(src[0], [src[1], src[2], src[3], src[4]]),
+		8 if is_gmt_utc(src[0], src[1], src[2]) => parse_offset_fixed(src[3], [src[4], src[5], src[6], src[7]]),
+		_ => None,
+	}
+}
 
+#[inline(never)]
+#[must_use]
+/// # Parse Offset (Cold).
+const fn parse_offset_cold(src: &[u8]) -> Option<i32> { parse_offset(src) }
+
+#[expect(clippy::cast_possible_wrap, reason = "False positive.")]
+#[inline(never)]
+/// # Parse Fixed Offset.
+///
+/// Parse an (alleged) fixed offset, pre-plucked from an ASCII slice.
+const fn parse_offset_fixed(sign: u8, chunk: [u8; 4]) -> Option<i32> {
 	// By temporarily re-imagining the four offset bytes as a `u32`,
 	// we can flip the ASCII bits and verify the results en masse.
 	let chunk = u32::from_le_bytes(chunk) ^ 0x3030_3030_u32;
@@ -632,6 +631,49 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 	None
 }
 
+#[inline]
+#[must_use]
+/// # Split Days From Seconds.
+///
+/// Split off the full days from `sec` (lowering `sec` accordingly) and
+/// return if non-zero.
+pub(super) const fn ss_split_off_days(sec: &mut u32) -> Option<NonZeroU32> {
+	if let Some(out) = NonZeroU32::new(*sec / DAY_IN_SECONDS) {
+		*sec %= DAY_IN_SECONDS;
+		Some(out)
+	}
+	else { None }
+}
+
+#[inline]
+#[must_use]
+/// # Split Hours From Seconds.
+///
+/// Split off the full hours from `sec` (lowering `sec` accordingly) and
+/// return if non-zero.
+pub(super) const fn ss_split_off_hours(sec: &mut u32) -> Option<NonZeroU32> {
+	if let Some(out) = NonZeroU32::new(*sec / HOUR_IN_SECONDS) {
+		*sec %= HOUR_IN_SECONDS;
+		Some(out)
+	}
+	else { None }
+}
+
+#[inline]
+#[must_use]
+/// # Split Hours From Minutes.
+///
+/// Split off the full minutes from `sec` (lowering `sec` accordingly) and
+/// return if non-zero.
+pub(super) const fn ss_split_off_minutes(sec: &mut u32) -> Option<NonZeroU32> {
+	if let Some(out) = NonZeroU32::new(*sec / MINUTE_IN_SECONDS) {
+		*sec %= MINUTE_IN_SECONDS;
+		Some(out)
+	}
+	else { None }
+}
+
+#[must_use]
 /// # Strip Fractional Seconds.
 ///
 /// If the post-datetime string starts with a dot and a decimal, strip them

@@ -167,14 +167,34 @@ pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 
 /// # ASCII Lower Mask.
 ///
-/// Used when case-insensitively matching [`Month`] and [`Weekday`]
-/// abbreviations.
+/// This mask is used to unconditionally lowercase the last three bytes of a
+/// (LE) `u32` so we can case-insensitively match (alphabetic-only) month,
+/// weekday, and offset abbreviations.
 const ASCII_LOWER: u32 = 0x2020_2000;
 
-/// # Julian Day Epoch.
+/// # Julian Day Offset.
 ///
-/// This is used internally when parsing date components from days.
-const JULIAN_EPOCH: u32 = 2_440_588;
+/// The offset in days between JD0 and 1 March 1BC, necessary since _someone_
+/// forgot to invent 0AD. Haha.
+///
+/// (Only used when calendarizing timestamps.)
+const JULIAN_OFFSET: u32 = 2_440_588 - 1_721_119;
+
+/// # Days per Year (Rounded to Two Decimals).
+///
+/// The average number of days per year, rounded to two decimal places (and
+/// multiplied by 100).
+///
+/// (Only used when calendarizing timestamps.)
+const YEAR_IN_DAYS_P2: u32 = 36_525; // 365.25
+
+/// # Days per Year (Rounded to Four Decimals).
+///
+/// The average number of days per year, rounded to four decimal places (and
+/// multiplied by 10,000).
+///
+/// (Only used when calendarizing timestamps.)
+const YEAR_IN_DAYS_P4: u32 = 3_652_425; // 365.2425
 
 
 
@@ -201,6 +221,7 @@ pub fn unixtime() -> u32 {
 	)
 }
 
+#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 #[must_use]
 /// # Now (Current Year).
 ///
@@ -211,41 +232,25 @@ pub fn unixtime() -> u32 {
 /// ## Examples
 ///
 /// ```
-/// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
+/// assert_eq!(
+///     utc2k::Utc2k::now().year(),
+///     utc2k::year(),
+/// );
 /// ```
 pub fn year() -> u16 {
-	let (y, _, _) = date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
-	y.full()
-}
-
-
-
-#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-#[must_use]
-/// # Parse Date From Seconds.
-///
-/// This parses the date portion of a date/time timestamp using the same
-/// approach as [`time`](https://crates.io/crates/time), which is based on
-/// algorithms by [Peter Baum](https://www.researchgate.net/publication/316558298_Date_Algorithms).
-///
-/// (Our version is a little simpler as we aren't worried about old times.)
-const fn date_seconds(mut z: u32) -> (Year, Month, u8) {
-	z += JULIAN_EPOCH - 1_721_119;
+	// Same as Utc2k::now().year(), but stripped to the essentials.
+	let z = unixtime().wrapping_div(DAY_IN_SECONDS) + JULIAN_OFFSET;
 	let h: u32 = 100 * z - 25;
-	let mut a: u32 = h.wrapping_div(3_652_425);
-	a -= a >> 2;
-	let year: u32 = (100 * a + h).wrapping_div(36_525);
-	a = a + z - 365 * year - (year >> 2);
-	let month: u32 = (5 * a + 456).wrapping_div(153);
-	let day: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
+	let mut a: u32 = h.wrapping_div(YEAR_IN_DAYS_P4);
+	a -= a.wrapping_div(4);
+	let year: u32 = (100 * a + h).wrapping_div(YEAR_IN_DAYS_P2);
+	a = a + z - 365 * year - year.wrapping_div(4);
+	let month = (5 * a + 456).wrapping_div(153);
 
-	if month > 12 {
-		(Year::from_u8((year - 1999) as u8), Month::from_u8(month as u8 - 12), day)
-	}
-	else {
-		(Year::from_u8((year - 2000) as u8), Month::from_u8(month as u8), day)
-	}
+	year as u16 + u16::from(12 < month)
 }
+
+
 
 #[expect(clippy::inline_always, reason = "Foundational.")]
 #[inline(always)]
@@ -259,35 +264,6 @@ const fn date_seconds(mut z: u32) -> (Year, Month, u8) {
 /// `"UTC"`/`"GMT"` offset markers.
 const fn needle3(a: u8, b: u8, c: u8) -> u32 {
 	u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER
-}
-
-#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-#[must_use]
-/// # Parse Time From Seconds.
-///
-/// This parses the time portion of a date/time timestamp. It works the same
-/// way a naive div/mod approach would, except it uses multiplication and bit
-/// shifts to avoid actually having to div/mod.
-///
-/// (This only works because time values stop at 23 or 59; rounding errors
-/// would creep in if the full u8 range was used.)
-const fn time_seconds(mut src: u32) -> (u8, u8, u8) {
-	let hh =
-		if src >= HOUR_IN_SECONDS {
-			let hh = ((src * 0x91A3) >> 27) as u8;
-			src -= hh as u32 * HOUR_IN_SECONDS;
-			hh
-		}
-		else { 0 };
-
-	if src >= MINUTE_IN_SECONDS {
-		let mm = ((src * 0x889) >> 17) as u8;
-		src -= mm as u32 * MINUTE_IN_SECONDS;
-		(hh, mm, src as u8)
-	}
-	else {
-		(hh, 0, src as u8)
-	}
 }
 
 

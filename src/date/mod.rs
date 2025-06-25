@@ -12,6 +12,7 @@ use crate::{
 	DateChar,
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
+	JULIAN_OFFSET,
 	macros,
 	MINUTE_IN_SECONDS,
 	Month,
@@ -19,6 +20,8 @@ use crate::{
 	Utc2kError,
 	Weekday,
 	Year,
+	YEAR_IN_DAYS_P2,
+	YEAR_IN_DAYS_P4,
 };
 use std::{
 	borrow::Cow,
@@ -969,7 +972,9 @@ impl Sub<u32> for Utc2k {
 	///     Utc2k::new(2019, 12, 31, 23, 10, 20),
 	/// );
 	/// ```
-	fn sub(self, other: u32) -> Self { self.minus_seconds(other) }
+	fn sub(self, other: u32) -> Self {
+		Self::from_unixtime(self.unixtime().saturating_sub(other))
+	}
 }
 
 impl SubAssign<u32> for Utc2k {
@@ -1318,6 +1323,8 @@ impl Utc2k {
 		else { None }
 	}
 
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+	#[expect(clippy::many_single_char_names, reason = "For readability.")]
 	#[must_use]
 	/// # From Timestamp.
 	///
@@ -1354,15 +1361,50 @@ impl Utc2k {
 	/// );
 	/// ```
 	pub const fn from_unixtime(src: u32) -> Self {
-		if src <= Self::MIN_UNIXTIME { Self::MIN }
-		else if src >= Self::MAX_UNIXTIME { Self::MAX }
-		else {
-			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = crate::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
-			let (hh, mm, ss) = crate::time_seconds(src % DAY_IN_SECONDS);
+		if Self::MIN_UNIXTIME < src {
+			if src < Self::MAX_UNIXTIME {
+				// Let's tackle the date first.
+				let z = src.wrapping_div(DAY_IN_SECONDS) + JULIAN_OFFSET;
+				let h: u32 = 100 * z - 25;
+				let mut a: u32 = h.wrapping_div(YEAR_IN_DAYS_P4);
+				a -= a.wrapping_div(4);
+				let mut year: u32 = (100 * a + h).wrapping_div(YEAR_IN_DAYS_P2);
+				a = a + z - 365 * year - year.wrapping_div(4);
+				let mut month: u32 = (5 * a + 456).wrapping_div(153);
 
-			Self { y, m, d, hh, mm, ss }
+				// We have enough to figure out the output day.
+				let d: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
+
+				// The rest might need rebalancing.
+				if 12 < month {
+					year += 1;
+					month -= 12;
+				}
+
+				// Now we can finalize the year/month.
+				let y = Year::from_u8((year - 2000) as u8);
+				let m = Month::from_u8(month as u8);
+
+				// The time pieces are straightforward.
+				let mut src = src % DAY_IN_SECONDS;
+				let hh =
+					if let Some(more) = abacus::ss_split_off_hours(&mut src) {
+						more.get() as u8
+					}
+					else { 0 };
+				let mm =
+					if let Some(more) = abacus::ss_split_off_minutes(&mut src) {
+						more.get() as u8
+					}
+					else { 0 };
+
+				Self { y, m, d, hh, mm, ss: src as u8 }
+			}
+			// Too big.
+			else { Self::MAX }
 		}
+		// Too small.
+		else { Self::MIN }
 	}
 
 	#[inline]
@@ -2118,46 +2160,6 @@ impl Utc2k {
 			hh: src.0[11].as_digit() * 10 + src.0[12].as_digit(),
 			mm: src.0[14].as_digit() * 10 + src.0[15].as_digit(),
 			ss: src.0[17].as_digit() * 10 + src.0[18].as_digit(),
-		}
-	}
-
-	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-	#[must_use]
-	/// # Subtract Seconds.
-	const fn minus_seconds(self, offset: u32) -> Self {
-		// Count up the "easy" seconds. If we're subtracting less than this
-		// amount, we can handle the subtraction without any month boundary or
-		// leap year shenanigans.
-		let mut easy: u32 =
-			(self.d - 1) as u32 * DAY_IN_SECONDS +
-			(self.hh) as u32 * HOUR_IN_SECONDS +
-			(self.mm) as u32 * MINUTE_IN_SECONDS +
-			(self.ss) as u32;
-
-		if offset <= easy {
-			easy -= offset;
-			let d: u8 =
-				if easy >= DAY_IN_SECONDS {
-					let d = easy.wrapping_div(DAY_IN_SECONDS);
-					easy -= d * DAY_IN_SECONDS;
-					d as u8 + 1
-				}
-				else { 1 };
-
-			let (hh, mm, ss) = crate::time_seconds(easy);
-			Self {
-				y: self.y,
-				m: self.m,
-				d,
-				hh,
-				mm,
-				ss,
-			}
-		}
-		// Otherwise it is best to convert to unixtime, perform the
-		// subtraction, and convert it back.
-		else {
-			Self::from_unixtime(self.unixtime().saturating_sub(offset))
 		}
 	}
 }
