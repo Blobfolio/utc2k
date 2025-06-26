@@ -2,7 +2,7 @@
 
 
 
-## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - TBD
+## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - 2025-06-26
 
 Date/time string parsing has been completely refactored for this release, vastly improving the behavioral consistency — and correctness — across methods and formats.
 
@@ -11,6 +11,8 @@ Behavioral changes can be _tricky_, though, so warrant special attention.
 It is recommended that projects using `utc2k`'s string-parsing features retest their integrations after upgrading to make sure everything still works as expected.
 
 If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2k/issues).
+
+The rest of the changes are more straightforward:
 
 ### New
 
@@ -29,6 +31,8 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 
 ### Changed
 
+* Bump `brunch` to `0.11` (dev)
+* Bump MSRV to `1.88`
 * `FmtUtc2k::from_rfc822`/`Utc2k::from_rfc2822` now support date-only variations
 * `FmtUtc2k::set_datetime` is now const
 * `FmtUtc2k::set_parts` is now const
