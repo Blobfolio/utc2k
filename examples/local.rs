@@ -5,7 +5,9 @@
 */
 
 #[cfg(not(feature = "local"))]
-compile_error!("This example requires the 'local' crate feature.");
+fn main() {
+	panic!("This example requires the 'local' crate feature.");
+}
 
 #[cfg(feature = "local")]
 fn main() {
