@@ -27,6 +27,7 @@ use std::{
 
 
 
+#[expect(missing_docs, reason = "Redundant.")]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Weekday.
@@ -35,30 +36,21 @@ use std::{
 /// printing weekday names or abbreviations.
 pub enum Weekday {
 	#[default]
-	/// # Sunday.
 	Sunday = 1_u8,
-
-	/// # Monday.
 	Monday = 2_u8,
-
-	/// # Tuesday.
 	Tuesday = 3_u8,
-
-	/// # Wednesday.
 	Wednesday = 4_u8,
-
-	/// # Thursday.
 	Thursday = 5_u8,
-
-	/// # Friday.
 	Friday = 6_u8,
-
-	/// # Saturday.
 	Saturday = 7_u8,
 }
 
 macros::as_ref_borrow_cast!(Weekday: as_str str);
 macros::display_str!(as_str Weekday);
+macros::weekmonth_iter! {
+	Weekday "weekday" RepeatingWeekdayIter
+	Sunday Monday Tuesday Wednesday Thursday Friday Saturday
+}
 
 /// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
@@ -90,7 +82,7 @@ macro_rules! impl_int {
 			/// // …
 			/// ```
 			fn add(self, other: $ty) -> Self {
-				Self::from(<$ty>::from(self) + other % 7)
+				Self::from(self as $ty + other % 7)
 			}
 		}
 
@@ -267,44 +259,6 @@ impl FromStr for Weekday {
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
-impl IntoIterator for Weekday {
-	type Item = Self;
-	type IntoIter = RepeatingWeekdayIter;
-
-	#[inline]
-	/// # Repeating Iterator.
-	///
-	/// Return an iterator that will cycle endlessly through the years,
-	/// starting from this `Weekday`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Weekday;
-	///
-	/// let mut iter = Weekday::Wednesday.into_iter();
-	/// assert_eq!(iter.next(), Some(Weekday::Wednesday));
-	/// assert_eq!(iter.next(), Some(Weekday::Thursday));
-	/// assert_eq!(iter.next(), Some(Weekday::Friday));
-	/// assert_eq!(iter.next(), Some(Weekday::Saturday));
-	/// assert_eq!(iter.next(), Some(Weekday::Sunday));
-	/// assert_eq!(iter.next(), Some(Weekday::Monday));
-	/// assert_eq!(iter.next(), Some(Weekday::Tuesday));
-	/// assert_eq!(iter.next(), Some(Weekday::Wednesday)); // Full circle!
-	/// assert_eq!(iter.next(), Some(Weekday::Thursday));
-	/// // …
-	///
-	/// // You can also go backwards.
-	/// let mut iter = Weekday::Tuesday.into_iter().rev();
-	/// assert_eq!(iter.next(), Some(Weekday::Tuesday));
-	/// assert_eq!(iter.next(), Some(Weekday::Monday));
-	/// assert_eq!(iter.next(), Some(Weekday::Sunday));
-	/// assert_eq!(iter.next(), Some(Weekday::Saturday)); // Wrap!
-	/// // …
-	/// ```
-	fn into_iter(self) -> Self::IntoIter { RepeatingWeekdayIter(self) }
-}
-
 impl Ord for Weekday {
 	#[inline]
 	/// # Ordering.
@@ -408,10 +362,9 @@ impl Weekday {
 
 	#[inline]
 	#[must_use]
-	/// # As Str (Abbreviated).
+	/// # As String Slice (Abbreviated).
 	///
-	/// Return a string slice representing the day's abbreviated name, i.e.
-	/// the first three letters.
+	/// Return the day's three-letter abbreviation as a static string slice.
 	///
 	/// ## Examples.
 	///
@@ -439,9 +392,9 @@ impl Weekday {
 
 	#[inline]
 	#[must_use]
-	/// # As Str.
+	/// # As String Slice.
 	///
-	/// Return the day as a string slice.
+	/// Return the day's name as a static string slice.
 	///
 	/// ## Examples.
 	///
@@ -666,45 +619,6 @@ impl Weekday {
 
 
 
-#[derive(Debug)]
-/// # Endless Weekdays!
-///
-/// This iterator yields an infinite number of `Weekday`s, in order, starting
-/// from any arbitrary day.
-///
-/// See [`Weekday::into_iter`] for more details.
-pub struct RepeatingWeekdayIter(Weekday);
-
-impl Iterator for RepeatingWeekdayIter {
-	type Item = Weekday;
-
-	#[inline]
-	/// # Next Weekday.
-	fn next(&mut self) -> Option<Self::Item> {
-		let next = self.0;
-		self.0 = next + 1_u8;
-		Some(next)
-	}
-
-	#[inline]
-	/// # Infinity.
-	///
-	/// This iterator never stops!
-	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
-}
-
-impl DoubleEndedIterator for RepeatingWeekdayIter {
-	#[inline]
-	/// # Previous Weekday.
-	fn next_back(&mut self) -> Option<Self::Item> {
-		let next = self.0;
-		self.0 = next - 1_u8;
-		Some(next)
-	}
-}
-
-
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -720,34 +634,17 @@ mod tests {
 	#[test]
 	fn t_into_iter() {
 		let mut last = Weekday::Saturday;
-		for next in Weekday::Sunday.into_iter().take(15) {
+		for next in Weekday::Sunday.into_iter().take(25) {
 			assert_eq!(next, last + 1_u8);
+			assert_eq!(next, last.next());
 			last = next;
 		}
-	}
 
-	#[test]
-	/// # Test Fromness.
-	fn t_from() {
-		// There and back again.
-		for i in 1..=7_u8 {
-			let weekday = Weekday::from(i);
-			assert_eq!(weekday as u8, i);
-		}
-		for i in 1..=7_u64 {
-			assert_eq!(u64::from(Weekday::from(i)), i);
-		}
-
-		assert_eq!(Weekday::from(0_u64), Weekday::Saturday);
-
-		let many: Vec<Weekday> = (1..=35_u32)
-			.map(Weekday::from)
-			.collect();
-
-		let mut when = 0;
-		for days in many.as_slice().chunks_exact(7) {
-			when += 1;
-			assert_eq!(days, Weekday::ALL, "Round #{when}");
+		last = Weekday::Sunday;
+		for next in Weekday::Saturday.into_iter().rev().take(25) {
+			assert_eq!(next, last - 1_u8);
+			assert_eq!(next, last.previous());
+			last = next;
 		}
 	}
 

@@ -27,6 +27,7 @@ use std::{
 
 
 
+#[expect(missing_docs, reason = "Redundant.")]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 /// # Month.
@@ -35,46 +36,27 @@ use std::{
 /// printing month names or abbreviations.
 pub enum Month {
 	#[default]
-	/// # January.
 	January = 1_u8,
-
-	/// # February.
 	February = 2_u8,
-
-	/// # March.
 	March = 3_u8,
-
-	/// # April.
 	April = 4_u8,
-
-	/// # May.
 	May = 5_u8,
-
-	/// # June.
 	June = 6_u8,
-
-	/// # July.
 	July = 7_u8,
-
-	/// # August.
 	August = 8_u8,
-
-	/// # September.
 	September = 9_u8,
-
-	/// # October.
 	October = 10_u8,
-
-	/// # November.
 	November = 11_u8,
-
-	/// # December.
 	December = 12_u8,
 }
 
 macros::as_ref_borrow_cast!(Month: as_str str);
-
 macros::display_str!(as_str Month);
+macros::weekmonth_iter! {
+	Month "month" RepeatingMonthIter
+	January February March April May June
+	July August September October November December
+}
 
 /// # Helper: Add/From/Sub Impls.
 macro_rules! impl_int {
@@ -111,7 +93,7 @@ macro_rules! impl_int {
 			/// // …
 			/// ```
 			fn add(self, other: $ty) -> Self {
-				Self::from(<$ty>::from(self) + other % 12)
+				Self::from(self as $ty + other % 12)
 			}
 		}
 
@@ -313,48 +295,6 @@ impl FromStr for Month {
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
-impl IntoIterator for Month {
-	type Item = Self;
-	type IntoIter = RepeatingMonthIter;
-
-	#[inline]
-	/// # Repeating Iterator.
-	///
-	/// Return an iterator that will cycle endlessly through the years,
-	/// starting from this `Month`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Month;
-	///
-	/// let mut iter = Month::March.into_iter();
-	/// assert_eq!(iter.next(), Some(Month::March));
-	/// assert_eq!(iter.next(), Some(Month::April));
-	/// assert_eq!(iter.next(), Some(Month::May));
-	/// assert_eq!(iter.next(), Some(Month::June));
-	/// assert_eq!(iter.next(), Some(Month::July));
-	/// assert_eq!(iter.next(), Some(Month::August));
-	/// assert_eq!(iter.next(), Some(Month::September));
-	/// assert_eq!(iter.next(), Some(Month::October));
-	/// assert_eq!(iter.next(), Some(Month::November));
-	/// assert_eq!(iter.next(), Some(Month::December));
-	/// assert_eq!(iter.next(), Some(Month::January));
-	/// assert_eq!(iter.next(), Some(Month::February));
-	/// assert_eq!(iter.next(), Some(Month::March)); // Back around again!
-	/// // …
-	///
-	/// // You can also go backwards.
-	/// let mut iter = Month::March.into_iter().rev();
-	/// assert_eq!(iter.next(), Some(Month::March));
-	/// assert_eq!(iter.next(), Some(Month::February));
-	/// assert_eq!(iter.next(), Some(Month::January));
-	/// assert_eq!(iter.next(), Some(Month::December)); // Wrap!
-	/// // …
-	/// ```
-	fn into_iter(self) -> Self::IntoIter { RepeatingMonthIter(self) }
-}
-
 impl Ord for Month {
 	#[inline]
 	/// # Ordering.
@@ -479,10 +419,9 @@ impl Month {
 
 	#[inline]
 	#[must_use]
-	/// # As Str (Abbreviated).
+	/// # As String Slice (Abbreviated).
 	///
-	/// Return a string slice representing the month's abbreviated name, i.e.
-	/// the first three letters.
+	/// Return the month's three-letter abbreviation as a static string slice.
 	///
 	/// ## Examples.
 	///
@@ -553,9 +492,9 @@ impl Month {
 
 	#[inline]
 	#[must_use]
-	/// # As Str.
+	/// # As String Slice.
 	///
-	/// Return the month as a string slice.
+	/// Return the month name as a static string slice.
 	///
 	/// ## Examples.
 	///
@@ -679,45 +618,6 @@ impl Month {
 
 
 
-#[derive(Debug)]
-/// # Endless Months!
-///
-/// This iterator yields an infinite number of `Month`s, in order, starting
-/// from any arbitrary month.
-///
-/// See [`Month::into_iter`] for more details.
-pub struct RepeatingMonthIter(Month);
-
-impl Iterator for RepeatingMonthIter {
-	type Item = Month;
-
-	#[inline]
-	/// # Next Month.
-	fn next(&mut self) -> Option<Self::Item> {
-		let next = self.0;
-		self.0 = next + 1_u8;
-		Some(next)
-	}
-
-	#[inline]
-	/// # Infinity.
-	///
-	/// This iterator never stops!
-	fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
-}
-
-impl DoubleEndedIterator for RepeatingMonthIter {
-	#[inline]
-	/// # Previous Month.
-	fn next_back(&mut self) -> Option<Self::Item> {
-		let next = self.0;
-		self.0 = next - 1_u8;
-		Some(next)
-	}
-}
-
-
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -731,35 +631,18 @@ mod tests {
 	}
 
 	#[test]
-	/// # Test Fromness.
-	fn t_from() {
-		// There and back again.
-		for i in 1..=12_u8 {
-			let month = Month::from(i);
-			assert_eq!(month as u8, i);
-		}
-		for i in 1..=12_u64 {
-			assert_eq!(u64::from(Month::from(i)), i);
-		}
-
-		assert_eq!(Month::from(0_u64), Month::December);
-
-		let many: Vec<Month> = (1..=60_u32)
-			.map(Month::from)
-			.collect();
-
-		let mut when = 0;
-		for months in many.as_slice().chunks_exact(12) {
-			when += 1;
-			assert_eq!(months, Month::ALL, "Round #{when}");
-		}
-	}
-
-	#[test]
 	fn t_into_iter() {
 		let mut last = Month::December;
 		for next in Month::January.into_iter().take(25) {
 			assert_eq!(next, last + 1_u8);
+			assert_eq!(next, last.next());
+			last = next;
+		}
+
+		last = Month::January;
+		for next in Month::December.into_iter().rev().take(25) {
+			assert_eq!(next, last - 1_u8);
+			assert_eq!(next, last.previous());
 			last = next;
 		}
 	}

@@ -18,6 +18,8 @@ If you get stuck, feel free to open an [issue](https://github.com/Blobfolio/utc2
 * `FmtUtc2k::from_ascii`
 * `FmtUtc2k::from_unixtime`
 * `Local2k` (**local** crate feature)
+* `Month::previous`/`next`
+* `Weekday::previous`/`next`
 * `Utc2k::checked_from_ascii`
 * `Utc2k::from_ascii`
 * impl `DoubleEndedIterator` for `RepeatingMonthIter`
