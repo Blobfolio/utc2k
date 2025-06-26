@@ -616,15 +616,16 @@ const fn parse_rfc2822_date(mut src: &[u8]) -> Option<(u16, Month, u8, &[u8])> {
 	};
 
 	// What remains should always look like "Mon YYYY".
-	if let [ m1, m2, m3, b' ', y1, y2, y3, y4, rest @ .. ] = src {
-		if let Some(m) = Month::from_abbreviation(*m1, *m2, *m3) {
-			// By temporarily re-imagining the four year bytes as a `u32`,
-			// we can flip the ASCII bits and verify the results en masse.
-			let chunk = u32::from_le_bytes([*y1, *y2, *y3, *y4]) ^ 0x3030_3030_u32;
-			if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) == 0 {
-				let chunk = chunk.to_le_bytes();
-				return Some((merge_digits!(chunk 0 1 2 3), m, d, rest));
-			}
+	if
+		let [ m1, m2, m3, b' ', y1, y2, y3, y4, rest @ .. ] = src &&
+		let Some(m) = Month::from_abbreviation(*m1, *m2, *m3)
+	{
+		// By temporarily re-imagining the four year bytes as a `u32`,
+		// we can flip the ASCII bits and verify the results en masse.
+		let chunk = u32::from_le_bytes([*y1, *y2, *y3, *y4]) ^ 0x3030_3030_u32;
+		if (chunk & 0xf0f0_f0f0_u32) | (chunk.wrapping_add(0x7676_7676_u32) & 0x8080_8080_u32) == 0 {
+			let chunk = chunk.to_le_bytes();
+			return Some((merge_digits!(chunk 0 1 2 3), m, d, rest));
 		}
 	}
 

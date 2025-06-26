@@ -1920,13 +1920,13 @@ impl Utc2k {
 	/// assert_eq!(added.to_string(), "2010-01-02 00:00:13");
 	/// ```
 	pub const fn checked_add(self, secs: u32) -> Option<Self> {
-		if let Some(s) = self.unixtime().checked_add(secs) {
-			if s <= Self::MAX_UNIXTIME {
-				return Some(Self::from_unixtime(s));
-			}
+		if
+			let Some(s) = self.unixtime().checked_add(secs) &&
+			s <= Self::MAX_UNIXTIME
+		{
+			Some(Self::from_unixtime(s))
 		}
-
-		None
+		else { None }
 	}
 
 	/// # From ASCII Date/Time Slice (Checked).
@@ -2030,13 +2030,13 @@ impl Utc2k {
 	/// assert_eq!(subbed.to_string(), "2009-12-30 23:59:47");
 	/// ```
 	pub const fn checked_sub(self, secs: u32) -> Option<Self> {
-		if let Some(s) = self.unixtime().checked_sub(secs) {
-			if Self::MIN_UNIXTIME <= s {
-				return Some(Self::from_unixtime(s));
-			}
+		if
+			let Some(s) = self.unixtime().checked_sub(secs) &&
+			Self::MIN_UNIXTIME <= s
+		{
+			Some(Self::from_unixtime(s))
 		}
-
-		None
+		else { None }
 	}
 }
 
