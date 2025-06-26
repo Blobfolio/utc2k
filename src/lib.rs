@@ -9,79 +9,56 @@
 [![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
 [![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/utc2k/issues)
 
-UTC2K is a fast and lean date/time library that only cares about UTC happenings in _this century_ (between `2000-01-01 00:00:00` and `2099-12-31 23:59:59`).
+UTC2K is a heavily-optimized — and extremely niche — date/time library that **only supports UTC happenings in _this century_**.
 
-With that very significant constraint in mind, UTC2K can:
+For the moments between `2000-01-01 00:00:00..=2099-12-31 23:59:59`, it can run circles around crates like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), while still being able to:
 
-* Convert to/from Unix timestamps (`u32`);
-* Convert to/from date strings of the `YYYY-MM-DD` and `YYYY-MM-DD hh:mm:ss` varieties;
-* Perform addition/subtraction (in seconds), checked or saturating;
-* Calculate the date's ordinal;
-* Calculate the number of seconds from midnight;
-
-That's it!
-
-Compared to more robust libraries like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), UTC2K can be magnitudes faster, particularly in regards to string parsing and printing.
-
-This library is still a work in progress and there is certainly room to improve performance further.
-
-If you have any suggestions for improvement, feel free to open [an issue](https://github.com/Blobfolio/utc2k/issues) on Github!
+* Determine "now", at least until the final seconds of 2099;
+* Convert to/from Unix timestamps;
+* Convert to/from all sorts of different date/time strings;
+* Perform checked and saturating addition/subtraction;
+* Calculate ordinals, weekdays, leap years, etc.;
 
 
 
 ## Examples
 
-The main date object is [`Utc2k`].
+The library's main export is [`Utc2k`], a `Copy`-friendly struct representing a specific UTC datetime.
 
 ```
-use utc2k::Utc2k;
+use utc2k::{Utc2k, Weekday};
 
-let date = Utc2k::default(); // 2000-01-01 00:00:00
-let date = Utc2k::now(); // The current time.
-let date = Utc2k::from(4_102_444_799_u32); // 2099-12-31 23:59:59
-let date = Utc2k::new(2010, 10, 31, 15, 30, 0); // 2010-10-31 15:30:00
+// Instantiation, four ways:
+let date = Utc2k::now();                             // The current system time.
+let date = Utc2k::new(2020, 1, 2, 12, 30, 30);       // From parts.
+let date = Utc2k::from_unixtime(4_102_444_799);      // From a timestamp.
+let date = Utc2k::from_ascii(b"2024-10-31 00:00:00") // From a datetime string.
+               .unwrap();
 
-// String parsing is fallible, but flexible. So long as the numbers we
-// need are in the right place, it will be fine. (At least, it won't error
-// out; if the date string is trying to communicate a time zone, that won't
-// be listened to.)
-assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
-assert!(Utc2k::try_from("2099-12-31T23:59:59.0000Z").is_ok()); // Also fine.
-assert!(Utc2k::try_from("January 1, 2010 @ Eleven O'Clock").is_err()); // Nope!
-```
+// What day was Halloween 2024, anyway?
+assert_eq!(
+    date.weekday(),
+    Weekday::Thursday,
+);
 
-There is also [`FmtUtc2k`], used for string representation.
+// Ordinals are a kind of bird, right?
+assert_eq!(
+    date.ordinal(),
+    305,
+);
 
-```
-use utc2k::{FmtUtc2k, Utc2k};
-
-// You can generate it from an existing Utc2k with either:
-assert_eq!(Utc2k::default().formatted(), FmtUtc2k::from(Utc2k::default()));
-
-// You could also skip `Utc2k` and seed directly from a timestamp or date/time
-// string.
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-let fmt = FmtUtc2k::try_from("2099-12-31 23:59:59").unwrap();
-```
-
-Once you have a [`FmtUtc2k`], you can turn it into a string with:
-
-```
-use utc2k::{FmtUtc2k, Utc2k};
-use std::borrow::Borrow;
-
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-
-let s: &str = fmt.as_ref();
-let s: &str = fmt.as_str();
-let s: &str = fmt.borrow();
+// Boss wants an RFC2822 for some reason?
+assert_eq!(
+    date.to_rfc2822(),
+    "Thu, 31 Oct 2024 00:00:00 +0000",
+);
 ```
 
 
 
 ## Optional Crate Features
 
-* `local`: Enables the [`LocalOffset`] struct. Refer to the documentation for important caveats and limitations.
+* `local`: Enables the [`Local2k`]/[`FmtLocal2k`] structs. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
 */
 
@@ -139,23 +116,21 @@ let s: &str = fmt.borrow();
 
 
 
-mod abacus;
+mod chr;
 mod date;
 mod error;
 mod month;
 mod weekday;
+mod year;
 
-pub(crate) mod macros;
-
-#[cfg(feature = "local")]
-mod local;
+mod macros;
 
 #[cfg(any(test, feature = "serde"))]
 mod serde;
 
 
 
-pub(crate) use abacus::Abacus;
+use chr::DateChar;
 pub use date::{
 	FmtUtc2k,
 	Utc2k,
@@ -163,11 +138,16 @@ pub use date::{
 pub use error::Utc2kError;
 pub use month::Month;
 pub use weekday::Weekday;
+use year::Year;
 
 #[cfg(feature = "local")]
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-pub use local::LocalOffset;
+pub use date::local::{
+	FmtLocal2k,
+	Local2k,
+};
 
+#[cfg(test)] use brunch as _;
 
 
 /// # Seconds per Minute.
@@ -185,10 +165,36 @@ pub const WEEK_IN_SECONDS: u32 = 604_800;
 /// # Seconds per (Normal) Year.
 pub const YEAR_IN_SECONDS: u32 = 31_536_000;
 
-/// # Julian Day Epoch.
+/// # ASCII Lower Mask.
 ///
-/// This is used internally when parsing date components from days.
-pub(crate) const JULIAN_EPOCH: u32 = 2_440_588;
+/// This mask is used to unconditionally lowercase the last three bytes of a
+/// (LE) `u32` so we can case-insensitively match (alphabetic-only) month,
+/// weekday, and offset abbreviations.
+const ASCII_LOWER: u32 = 0x2020_2000;
+
+/// # Julian Day Offset.
+///
+/// The offset in days between JD0 and 1 March 1BC, necessary since _someone_
+/// forgot to invent 0AD. Haha.
+///
+/// (Only used when calendarizing timestamps.)
+const JULIAN_OFFSET: u32 = 2_440_588 - 1_721_119;
+
+/// # Days per Year (Rounded to Two Decimals).
+///
+/// The average number of days per year, rounded to two decimal places (and
+/// multiplied by 100).
+///
+/// (Only used when calendarizing timestamps.)
+const YEAR_IN_DAYS_P2: u32 = 36_525; // 365.25
+
+/// # Days per Year (Rounded to Four Decimals).
+///
+/// The average number of days per year, rounded to four decimal places (and
+/// multiplied by 10,000).
+///
+/// (Only used when calendarizing timestamps.)
+const YEAR_IN_DAYS_P4: u32 = 3_652_425; // 365.2425
 
 
 
@@ -215,6 +221,7 @@ pub fn unixtime() -> u32 {
 	)
 }
 
+#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
 #[must_use]
 /// # Now (Current Year).
 ///
@@ -225,11 +232,38 @@ pub fn unixtime() -> u32 {
 /// ## Examples
 ///
 /// ```
-/// assert_eq!(utc2k::Utc2k::now().year(), utc2k::year());
+/// assert_eq!(
+///     utc2k::Utc2k::now().year(),
+///     utc2k::year(),
+/// );
 /// ```
 pub fn year() -> u16 {
-	let (y, _, _) = date::parse::date_seconds(unixtime().wrapping_div(DAY_IN_SECONDS));
-	u16::from(y) + 2000
+	// Same as Utc2k::now().year(), but stripped to the essentials.
+	let z = unixtime().wrapping_div(DAY_IN_SECONDS) + JULIAN_OFFSET;
+	let h: u32 = 100 * z - 25;
+	let mut a: u32 = h.wrapping_div(YEAR_IN_DAYS_P4);
+	a -= a.wrapping_div(4);
+	let year: u32 = (100 * a + h).wrapping_div(YEAR_IN_DAYS_P2);
+	a = a + z - 365 * year - year.wrapping_div(4);
+	let month = (5 * a + 456).wrapping_div(153);
+
+	year as u16 + u16::from(12 < month)
+}
+
+
+
+#[expect(clippy::inline_always, reason = "Foundational.")]
+#[inline(always)]
+#[must_use]
+/// # Case-Insensitive Needle.
+///
+/// This method lower cases three (presumed letters) into a single `u32` for
+/// lightweight comparison.
+///
+/// This is used for matching [`Month`] and [`Weekday`] abbreviations, and
+/// `"UTC"`/`"GMT"` offset markers.
+const fn needle3(a: u8, b: u8, c: u8) -> u32 {
+	u32::from_le_bytes([0, a, b, c]) | ASCII_LOWER
 }
 
 
@@ -238,6 +272,28 @@ pub fn year() -> u16 {
 mod test {
 	use super::*;
 	use std::time::SystemTime;
+
+	#[test]
+	fn t_needle3() {
+		// The ASCII lower bit mask is meant to apply to the last three bytes
+		// (LE).
+		assert_eq!(
+			ASCII_LOWER.to_le_bytes(),
+			[0, 0b0010_0000, 0b0010_0000, 0b0010_0000],
+		);
+
+		// We lowercase month/weekday abbreviation search needles
+		// unconditionally — non-letters won't match regardless — so just need
+		// to make sure it works for upper/lower letters.
+		assert_eq!(
+			needle3(b'J', b'E', b'B'),
+			u32::from_le_bytes([0, b'j', b'e', b'b']),
+		);
+		assert_eq!(
+			needle3(b'j', b'e', b'b'),
+			u32::from_le_bytes([0, b'j', b'e', b'b']),
+		);
+	}
 
 	#[test]
 	fn t_unixtime() {

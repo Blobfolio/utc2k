@@ -2,18 +2,26 @@
 # UTC2K
 */
 
-pub(super) mod parse;
+mod abacus;
+
+#[cfg(feature = "local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
+pub(super) mod local;
 
 use crate::{
-	Abacus,
+	DateChar,
 	DAY_IN_SECONDS,
 	HOUR_IN_SECONDS,
+	JULIAN_OFFSET,
 	macros,
 	MINUTE_IN_SECONDS,
 	Month,
 	unixtime,
 	Utc2kError,
 	Weekday,
+	Year,
+	YEAR_IN_DAYS_P2,
+	YEAR_IN_DAYS_P4,
 };
 use std::{
 	borrow::Cow,
@@ -28,46 +36,7 @@ use std::{
 	},
 	str::FromStr,
 };
-
-
-
-/// # Double-Digit ASCII.
-static DD: [[u8; 2]; 100] = [
-	[48, 48], [48, 49], [48, 50], [48, 51], [48, 52], [48, 53], [48, 54], [48, 55], [48, 56], [48, 57],
-	[49, 48], [49, 49], [49, 50], [49, 51], [49, 52], [49, 53], [49, 54], [49, 55], [49, 56], [49, 57],
-	[50, 48], [50, 49], [50, 50], [50, 51], [50, 52], [50, 53], [50, 54], [50, 55], [50, 56], [50, 57],
-	[51, 48], [51, 49], [51, 50], [51, 51], [51, 52], [51, 53], [51, 54], [51, 55], [51, 56], [51, 57],
-	[52, 48], [52, 49], [52, 50], [52, 51], [52, 52], [52, 53], [52, 54], [52, 55], [52, 56], [52, 57],
-	[53, 48], [53, 49], [53, 50], [53, 51], [53, 52], [53, 53], [53, 54], [53, 55], [53, 56], [53, 57],
-	[54, 48], [54, 49], [54, 50], [54, 51], [54, 52], [54, 53], [54, 54], [54, 55], [54, 56], [54, 57],
-	[55, 48], [55, 49], [55, 50], [55, 51], [55, 52], [55, 53], [55, 54], [55, 55], [55, 56], [55, 57],
-	[56, 48], [56, 49], [56, 50], [56, 51], [56, 52], [56, 53], [56, 54], [56, 55], [56, 56], [56, 57],
-	[57, 48], [57, 49], [57, 50], [57, 51], [57, 52], [57, 53], [57, 54], [57, 55], [57, 56], [57, 57]
-];
-
-
-
-/// # Helper: `TryFrom` Unixtime For Non-u32 Formats.
-macro_rules! try_from_unixtime {
-	($($ty:ty),+) => ($(
-		impl TryFrom<$ty> for Utc2k {
-			type Error = Utc2kError;
-			fn try_from(src: $ty) -> Result<Self, Self::Error> {
-				u32::try_from(src)
-					.map(Self::from)
-					.map_err(|_| Utc2kError::Invalid)
-			}
-		}
-
-		impl TryFrom<$ty> for FmtUtc2k {
-			type Error = Utc2kError;
-			#[inline]
-			fn try_from(src: $ty) -> Result<Self, Self::Error> {
-				Utc2k::try_from(src).map(Self::from)
-			}
-		}
-	)+);
-}
+use abacus::Abacus;
 
 
 
@@ -80,7 +49,7 @@ macro_rules! try_from_unixtime {
 /// While this acts essentially as a glorified `String`, it is sized exactly
 /// and therefore requires less memory to represent. It also implements `Copy`.
 ///
-/// It follows the simple Unix date format of `YYYY-MM-DD HH:MM:SS`.
+/// It follows the simple Unix date format of `YYYY-MM-DD hh:mm:ss`.
 ///
 /// Speaking of, you can obtain an `&str` using `AsRef<str>`,
 /// `Borrow<str>`, or [`FmtUtc2k::as_str`].
@@ -107,7 +76,7 @@ macro_rules! try_from_unixtime {
 /// let utc_date = Utc2k::from(946_684_800_u32);
 /// assert_eq!(FmtUtc2k::from(utc_date), utc_date.formatted());
 /// ```
-pub struct FmtUtc2k([u8; 19]);
+pub struct FmtUtc2k([DateChar; 19]);
 
 impl AsRef<[u8]> for FmtUtc2k {
 	#[inline]
@@ -125,6 +94,16 @@ macros::display_str!(as_str FmtUtc2k);
 
 impl From<u32> for FmtUtc2k {
 	#[inline]
+	/// # From Unixtime.
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from(1_750_620_170),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn from(src: u32) -> Self { Self::from(Utc2k::from_unixtime(src)) }
 }
 
@@ -134,11 +113,34 @@ impl From<&Utc2k> for FmtUtc2k {
 }
 
 impl From<Utc2k> for FmtUtc2k {
-	fn from(src: Utc2k) -> Self {
-		let mut out = Self::default();
-		out.set_datetime(src);
-		out
-	}
+	#[inline]
+	/// # From [`Utc2k`]
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let utc = Utc2k::new(2025, 6, 22, 19, 22, 50);
+	/// assert_eq!(
+	///     FmtUtc2k::from(utc),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
+	fn from(src: Utc2k) -> Self { Self::from_utc2k(src) }
+}
+
+impl From<FmtUtc2k> for String {
+	#[inline]
+	/// # Into String.
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     String::from(FmtUtc2k::from(1_750_620_170)),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
+	fn from(src: FmtUtc2k) -> Self { src.as_str().to_owned() }
 }
 
 impl FromStr for FmtUtc2k {
@@ -163,8 +165,8 @@ impl PartialEq<FmtUtc2k> for str {
 }
 
 /// # Helper: Reciprocal `PartialEq`.
-macro_rules! eq {
-	($($ty:ty),+) => ($(
+macro_rules! fmt_eq {
+	($($ty:ty)+) => ($(
 		impl PartialEq<$ty> for FmtUtc2k {
 			#[inline]
 			fn eq(&self, other: &$ty) -> bool { <Self as PartialEq<str>>::eq(self, other) }
@@ -175,54 +177,27 @@ macro_rules! eq {
 		}
 	)+);
 }
-eq!(&str, &String, String, &Cow<'_, str>, Cow<'_, str>, &Box<str>, Box<str>);
+fmt_eq! { &str &String String &Cow<'_, str> Cow<'_, str> &Box<str> Box<str> }
 
 impl PartialOrd for FmtUtc2k {
 	#[inline]
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-impl TryFrom<&OsStr> for FmtUtc2k {
-	type Error = Utc2kError;
-
-	#[inline]
-	/// # From `OsStr`.
-	///
-	/// ```
-	/// use std::ffi::OsStr;
-	/// use utc2k::FmtUtc2k;
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::try_from(OsStr::new("2013-12-15 21:30:02")).unwrap().as_str(),
-	///     "2013-12-15 21:30:02"
-	/// );
-	/// assert_eq!(
-	///     FmtUtc2k::try_from(OsStr::new("2013-12-15")).unwrap().as_str(),
-	///     "2013-12-15 00:00:00"
-	/// );
-	/// ```
-	fn try_from(src: &OsStr) -> Result<Self, Self::Error> {
-		Utc2k::try_from(src).map(Self::from)
-	}
+/// # Helper: `TryFrom` Wrappers.
+macro_rules! fmt_try_from {
+	($($ty:ty)+) => ($(
+		impl TryFrom<$ty> for FmtUtc2k {
+			type Error = Utc2kError;
+			#[inline]
+			fn try_from(src: $ty) -> Result<Self, Self::Error> {
+				Utc2k::try_from(src).map(Self::from)
+			}
+		}
+	)+);
 }
 
-impl TryFrom<&[u8]> for FmtUtc2k {
-	type Error = Utc2kError;
-
-	#[inline]
-	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-		Utc2k::try_from(src).map(Self::from)
-	}
-}
-
-impl TryFrom<&str> for FmtUtc2k {
-	type Error = Utc2kError;
-
-	#[inline]
-	fn try_from(src: &str) -> Result<Self, Self::Error> {
-		Utc2k::try_from(src).map(Self::from)
-	}
-}
+fmt_try_from! { &[u8] &OsStr &str }
 
 /// ## Min/Max.
 impl FmtUtc2k {
@@ -234,7 +209,19 @@ impl FmtUtc2k {
 	///     "2000-01-01 00:00:00",
 	/// );
 	/// ```
-	pub const MIN: Self = Self(*b"2000-01-01 00:00:00");
+	pub const MIN: Self = Self([
+		DateChar::Digit2, DateChar::Digit0, DateChar::Digit0, DateChar::Digit0,
+		DateChar::Dash,
+		DateChar::Digit0, DateChar::Digit1,
+		DateChar::Dash,
+		DateChar::Digit0, DateChar::Digit1,
+		DateChar::Space,
+		DateChar::Digit0, DateChar::Digit0,
+		DateChar::Colon,
+		DateChar::Digit0, DateChar::Digit0,
+		DateChar::Colon,
+		DateChar::Digit0, DateChar::Digit0,
+	]);
 
 	/// # Maximum Date/Time.
 	///
@@ -244,31 +231,197 @@ impl FmtUtc2k {
 	///     "2099-12-31 23:59:59",
 	/// );
 	/// ```
-	pub const MAX: Self = Self(*b"2099-12-31 23:59:59");
+	pub const MAX: Self = Self([
+		DateChar::Digit2, DateChar::Digit0, DateChar::Digit9, DateChar::Digit9,
+		DateChar::Dash,
+		DateChar::Digit1, DateChar::Digit2,
+		DateChar::Dash,
+		DateChar::Digit3, DateChar::Digit1,
+		DateChar::Space,
+		DateChar::Digit2, DateChar::Digit3,
+		DateChar::Colon,
+		DateChar::Digit5, DateChar::Digit9,
+		DateChar::Colon,
+		DateChar::Digit5, DateChar::Digit9,
+	]);
+
+	/// # Length.
+	///
+	/// The length of the formatted datetime in string/byte form.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::MIN.as_str().len(),
+	///     FmtUtc2k::LEN,
+	/// );
+	/// ```
+	pub const LEN: usize = 19;
 }
 
 /// ## Instantiation/Reuse.
 impl FmtUtc2k {
-	#[inline]
 	#[must_use]
+	#[inline]
+	/// # From ASCII Date/Time Slice.
+	///
+	/// Try to parse a date/time value from an ASCII slice, returning a
+	/// [`FmtUtc2k`] instance if successful, `None` if not.
+	///
+	/// Note that this method will automatically clamp dates outside the
+	/// supported `2000..=2099` range to [`FmtUtc2k::MIN`]/[`FmtUtc2k::MAX`].
+	///
+	/// See [`Utc2k::from_ascii`] for a rundown of supported formats, etc.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// // Separators are flexible.
+	/// let dates: [&[u8]; 5] = [
+	///     b"20250615",   // Squished.
+	///     b"2025 06 15", // Spaced.
+	///     b"2025/06/15", // Slashed.
+	///     b"2025-06-15", // Dashed.
+	///     b"2025#06#15", // Hashed? Haha.
+	/// ];
+	/// for raw in dates {
+	///     assert_eq!(
+	///         FmtUtc2k::from_ascii(raw).unwrap().as_str(),
+	///         "2025-06-15 00:00:00",
+	/// //                  ^  ^  ^ Time defaults to midnight.
+	///     );
+	/// }
+	///
+	/// // Same for datetimes.
+	/// let datetimes: [&[u8]; 8] = [
+	///     b"20250615123001",
+	///     b"2025-06-15 12:30:01",
+	///     b"2025-06-15T12:30:01Z",
+	///     b"2025/06/15:12:30:01 GMT",
+	///     b"2025/06/15:12:30:01 UT",
+	///     b"2025/06/15:12:30:01 UTC",
+	///     b"2025/06/15 12:30:01.000 +0000",
+	///     b"2025/06/15 12:30:01+0000",
+	/// ];
+	/// for raw in datetimes {
+	///     assert_eq!(
+	///         FmtUtc2k::from_ascii(raw).unwrap().as_str(),
+	///         "2025-06-15 12:30:01",
+	///     );
+	/// }
+	/// ```
+	pub const fn from_ascii(src: &[u8]) -> Option<Self> {
+		if let Some(parts) = Utc2k::from_ascii(src) {
+			Some(Self::from_utc2k(parts))
+		}
+		else { None }
+	}
+
+	#[must_use]
+	#[inline]
+	/// # From [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822) Date/Time Slice.
+	///
+	/// Try to parse a date/time value from a [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822)-formatted
+	/// byte slice, returning a [`FmtUtc2k`] instance if successful, `None` if
+	/// not.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// // This spec tolerates a lot of variation…
+	/// let dates: [&[u8]; 7] = [
+	///     b"Tue, 1 Jul 2003 10:52:37 +0000",  // Single-digit day.
+	///     b"Tue,  1 Jul 2003 10:52:37 +0000", // Digit/space substitution.
+	///     b"Tue, 01 Jul 2003 10:52:37 +0000", // Leading zero.
+	///     b"1 Jul 2003 10:52:37",             // No weekday or offset.
+	///     b"01 Jul 2003 10:52:37",            // Same, but w/ leading zero.
+	///     b"Tue, 01 Jul 2003 03:52:37 -0700", // Negative UTC offset.
+	///     b"Tue, 1 Jul 2003 15:22:37 +0430",  // Positive UTC offset.
+	/// ];
+	///
+	/// for raw in dates {
+	///     assert_eq!(
+	///         FmtUtc2k::from_rfc2822(raw).unwrap().as_str(),
+	///         "2003-07-01 10:52:37",
+	///     );
+	/// }
+	///
+	/// // The same variation exists for date-only representations too.
+	/// let dates: [&[u8]; 5] = [
+	///     b"Tue, 1 Jul 2003",  // Single-digit day.
+	///     b"Tue,  1 Jul 2003", // Digit/space substitution.
+	///     b"Tue, 01 Jul 2003", // Leading zero.
+	///     b"1 Jul 2003",       // No weekday or offset.
+	///     b"01 Jul 2003",      // Same, but w/ leading zero.
+	/// ];
+	///
+	/// for raw in dates {
+	///     assert_eq!(
+	///         FmtUtc2k::from_rfc2822(raw).unwrap().as_str(),
+	///         "2003-07-01 00:00:00",
+	///     );
+	/// }
+	/// ```
+	pub const fn from_rfc2822(src: &[u8]) -> Option<Self> {
+		if let Some(parts) = Utc2k::from_rfc2822(src) {
+			Some(Self::from_utc2k(parts))
+		}
+		else { None }
+	}
+
+	#[must_use]
+	#[inline]
+	/// # From Timestamp.
+	///
+	/// Initialize a new [`FmtUtc2k`] from a unix timestamp, saturating to
+	/// [`FmtUtc2k::MIN`]/[`FmtUtc2k::MAX`] if out of range.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::FmtUtc2k;
+	///
+	/// assert_eq!(
+	///     FmtUtc2k::from_unixtime(1_748_672_925).as_str(),
+	///     "2025-05-31 06:28:45",
+	/// );
+	///
+	/// // Same as the above, but using the `From<u32>` impl.
+	/// assert_eq!(
+	///     FmtUtc2k::from(1_748_672_925_u32).as_str(),
+	///     "2025-05-31 06:28:45",
+	/// );
+	///
+	/// // Out of range values will saturate to the boundaries of the
+	/// // century.
+	/// assert_eq!(
+	///     FmtUtc2k::from_unixtime(0).as_str(),
+	///     "2000-01-01 00:00:00",
+	/// );
+	/// assert_eq!(
+	///     FmtUtc2k::from_unixtime(u32::MAX).as_str(),
+	///     "2099-12-31 23:59:59",
+	/// );
+	/// ```
+	pub const fn from_unixtime(src: u32) -> Self {
+		Self::from_utc2k(Utc2k::from_unixtime(src))
+	}
+
+	#[must_use]
+	#[inline]
 	/// # Now.
 	///
 	/// This returns an instance using the current unixtime as the seed.
-	pub fn now() -> Self { Self::from(Utc2k::now()) }
+	pub fn now() -> Self { Self::from_utc2k(Utc2k::now()) }
 
-	#[cfg(feature = "local")]
-	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-	#[must_use]
-	/// # Now (Local).
-	///
-	/// This returns an instance using the current, local time as the seed. If
-	/// no local offset can be determined, this is equivalent to [`FmtUtc2k::now`].
-	///
-	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
-	/// limitations.
-	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
-
-	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+	#[inline]
 	/// # Set Date/Time.
 	///
 	/// This can be used to recycle an existing buffer.
@@ -285,12 +438,14 @@ impl FmtUtc2k {
 	/// let mut fmt = FmtUtc2k::default();
 	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	///
-	/// fmt.set_datetime(Utc2k::from(Utc2k::MAX_UNIXTIME));
+	/// fmt.set_datetime(Utc2k::MAX);
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
+	///
+	/// fmt.set_datetime(Utc2k::MIN);
+	/// assert_eq!(fmt.as_str(), "2000-01-01 00:00:00");
 	/// ```
-	pub fn set_datetime(&mut self, src: Utc2k) {
-		let (y, m, d, hh, mm, ss) = src.parts();
-		self.set_parts_unchecked((y - 2000) as u8, m, d, hh, mm, ss);
+	pub const fn set_datetime(&mut self, src: Utc2k) {
+		self.set_parts_unchecked(src.y, src.m, src.d, src.hh, src.mm, src.ss);
 	}
 
 	/// # Set Parts.
@@ -316,24 +471,9 @@ impl FmtUtc2k {
 	/// fmt.set_parts(2010, 10, 32, 12, 33, 59);
 	/// assert_eq!(fmt.as_str(), "2010-11-01 12:33:59");
 	/// ```
-	pub fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
+	pub const fn set_parts(&mut self, y: u16, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
 		let (y, m, d, hh, mm, ss) = Abacus::new(y, m, d, hh, mm, ss).parts();
 		self.set_parts_unchecked(y, m, d, hh, mm, ss);
-	}
-
-	/// # Set Parts (Unchecked).
-	///
-	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
-	/// been applied by the time this method is called.
-	///
-	/// From here, it's just straight ASCII-writing.
-	fn set_parts_unchecked(&mut self, y: u8, m: u8, d: u8, hh: u8, mm: u8, ss: u8) {
-		for (chunk, v) in self.0[1..].chunks_exact_mut(3).zip([y, m, d, hh, mm, ss]) {
-			chunk[1..].copy_from_slice(DD[usize::from(v)].as_slice());
-		}
-
-		// Additionally make sure the result is ASCII.
-		debug_assert!(self.0.is_ascii(), "Bug: Datetime is not ASCII.");
 	}
 
 	#[inline]
@@ -365,7 +505,7 @@ impl FmtUtc2k {
 	#[must_use]
 	/// # As Bytes.
 	///
-	/// Return a byte string slice in `YYYY-MM-DD HH:MM:SS` format.
+	/// Return a byte string slice in `YYYY-MM-DD hh:mm:ss` format.
 	///
 	/// A byte slice can also be obtained using [`FmtUtc2k::as_ref`].
 	///
@@ -377,17 +517,13 @@ impl FmtUtc2k {
 	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_bytes(), b"2099-12-31 23:59:59");
 	/// ```
-	pub const fn as_bytes(&self) -> &[u8] { &self.0 }
+	pub const fn as_bytes(&self) -> &[u8] { DateChar::as_bytes(self.0.as_slice()) }
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # As Str.
 	///
-	/// Return a string slice in `YYYY-MM-DD HH:MM:SS` format.
-	///
-	/// A string slice can also be obtained using [`FmtUtc2k::as_ref`] or
-	/// through dereferencing.
+	/// Return a string slice in `YYYY-MM-DD hh:mm:ss` format.
 	///
 	/// ## Examples
 	///
@@ -397,12 +533,8 @@ impl FmtUtc2k {
 	/// let fmt = FmtUtc2k::MAX;
 	/// assert_eq!(fmt.as_str(), "2099-12-31 23:59:59");
 	/// ```
-	pub const fn as_str(&self) -> &str {
-		// Safety: datetimes are valid ASCII.
-		unsafe { std::str::from_utf8_unchecked(&self.0) }
-	}
+	pub const fn as_str(&self) -> &str { DateChar::as_str(self.0.as_slice()) }
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Date Bits.
@@ -419,29 +551,10 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.date(), "2099-12-31");
 	/// ```
 	pub const fn date(&self) -> &str {
-		if let Some(v) = self.0.first_chunk::<10>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2].is_ascii_digit() &&
-				v[3].is_ascii_digit() &&
-				v[4] == b'-' &&
-				v[5].is_ascii_digit() &&
-				v[6].is_ascii_digit() &&
-				v[7] == b'-' &&
-				v[8].is_ascii_digit() &&
-				v[9].is_ascii_digit(),
-				"Bug: Date is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "2000-01-01" }
+		let (out, _) = self.0.split_at(10);
+		DateChar::as_str(out)
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Year Bit.
@@ -458,28 +571,15 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.year(), "2099");
 	/// ```
 	pub const fn year(&self) -> &str {
-		if let Some(v) = self.0.first_chunk::<4>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2].is_ascii_digit() &&
-				v[3].is_ascii_digit(),
-				"Bug: Year is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "2000" }
+		let (out, _) = self.0.split_at(4);
+		DateChar::as_str(out)
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
 	#[inline]
 	#[must_use]
 	/// # Just the Time Bits.
 	///
-	/// This returns the time as a string slice in `HH:MM:SS` format.
+	/// This returns the time as a string slice in `hh:mm:ss` format.
 	///
 	/// ## Examples
 	///
@@ -491,35 +591,62 @@ impl FmtUtc2k {
 	/// assert_eq!(fmt.time(), "23:59:59");
 	/// ```
 	pub const fn time(&self) -> &str {
-		if let Some(v) = self.0.last_chunk::<8>() {
-			debug_assert!(
-				v[0].is_ascii_digit() &&
-				v[1].is_ascii_digit() &&
-				v[2] == b':' &&
-				v[3].is_ascii_digit() &&
-				v[4].is_ascii_digit() &&
-				v[5] == b':' &&
-				v[6].is_ascii_digit() &&
-				v[7].is_ascii_digit(),
-				"Bug: Time is not ASCII.",
-			);
-
-			// Safety: datetimes are valid ASCII.
-			unsafe { std::str::from_utf8_unchecked(v.as_slice()) }
-		}
-		// Unreachable.
-		else { "00:00:00" }
+		let (_, out) = self.0.split_at(11);
+		DateChar::as_str(out)
 	}
 }
 
 /// ## Formatting.
 impl FmtUtc2k {
 	#[must_use]
+	/// # To RFC2822.
+	///
+	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let date = FmtUtc2k::from(Utc2k::new(2003, 7, 1, 10, 52, 37));
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Tue, 01 Jul 2003 10:52:37 +0000",
+	/// //        ^ This implementation zero-pads short day
+	/// //          numbers rather than truncating them…
+	/// );
+	///
+	/// let date = FmtUtc2k::from(Utc2k::new(2036, 12, 15, 16, 30, 55));
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Mon, 15 Dec 2036 16:30:55 +0000",
+	/// //   ^-----------------------------^ …to keep the output
+	/// //                                   length consistent.
+	/// );
+	/// ```
+	pub fn to_rfc2822(&self) -> String {
+		let utc = Utc2k::from_fmtutc2k(*self);
+
+		let mut out = String::with_capacity(31);
+		out.push_str(utc.weekday().abbreviation());
+		out.push_str(", ");
+		out.push(self.0[8].as_char());
+		out.push(self.0[9].as_char());
+		out.push(' ');
+		out.push_str(utc.month().abbreviation());
+		out.push(' ');
+		out.push_str(self.year());
+		out.push(' ');
+		out.push_str(self.time());
+		out.push_str(" +0000");
+
+		out
+	}
+
+	#[must_use]
 	/// # To RFC3339.
 	///
 	/// Return a string formatted according to [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339).
-	///
-	/// Note: this method is allocating.
 	///
 	/// ## Examples
 	///
@@ -531,6 +658,13 @@ impl FmtUtc2k {
 	///
 	/// fmt.set_unixtime(Utc2k::MAX_UNIXTIME);
 	/// assert_eq!(fmt.to_rfc3339(), "2099-12-31T23:59:59Z");
+	///
+	/// // The reverse operation — parsing an RFC3339 datetime string into
+	/// // a FmtUtc2k — can be done using `FmtUtc2k::from_ascii`.
+	/// assert_eq!(
+	///     FmtUtc2k::from_ascii(fmt.to_rfc3339().as_bytes()),
+	///     Some(fmt),
+	/// );
 	/// ```
 	pub fn to_rfc3339(&self) -> String {
 		let mut out = String::with_capacity(20);
@@ -540,104 +674,47 @@ impl FmtUtc2k {
 		out.push('Z');
 		out
 	}
+}
 
-	#[inline]
-	/// # From RFC2822.
-	///
-	/// This method can be used to construct a `FmtUtc2k` from an RFC2822-formatted
-	/// string. Variations with and without a leading weekday, and with and
-	/// without a trailing offset, are supported. If an offset is included, the
-	/// datetime will be adjusted accordingly to make it properly UTC.
-	///
-	/// Note: missing offsets are meant to imply "localized" time, but as this
-	/// library has no timezone handling, strings without any "+HHMM" at the
-	/// end will be parsed as if they were already in UTC.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::{FmtUtc2k, Utc2k};
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0000"),
-	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
-	/// );
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("Tue, 01 Jul 2003 10:52:37 +0000"),
-	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
-	/// );
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("1 Jul 2003 10:52:37"),
-	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
-	/// );
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("01 Jul 2003 10:52:37"),
-	///     FmtUtc2k::try_from("2003-07-01 10:52:37").ok(),
-	/// );
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("Tue, 10 Jul 2003 10:52:37 -0700"),
-	///     FmtUtc2k::try_from("2003-07-10 17:52:37").ok(),
-	/// );
-	///
-	/// assert_eq!(
-	///     FmtUtc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0430"),
-	///     FmtUtc2k::try_from("2003-07-01 06:22:37").ok(),
-	/// );
-	/// ```
-	pub fn from_rfc2822<S>(src: S) -> Option<Self>
-	where S: AsRef<str> {
-		Utc2k::from_rfc2822(src).map(Self::from)
+/// ## Internal Helpers.
+impl FmtUtc2k {
+	#[must_use]
+	/// # From `Utc2k`.
+	const fn from_utc2k(src: Utc2k) -> Self {
+		Self([
+			DateChar::Digit2, DateChar::Digit0, DateChar::from_digit(src.y as u8 / 10), DateChar::from_digit(src.y as u8),
+			DateChar::Dash,
+			DateChar::from_digit(src.m as u8 / 10), DateChar::from_digit(src.m as u8),
+			DateChar::Dash,
+			DateChar::from_digit(src.d / 10), DateChar::from_digit(src.d),
+			DateChar::Space,
+			DateChar::from_digit(src.hh / 10), DateChar::from_digit(src.hh),
+			DateChar::Colon,
+			DateChar::from_digit(src.mm / 10), DateChar::from_digit(src.mm),
+			DateChar::Colon,
+			DateChar::from_digit(src.ss / 10), DateChar::from_digit(src.ss)
+		])
 	}
 
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
-	#[must_use]
-	/// # To RFC2822.
+	/// # Set Parts (Unchecked).
 	///
-	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
+	/// Carry-overs, saturating, and 4-to-2-digit year-chopping have already
+	/// been applied by the time this method is called.
 	///
-	/// There are a couple things to consider:
-	/// * This method is allocating;
-	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::{FmtUtc2k, Utc2k};
-	///
-	/// let date = FmtUtc2k::from(Utc2k::new(2003, 7, 1, 10, 52, 37));
-	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
-	/// assert_eq!(date.to_rfc2822(), Utc2k::new(2003, 7, 1, 10, 52, 37).to_rfc2822());
-	///
-	/// let date = FmtUtc2k::from(Utc2k::new(2020, 6, 13, 8, 8, 8));
-	/// assert_eq!(date.to_rfc2822(), "Sat, 13 Jun 2020 08:08:08 +0000");
-	/// ```
-	pub fn to_rfc2822(&self) -> String {
-		let utc = Utc2k::from(self);
-		let weekday: [u8; 3] = utc.weekday().abbreviation_bytes();
-		let month: [u8; 3] = utc.month_enum().abbreviation_bytes();
-
-		// Working from bytes is ugly, but performs much better than any
-		// string-based operations.
-		let out: Vec<u8> = vec![
-			weekday[0], weekday[1], weekday[2],
-			b',', b' ',
-			self.0[8], self.0[9],
-			b' ',
-			month[0], month[1], month[2],
-			b' ',
-			b'2', b'0', self.0[2], self.0[3],
-			b' ',
-			self.0[11], self.0[12], self.0[13], self.0[14], self.0[15], self.0[16], self.0[17], self.0[18],
-			b' ', b'+', b'0', b'0', b'0', b'0'
-		];
-
-		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { String::from_utf8_unchecked(out) }
+	/// From here, it's just straight ASCII-writing.
+	const fn set_parts_unchecked(&mut self, y: Year, m: Month, d: u8, hh: u8, mm: u8, ss: u8) {
+		self.0[2] =  DateChar::from_digit(y as u8 / 10);
+		self.0[3] =  DateChar::from_digit(y as u8);
+		self.0[5] =  DateChar::from_digit(m as u8 / 10);
+		self.0[6] =  DateChar::from_digit(m as u8);
+		self.0[8] =  DateChar::from_digit(d / 10);
+		self.0[9] =  DateChar::from_digit(d);
+		self.0[11] = DateChar::from_digit(hh / 10);
+		self.0[12] = DateChar::from_digit(hh);
+		self.0[14] = DateChar::from_digit(mm / 10);
+		self.0[15] = DateChar::from_digit(mm);
+		self.0[17] = DateChar::from_digit(ss / 10);
+		self.0[18] = DateChar::from_digit(ss);
 	}
 }
 
@@ -647,13 +724,10 @@ impl FmtUtc2k {
 /// # UTC2K.
 ///
 /// This is a lightweight date/time object for UTC date ranges within the
-/// current century (e.g. `2000-01-01 00:00:00` to `2099-12-31 23:59:59`).
+/// current century (i.e. `2000-01-01 00:00:00..=2099-12-31 23:59:59`).
 ///
-/// Values outside this range are saturated to fit, unless using
-/// [`Utc2k::checked_from_unixtime`].
-///
-/// To instantiate from a UTC unix timestamp, use `From<u32>`. To try to parse
-/// from a `YYYY-MM-DD HH:MM:SS` string, use `TryFrom<&str>` or `FromStr`.
+/// Values outside this range are saturated to fit, unless using methods like
+/// [`Utc2k::checked_from_ascii`] or [`Utc2k::checked_from_unixtime`].
 ///
 /// To manually construct from individual parts, you can just call [`Utc2k::new`].
 ///
@@ -675,16 +749,16 @@ impl FmtUtc2k {
 /// // String parsing is fallible, but flexible. So long as the numbers we
 /// // need are in the right place, it will be fine.
 /// assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
-/// assert!(Utc2k::try_from("2099-12-31T23:59:59.0000").is_ok()); // Also fine.
 /// assert!(Utc2k::try_from("2099-12-31").is_ok()); // Also fine, but midnight.
+/// assert!(Utc2k::try_from("2099-12-31T23:59:59.1234").is_ok()); // Also fine, but floored.
 /// assert!(Utc2k::try_from("January 1, 2010").is_err()); // Nope!
 /// ```
 pub struct Utc2k {
 	/// # Year.
-	y: u8,
+	y: Year,
 
 	/// # Month.
-	m: u8,
+	m: Month,
 
 	/// # Day.
 	d: u8,
@@ -703,13 +777,46 @@ impl Add<u32> for Utc2k {
 	type Output = Self;
 
 	#[inline]
+	/// # Add Seconds.
+	///
+	/// ```
+	/// use utc2k::{DAY_IN_SECONDS, Utc2k};
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	///
+	/// assert_eq!(
+	///     (utc + DAY_IN_SECONDS * 2).parts(),
+	///     (2025, 6, 24, 19, 22, 50),
+	/// );
+	/// ```
 	fn add(self, other: u32) -> Self {
-		Self::from_abacus(Abacus::from(self).plus_seconds(other))
+		Self::from_abacus(Abacus::from_utc2k(self).plus_seconds(other))
 	}
 }
 
 impl AddAssign<u32> for Utc2k {
 	#[inline]
+	/// # Add Seconds.
+	///
+	/// ```
+	/// use utc2k::{DAY_IN_SECONDS, Utc2k};
+	///
+	/// let mut utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	///
+	/// utc += DAY_IN_SECONDS * 2;
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 24, 19, 22, 50),
+	/// );
+	/// ```
 	fn add_assign(&mut self, other: u32) { *self = *self + other; }
 }
 
@@ -720,8 +827,19 @@ impl Default for Utc2k {
 
 impl fmt::Display for Utc2k {
 	#[inline]
+	/// # Display.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     utc.to_string(),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from(*self), f)
+		<FmtUtc2k as fmt::Display>::fmt(&FmtUtc2k::from_utc2k(*self), f)
 	}
 }
 
@@ -750,7 +868,35 @@ impl From<&FmtUtc2k> for Utc2k {
 
 impl From<FmtUtc2k> for Utc2k {
 	#[inline]
+	/// # From [`FmtUtc2k`].
+	///
+	/// ```
+	/// use utc2k::{FmtUtc2k, Utc2k};
+	///
+	/// let fmt = FmtUtc2k::from(1_750_620_170);
+	/// let utc = Utc2k::from(fmt);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	/// ```
 	fn from(src: FmtUtc2k) -> Self { Self::from_fmtutc2k(src) }
+}
+
+impl From<Utc2k> for String {
+	#[inline]
+	/// # Into String.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170);
+	/// assert_eq!(
+	///     String::from(utc),
+	///     "2025-06-22 19:22:50",
+	/// );
+	/// ```
+	fn from(src: Utc2k) -> Self { Self::from(FmtUtc2k::from_utc2k(src)) }
 }
 
 impl FromStr for Utc2k {
@@ -763,7 +909,7 @@ impl FromStr for Utc2k {
 impl Ord for Utc2k {
 	/// # Compare.
 	///
-	/// Compare two dates.
+	/// Compare two date/times.
 	///
 	/// ## Examples
 	///
@@ -776,6 +922,7 @@ impl Ord for Utc2k {
 	///
 	/// assert!(date1 > date2);
 	/// assert!(date1 < date3);
+	/// assert!(date2 < date3);
 	/// ```
 	fn cmp(&self, other: &Self) -> Ordering {
 		let other = *other;
@@ -825,15 +972,15 @@ impl Sub<u32> for Utc2k {
 	///     Utc2k::new(2019, 12, 31, 23, 10, 20),
 	/// );
 	/// ```
-	fn sub(self, other: u32) -> Self { self.minus_seconds(other) }
+	fn sub(self, other: u32) -> Self {
+		Self::from_unixtime(self.unixtime().saturating_sub(other))
+	}
 }
 
 impl SubAssign<u32> for Utc2k {
 	#[inline]
 	fn sub_assign(&mut self, other: u32) { *self = *self - other; }
 }
-
-try_from_unixtime!(i32, u64, i64, usize, isize);
 
 impl TryFrom<&OsStr> for Utc2k {
 	type Error = Utc2kError;
@@ -863,34 +1010,11 @@ impl TryFrom<&OsStr> for Utc2k {
 impl TryFrom<&[u8]> for Utc2k {
 	type Error = Utc2kError;
 
-	#[expect(clippy::option_if_let_else, reason = "Too messy.")]
-	/// # Parse Slice.
-	///
-	/// This will attempt to construct a [`Utc2k`] from a date/time or date
-	/// slice. See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
-	/// information.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::try_from(&b"2021/06/25"[..]).unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// let date = Utc2k::try_from(&b"2021-06-25 13:15:25.0000"[..]).unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
-	///
-	/// assert!(Utc2k::try_from(&b"2021-06-applesauces"[..]).is_err());
-	/// ```
-	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-		if let Some(b) = bytes.first_chunk::<19>() {
-			parse::parts_from_datetime(b)
-		}
-		else if let Some(b) = bytes.first_chunk::<10>() {
-			parse::parts_from_date(b)
-		}
-		else { Err(Utc2kError::Invalid) }
+	#[inline]
+	fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+		Abacus::from_ascii(src)
+			.map(Self::from_abacus)
+			.ok_or(Utc2kError::Invalid)
 	}
 }
 
@@ -898,40 +1022,36 @@ impl TryFrom<&str> for Utc2k {
 	type Error = Utc2kError;
 
 	#[inline]
-	/// # Parse String.
-	///
-	/// This will attempt to construct a [`Utc2k`] from a date/time or date
-	/// string. Parsing is naive; only the positions where numbers are
-	/// expected will be looked at.
-	///
-	/// String length is used to determine whether or not the value should be
-	/// parsed as a full date/time (19) or just a date (10).
-	///
-	/// See [`Utc2k::from_datetime_str`] and [`Utc2k::from_date_str`] for more
-	/// information.
-	///
-	/// ## Examples
+	/// # From String.
 	///
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// let date = Utc2k::try_from("2021/06/25").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// let date = Utc2k::try_from("2021-06-25 13:15:25.0000").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
-	///
-	/// // The `FromStr` impl is an alias of `TryFrom<&str>` so can be used to
-	/// // the same end:
-	/// let date2 = "2021-06-25 13:15:25.0000".parse::<Utc2k>().unwrap();
-	/// assert_eq!(date, date2);
-	///
-	/// // Really bad strings won't parse.
-	/// assert!(Utc2k::try_from("2021-06-applesauces").is_err());
+	/// let utc = Utc2k::try_from("2025-06-22 19:22:50");
+	/// assert_eq!(
+	///     utc.unwrap().parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		Self::try_from(src.as_bytes())
 	}
+}
+
+impl From<Utc2k> for u32 {
+	#[inline]
+	/// # From Unixtime.
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let utc = Utc2k::from(1_750_620_170_u32);
+	/// assert_eq!(
+	///     utc.parts(),
+	///     (2025, 6, 22, 19, 22, 50),
+	/// );
+	/// ```
+	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
 
 /// ## Min/Max.
@@ -944,7 +1064,7 @@ impl Utc2k {
 	///     "2000-01-01 00:00:00",
 	/// );
 	/// ```
-	pub const MIN: Self = Self { y: 0, m: 1, d: 1, hh: 0, mm: 0, ss: 0 };
+	pub const MIN: Self = Self { y: Year::Y2k00, m: Month::January, d: 1, hh: 0, mm: 0, ss: 0 };
 
 	/// # Maximum Date/Time.
 	///
@@ -954,7 +1074,7 @@ impl Utc2k {
 	///     "2099-12-31 23:59:59",
 	/// );
 	/// ```
-	pub const MAX: Self = Self { y: 99, m: 12, d: 31, hh: 23, mm: 59, ss: 59 };
+	pub const MAX: Self = Self { y: Year::Y2k99, m: Month::December, d: 31, hh: 23, mm: 59, ss: 59 };
 
 	/// # Minimum Unix Timestamp.
 	///
@@ -1010,12 +1130,206 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # From ASCII Date/Time Slice.
+	///
+	/// Try to parse a date/time value from an ASCII slice, returning a
+	/// [`Utc2k`] instance if successful, `None` if not.
+	///
+	/// Note that this method will automatically clamp dates outside the
+	/// supported `2000..=2099` range to [`Utc2k::MIN`]/[`Utc2k::MAX`].
+	///
+	/// If you'd rather out-of-range values "fail" instead, use
+	/// [`Utc2k::checked_from_ascii`].
+	///
+	/// ## Supported Formats.
+	///
+	/// This method can be used to parse dates and datetimes — but not times
+	/// by themselves — from formats that A) order the components biggest to
+	/// smallest; and B) use four digits to express the year, and two digits
+	/// for everything else.
+	///
+	/// Digits can either be squished together like `YYYYMMDD` or
+	/// `YYYYMMDDhhmmss`, or separated by single non-digit bytes, like
+	/// `YYYY/MM/DD` or `YYYY-MM-DD hh:mm:ss`.
+	///
+	/// (Times can technically end `…ss.ffff`, but [`Utc2k`] doesn't support
+	/// fractional seconds; they're ignored if present.)
+	///
+	/// Complete datetimes can optionally end with "Z", " UT", " UTC", or
+	/// " GMT" — all of which are ignored — or a fixed UTC offset of the
+	/// `±hhmm` variety which, if present, will be parsed and factored into
+	/// the result. (Fixed offsets can also be written like "GMT±hhmm" or
+	/// "UTC±hhmm".)
+	///
+	/// Parsing will fail for sources containing any _other_ random trailing
+	/// data, including things like "CST"-style time zone abbreviations.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // Separators are flexible.
+	/// let dates: [&[u8]; 5] = [
+	///     b"20250615",   // Squished.
+	///     b"2025 06 15", // Spaced.
+	///     b"2025/06/15", // Slashed.
+	///     b"2025-06-15", // Dashed.
+	///     b"2025#06#15", // Hashed? Haha.
+	/// ];
+	/// for raw in dates {
+	///     assert_eq!(
+	///         Utc2k::from_ascii(raw).unwrap().parts(),
+	///         (2025, 6, 15, 0, 0, 0),
+	/// //                    ^  ^  ^ Time defaults to midnight.
+	///     );
+	/// }
+	///
+	/// // Same for datetimes.
+	/// let datetimes: [&[u8]; 11] = [
+	///     b"20250615123001",
+	///     b"2025-06-15 12:30:01",
+	///     b"2025-06-15T12:30:01Z",
+	///     b"2025/06/15:12:30:01 GMT",
+	///     b"2025/06/15:12:30:01 GMT+0000", // Redundant.
+	///     b"2025/06/15:12:30:01gmt", // Space/case-insensitive.
+	///     b"2025/06/15:12:30:01 UT",
+	///     b"2025/06/15:12:30:01 UTC",
+	///     b"2025/06/15:12:30:01 UTC+0000", // Redundant.
+	///     b"2025/06/15 12:30:01.000 +0000",
+	///     b"2025/06/15 12:30:01+0000",
+	/// ];
+	/// for raw in datetimes {
+	///     assert_eq!(
+	///         Utc2k::from_ascii(raw).unwrap().parts(),
+	///         (2025, 6, 15, 12, 30, 1),
+	///     );
+	/// }
+	///
+	/// // Not everything will work out…
+	/// let bad: [&[u8]; 9] = [
+	///     b"2025-06-15 123001", // Formats cannot mix-and-match
+	///     b"2025-06-15123001",  // squished/separated.
+	///     b"20250615 12:30:01",
+	///     b"2025061512:30:01",
+	///     b"2025-01-01Z",       // Date-only strings cannot contain
+	///     b"2025-01-01 +0000",  // tz/offset details.
+	///     b"2025-01-01 UTC",
+	///     b"2025-01-01 00:00:00 PDT", // Only UTC-related identifiers are
+	///     b"2025-01-01 00:00:00 EST", // supported.
+	/// ];
+	/// for raw in bad {
+	///     assert!(Utc2k::from_ascii(raw).is_none());
+	/// }
+	///
+	/// // UTC offsets will get factored in accordingly.
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"2025-06-15 12:30:01 +0330")
+	///         .unwrap()
+	///         .parts(),
+	///     (2025, 6, 15, 9, 0, 1),
+	/// );
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"2025-06-15T12:30:01.54321-0700")
+	///         .unwrap() //                       ^----^ Ignored.
+	///         .parts(),
+	///     (2025, 6, 15, 19, 30, 1),
+	/// );
+	///
+	/// // The input doesn't have to follow calendar/clock grouping
+	/// // conventions, but the output always will.
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"2000-13-10 24:60:61")
+	///         .unwrap() //         ^     ^  ^  ^ Logical "overflow".
+	///         .parts(),
+	///     (2001, 1, 11, 1, 1, 1),
+	/// //   ^     ^  ^   ^  ^  ^ Realigned.
+	/// );
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"2050-02-00")
+	///         .unwrap() //            ^ Logical "underflow".
+	///         .parts(),
+	///     (2050, 1, 31, 0, 0, 0),
+	/// //         ^  ^ Realigned.
+	/// );
+	///
+	/// // Returned values are clamped to the `2000..=2099` range.
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"1994 04 08"),
+	///     Some(Utc2k::MIN), // 2000-01-01 00:00:00
+	/// );
+	/// assert_eq!(
+	///     Utc2k::from_ascii(b"3000/01/01"),
+	///     Some(Utc2k::MAX), // 2099-12-31 23:59:59
+	/// );
+	/// ```
+	pub const fn from_ascii(src: &[u8]) -> Option<Self> {
+		if let Some(parts) = Abacus::from_ascii(src) {
+			Some(Self::from_abacus(parts))
+		}
+		else { None }
+	}
+
+	#[must_use]
+	/// # From [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822) Date/Time Slice.
+	///
+	/// Try to parse a date/time value from a [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822)-formatted
+	/// byte slice, returning a [`Utc2k`] instance if successful, `None` if
+	/// not.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// // This spec tolerates a lot of variation…
+	/// let dates: [&[u8]; 7] = [
+	///     b"Tue, 1 Jul 2003 10:52:37 +0000",  // Single-digit day.
+	///     b"Tue,  1 Jul 2003 10:52:37 +0000", // Digit/space substitution.
+	///     b"Tue, 01 Jul 2003 10:52:37 +0000", // Leading zero.
+	///     b"1 Jul 2003 10:52:37",             // No weekday or offset.
+	///     b"01 Jul 2003 10:52:37",            // Same, but w/ leading zero.
+	///     b"Tue, 01 Jul 2003 03:52:37 -0700", // Negative UTC offset.
+	///     b"Tue, 1 Jul 2003 15:22:37 +0430",  // Positive UTC offset.
+	/// ];
+	///
+	/// for raw in dates {
+	///     assert_eq!(
+	///         Utc2k::from_rfc2822(raw).unwrap().parts(),
+	///         (2003, 7, 1, 10, 52, 37),
+	///     );
+	/// }
+	///
+	/// // The same variation exists for date-only representations too.
+	/// let dates: [&[u8]; 5] = [
+	///     b"Tue, 1 Jul 2003",  // Single-digit day.
+	///     b"Tue,  1 Jul 2003", // Digit/space substitution.
+	///     b"Tue, 01 Jul 2003", // Leading zero.
+	///     b"1 Jul 2003",       // No weekday or offset.
+	///     b"01 Jul 2003",      // Same, but w/ leading zero.
+	/// ];
+	///
+	/// for raw in dates {
+	///     assert_eq!(
+	///         Utc2k::from_rfc2822(raw).unwrap().parts(),
+	///         (2003, 7, 1, 0, 0, 0), // Default time is midnight.
+	///     );
+	/// }
+	/// ```
+	pub const fn from_rfc2822(src: &[u8]) -> Option<Self> {
+		if let Some(parts) = Abacus::from_rfc2822(src) {
+			Some(Self::from_abacus(parts))
+		}
+		else { None }
+	}
+
+	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
+	#[expect(clippy::many_single_char_names, reason = "For readability.")]
+	#[must_use]
 	/// # From Timestamp.
 	///
 	/// Initialize a new [`Utc2k`] from a unix timestamp, saturating to
 	/// [`Utc2k::MIN_UNIXTIME`] or [`Utc2k::MAX_UNIXTIME`] if out of range.
-	///
-	/// This is identical to the `From<u32>`, but `const`.
 	///
 	/// For a non-saturating alternative, see [`Utc2k::checked_from_unixtime`].
 	///
@@ -1047,15 +1361,50 @@ impl Utc2k {
 	/// );
 	/// ```
 	pub const fn from_unixtime(src: u32) -> Self {
-		if src <= Self::MIN_UNIXTIME { Self::MIN }
-		else if src >= Self::MAX_UNIXTIME { Self::MAX }
-		else {
-			// Tease out the date parts with a lot of terrible math.
-			let (y, m, d) = parse::date_seconds(src.wrapping_div(DAY_IN_SECONDS));
-			let (hh, mm, ss) = parse::time_seconds(src % DAY_IN_SECONDS);
+		if Self::MIN_UNIXTIME < src {
+			if src < Self::MAX_UNIXTIME {
+				// Let's tackle the date first.
+				let z = src.wrapping_div(DAY_IN_SECONDS) + JULIAN_OFFSET;
+				let h: u32 = 100 * z - 25;
+				let mut a: u32 = h.wrapping_div(YEAR_IN_DAYS_P4);
+				a -= a.wrapping_div(4);
+				let mut year: u32 = (100 * a + h).wrapping_div(YEAR_IN_DAYS_P2);
+				a = a + z - 365 * year - year.wrapping_div(4);
+				let mut month: u32 = (5 * a + 456).wrapping_div(153);
 
-			Self { y, m, d, hh, mm, ss }
+				// We have enough to figure out the output day.
+				let d: u8 = (a - (153 * month - 457).wrapping_div(5)) as u8;
+
+				// The rest might need rebalancing.
+				if 12 < month {
+					year += 1;
+					month -= 12;
+				}
+
+				// Now we can finalize the year/month.
+				let y = Year::from_u8((year - 2000) as u8);
+				let m = Month::from_u8(month as u8);
+
+				// The time pieces are straightforward.
+				let mut src = src % DAY_IN_SECONDS;
+				let hh =
+					if let Some(more) = abacus::ss_split_off_hours(&mut src) {
+						more.get() as u8
+					}
+					else { 0 };
+				let mm =
+					if let Some(more) = abacus::ss_split_off_minutes(&mut src) {
+						more.get() as u8
+					}
+					else { 0 };
+
+				Self { y, m, d, hh, mm, ss: src as u8 }
+			}
+			// Too big.
+			else { Self::MAX }
 		}
+		// Too small.
+		else { Self::MIN }
 	}
 
 	#[inline]
@@ -1064,18 +1413,6 @@ impl Utc2k {
 	///
 	/// Create a new instance representing the current UTC time.
 	pub fn now() -> Self { Self::from_unixtime(unixtime()) }
-
-	#[cfg(feature = "local")]
-	#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-	#[must_use]
-	/// # Now (Local).
-	///
-	/// This returns an instance using the current, local time as the seed. If
-	/// no local offset can be determined, this is equivalent to [`Utc2k::now`].
-	///
-	/// Refer to [`LocalOffset`](crate::LocalOffset) for important caveats and
-	/// limitations.
-	pub fn now_local() -> Self { Self::from(crate::LocalOffset::now()) }
 
 	#[inline]
 	#[must_use]
@@ -1088,7 +1425,10 @@ impl Utc2k {
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// assert_eq!(Utc2k::tomorrow(), Utc2k::now() + 86_400_u32);
+	/// assert_eq!(
+	///     Utc2k::tomorrow(),
+	///     Utc2k::now() + 86_400_u32,
+	/// );
 	/// ```
 	pub fn tomorrow() -> Self { Self::from_unixtime(unixtime() + DAY_IN_SECONDS) }
 
@@ -1103,206 +1443,12 @@ impl Utc2k {
 	/// ```
 	/// use utc2k::Utc2k;
 	///
-	/// assert_eq!(Utc2k::yesterday(), Utc2k::now() - 86_400_u32);
+	/// assert_eq!(
+	///     Utc2k::yesterday(),
+	///     Utc2k::now() - 86_400_u32,
+	/// );
 	/// ```
 	pub fn yesterday() -> Self { Self::from_unixtime(unixtime() - DAY_IN_SECONDS) }
-}
-
-/// ## String Parsing.
-impl Utc2k {
-	/// # From Date/Time.
-	///
-	/// Parse a string containing a date/time in `YYYY-MM-DD HH:MM:SS` format.
-	/// This operation is naive and only looks at the positions where numbers
-	/// are expected.
-	///
-	/// In other words, `2020-01-01 00:00:00` will parse the same as
-	/// `2020/01/01 00:00:00` or even `2020-01-01 00:00:00.0000 PDT`.
-	///
-	/// As with all the other methods, dates outside the `2000..=2099` range
-	/// will be saturated (non-failing), and overflows will be carried over to
-	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// // This isn't long enough.
-	/// assert!(Utc2k::from_datetime_str("2021/06/25").is_err());
-	///
-	/// // This is fine.
-	/// let date = Utc2k::from_datetime_str("2021-06-25 13:15:25.0000").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
-	///
-	/// // This is all wrong.
-	/// assert!(Utc2k::from_datetime_str("Applebutter").is_err());
-	/// ```
-	///
-	/// ## Errors
-	///
-	/// If any of the digits fail to parse, or if the string is insufficiently
-	/// sized, an error will be returned.
-	pub fn from_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
-	where B: AsRef<[u8]> {
-		src.as_ref().first_chunk::<19>()
-			.ok_or(Utc2kError::Invalid)
-			.and_then(parse::parts_from_datetime)
-	}
-
-	/// # From Date/Time (Smooshed).
-	///
-	/// This is just like [`Utc2k::from_datetime_str`] for "smooshed" datetime
-	/// strings, i.e. `YYYYMMDDHHMMSS` (no separators).
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// // This isn't long enough.
-	/// assert!(Utc2k::from_smooshed_datetime_str("20210625").is_err());
-	///
-	/// // This is fine.
-	/// let date = Utc2k::from_smooshed_datetime_str("20210625131525").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 13:15:25");
-	///
-	/// // This *won't* work because there are separators in the way.
-	/// assert!(Utc2k::from_smooshed_datetime_str("2021-06-25 13:15:25").is_err());
-	///
-	/// // This is all wrong.
-	/// assert!(Utc2k::from_smooshed_datetime_str("Applebutterful").is_err());
-	/// ```
-	///
-	/// ## Errors
-	///
-	/// If any of the digits fail to parse, or if the string is insufficiently
-	/// sized, an error will be returned.
-	pub fn from_smooshed_datetime_str<B>(src: B) -> Result<Self, Utc2kError>
-	where B: AsRef<[u8]> {
-		src.as_ref().first_chunk::<14>()
-			.ok_or(Utc2kError::Invalid)
-			.and_then(parse::parts_from_smooshed_datetime)
-	}
-
-	/// # From Date.
-	///
-	/// Parse a string containing a date/time in `YYYY-MM-DD` format. This
-	/// operation is naive and only looks at the positions where numbers are
-	/// expected.
-	///
-	/// In other words, `2020-01-01` will parse the same as `2020/01/01` or
-	/// even `2020-01-01 13:03:33.5900 PDT`.
-	///
-	/// As with all the other methods, dates outside the `2000..=2099` range
-	/// will be saturated (non-failing), and overflows will be carried over to
-	/// the appropriate unit (e.g. 13 months will become +1 year and 1 month).
-	///
-	/// The time will always be set to midnight when using this method.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// // This is fine.
-	/// let date = Utc2k::from_date_str("2021/06/25").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// // This is fine, but the time will be ignored.
-	/// let date = Utc2k::from_date_str("2021-06-25 13:15:25.0000").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// // This is all wrong.
-	/// assert!(Utc2k::from_date_str("Applebutter").is_err());
-	/// ```
-	///
-	/// ## Errors
-	///
-	/// If any of the digits fail to parse, or if the string is insufficiently
-	/// sized, an error will be returned.
-	pub fn from_date_str<B>(src: B) -> Result<Self, Utc2kError>
-	where B: AsRef<[u8]> {
-		src.as_ref().first_chunk::<10>()
-			.ok_or(Utc2kError::Invalid)
-			.and_then(parse::parts_from_date)
-	}
-
-	/// # From Date (Smooshed).
-	///
-	/// This is just like [`Utc2k::from_date_str`] for "smooshed" date strings,
-	/// i.e. `YYYYMMDD` (no separators).
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// // This is fine.
-	/// let date = Utc2k::from_smooshed_date_str("20210625").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// // This is fine, but the time will be ignored.
-	/// let date = Utc2k::from_smooshed_date_str("20210625131525").unwrap();
-	/// assert_eq!(date.to_string(), "2021-06-25 00:00:00");
-	///
-	/// // This *won't* work because it has dashes in the way.
-	/// assert!(Utc2k::from_smooshed_date_str("2021-06-25").is_err());
-	///
-	/// // This is all wrong.
-	/// assert!(Utc2k::from_smooshed_date_str("Applebutter").is_err());
-	/// ```
-	///
-	/// ## Errors
-	///
-	/// If any of the digits fail to parse, or if the string is insufficiently
-	/// sized, an error will be returned.
-	pub fn from_smooshed_date_str<B>(src: B) -> Result<Self, Utc2kError>
-	where B: AsRef<[u8]> {
-		src.as_ref().first_chunk::<8>()
-			.copied()
-			.ok_or(Utc2kError::Invalid)
-			.and_then(parse::parts_from_smooshed_date)
-	}
-
-	/// # Parse Time.
-	///
-	/// This method attempts to parse a time string in the `HH:MM:SS` format,
-	/// returning the hours, minutes, and seconds as integers.
-	///
-	/// As with other methods in this library, only positions where numbers are
-	/// expected will be looked at. `01:02:03` will parse the same way as
-	/// `01-02-03`.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// assert_eq!(
-	///     Utc2k::parse_time_str("15:35:47"),
-	///     Ok((15, 35, 47))
-	/// );
-	///
-	/// // The hours are out of range.
-	/// assert!(Utc2k::parse_time_str("30:35:47").is_err());
-	/// ```
-	///
-	/// ## Errors
-	///
-	/// This method will return an error if any of the numeric bits are invalid
-	/// or out of range (hours must be < 24, minutes and seconds < 60).
-	pub fn parse_time_str<B>(src: B) -> Result<(u8, u8, u8), Utc2kError>
-	where B: AsRef<[u8]> {
-		if let Some(b) = src.as_ref().first_chunk::<8>() {
-			let (hh, mm, ss) = parse::hms(b.as_slice())?;
-			if hh < 24 && mm < 60 && ss < 60 {
-				return Ok((hh, mm, ss));
-			}
-		}
-
-		Err(Utc2kError::Invalid)
-	}
 }
 
 /// ## Get Parts.
@@ -1311,7 +1457,8 @@ impl Utc2k {
 	#[must_use]
 	/// # Parts.
 	///
-	/// Return the year, month, etc., parts.
+	/// Return the individual numerical components of the datetime, from years
+	/// down to seconds.
 	///
 	/// Alternatively, if you only want the date bits, use [`Utc2k::ymd`], or
 	/// if you only want the time bits, use [`Utc2k::hms`].
@@ -1327,7 +1474,7 @@ impl Utc2k {
 	pub const fn parts(self) -> (u16, u8, u8, u8, u8, u8) {
 		(
 			self.year(),
-			self.m,
+			self.m as u8,
 			self.d,
 			self.hh,
 			self.mm,
@@ -1351,7 +1498,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 5, 16, 30, 1);
 	/// assert_eq!(date.ymd(), (2010, 5, 5));
 	/// ```
-	pub const fn ymd(self) -> (u16, u8, u8) { (self.year(), self.m, self.d) }
+	pub const fn ymd(self) -> (u16, u8, u8) { (self.year(), self.m as u8, self.d) }
 
 	#[inline]
 	#[must_use]
@@ -1385,27 +1532,11 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.year(), 2010);
 	/// ```
-	pub const fn year(self) -> u16 { self.y as u16 + 2000 }
+	pub const fn year(self) -> u16 { self.y.full() }
 
 	#[inline]
 	#[must_use]
 	/// # Month.
-	///
-	/// This returns the month value.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
-	/// assert_eq!(date.month(), 5);
-	/// ```
-	pub const fn month(self) -> u8 { self.m }
-
-	#[inline]
-	#[must_use]
-	/// # Month (enum).
 	///
 	/// This returns the month value as a [`Month`].
 	///
@@ -1415,9 +1546,9 @@ impl Utc2k {
 	/// use utc2k::{Month, Utc2k};
 	///
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
-	/// assert_eq!(date.month_enum(), Month::May);
+	/// assert_eq!(date.month(), Month::May);
 	/// ```
-	pub const fn month_enum(self) -> Month { Month::from_u8(self.m) }
+	pub const fn month(self) -> Month { self.m }
 
 	#[inline]
 	#[must_use]
@@ -1502,53 +1633,13 @@ impl Utc2k {
 	/// let date = Utc2k::try_from("2021-03-15 00:00:00").unwrap();
 	/// assert!(! date.leap_year());
 	/// ```
-	pub const fn leap_year(self) -> bool {
-		/// # This Century's Leap Years.
-		const LEAP_YEARS: [bool; 100] = [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false];
-		LEAP_YEARS[self.y as usize]
-	}
-
-	#[inline]
-	#[must_use]
-	/// # Abbreviated Month Name.
-	///
-	/// Return the abbreviated name of the month, nice and pretty.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
-	/// assert_eq!(date.month_abbreviation(), "Jun");
-	/// ```
-	pub const fn month_abbreviation(self) -> &'static str {
-		self.month_enum().abbreviation()
-	}
-
-	#[inline]
-	#[must_use]
-	/// # Month Name.
-	///
-	/// Return the name of the month, nice and pretty.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::try_from("2020-06-24 20:19:30").unwrap();
-	/// assert_eq!(date.month_name(), "June");
-	/// ```
-	pub const fn month_name(self) -> &'static str {
-		self.month_enum().as_str()
-	}
+	pub const fn leap_year(self) -> bool { self.y.leap() }
 
 	#[must_use]
 	/// # Month Size (Days).
 	///
-	/// This returns the total number of days this month could hold, or put
-	/// another way, the last day of this month.
+	/// This method returns the "size" of the datetime's month, or its last
+	/// day, whichever way you prefer to think of it.
 	///
 	/// The value will always be between `28..=31`, with leap Februaries
 	/// returning `29`.
@@ -1560,12 +1651,16 @@ impl Utc2k {
 	///
 	/// let date = Utc2k::try_from("2021-07-08 13:22:01").unwrap();
 	/// assert_eq!(date.month_size(), 31);
+	///
+	/// let date = Utc2k::try_from("2020-02-01").unwrap();
+	/// assert_eq!(date.month_size(), 29); // Leap!
 	/// ```
 	pub const fn month_size(self) -> u8 {
-		if self.m == 2 && self.leap_year() { 29 }
-		else { self.month_enum().days() }
+		if matches!(self.m, Month::February) && self.y.leap() { 29 }
+		else { self.month().days() }
 	}
 
+	#[inline]
 	#[must_use]
 	/// # Ordinal.
 	///
@@ -1584,32 +1679,17 @@ impl Utc2k {
 	/// assert_eq!(date.ordinal(), 15);
 	/// ```
 	pub const fn ordinal(self) -> u16 {
-		let days = self.d as u16 +
-			match self.m {
-				2 => 31,
-				3 => 59,
-				4 => 90,
-				5 => 120,
-				6 => 151,
-				7 => 181,
-				8 => 212,
-				9 => 243,
-				10 => 273,
-				11 => 304,
-				12 => 334,
-				_ => 0,
-			};
-
-		if 2 < self.m && self.leap_year() { days + 1 }
-		else { days }
+		self.d as u16 +
+		self.m.ordinal() +
+		(2 < (self.m as u8) && self.y.leap()) as u16
 	}
 
 	#[inline]
 	#[must_use]
 	/// # Seconds From Midnight.
 	///
-	/// Return the number of seconds since midnight. In other words, this adds
-	/// up all of the time bits.
+	/// Return the number of seconds since (the current day's) midnight. In
+	/// other words, this adds up all of the time bits.
 	///
 	/// ## Examples
 	///
@@ -1649,10 +1729,7 @@ impl Utc2k {
 	/// assert_eq!(date.weekday().as_ref(), "Thursday");
 	/// ```
 	pub const fn weekday(self) -> Weekday {
-		Weekday::from_u8(
-			Weekday::year_begins_on(self.y) as u8 +
-			((self.ordinal() - 1) % 7) as u8
-		)
+		Weekday::from_u8(self.y.weekday() as u8 + ((self.ordinal() - 1) % 7) as u8)
 	}
 }
 
@@ -1673,134 +1750,7 @@ impl Utc2k {
 	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
 	/// assert_eq!(date.formatted(), FmtUtc2k::from(date));
 	/// ```
-	pub fn formatted(self) -> FmtUtc2k { FmtUtc2k::from(self) }
-
-	#[inline]
-	#[must_use]
-	/// # To RFC3339.
-	///
-	/// Return a string formatted according to [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339).
-	///
-	/// Note: this method is allocating.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::new(2021, 12, 13, 11, 56, 1);
-	/// assert_eq!(date.to_rfc3339(), "2021-12-13T11:56:01Z");
-	/// ```
-	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from(*self).to_rfc3339() }
-
-	#[expect(unsafe_code, reason = "Content is ASCII.")]
-	#[must_use]
-	/// # To RFC2822.
-	///
-	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
-	///
-	/// There are a couple things to consider:
-	/// * This method is allocating;
-	/// * The length of the resulting string will either be `30` or `31` depending on whether the day is double-digit;
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// let date = Utc2k::new(2003, 7, 1, 10, 52, 37);
-	/// assert_eq!(date.to_rfc2822(), "Tue, 01 Jul 2003 10:52:37 +0000");
-	///
-	/// let date = Utc2k::new(2036, 12, 15, 16, 30, 55);
-	/// assert_eq!(date.to_rfc2822(), "Mon, 15 Dec 2036 16:30:55 +0000");
-	/// ```
-	pub fn to_rfc2822(&self) -> String {
-		let weekday: [u8; 3] = self.weekday().abbreviation_bytes();
-		let month: [u8; 3] = self.month_enum().abbreviation_bytes();
-
-		let day = DD[usize::from(self.d)];
-		let year = DD[usize::from(self.y)];
-		let hh = DD[usize::from(self.hh)];
-		let mm = DD[usize::from(self.mm)];
-		let ss = DD[usize::from(self.ss)];
-
-		// Working from bytes is ugly, but performs much better than any
-		// string-based operations.
-		let out: Vec<u8> = vec![
-			weekday[0], weekday[1], weekday[2],
-			b',', b' ',
-			day[0], day[1],
-			b' ',
-			month[0], month[1], month[2],
-			b' ',
-			b'2', b'0', year[0], year[1],
-			b' ',
-			hh[0], hh[1], b':', mm[0], mm[1], b':', ss[0], ss[1],
-			b' ', b'+', b'0', b'0', b'0', b'0'
-		];
-
-		debug_assert!(out.is_ascii(), "Bug: Datetime is not ASCII.");
-		// Safety: datetimes are valid ASCII.
-		unsafe { String::from_utf8_unchecked(out) }
-	}
-
-	/// # From RFC2822.
-	///
-	/// This method can be used to construct a `Utc2k` from an RFC2822-formatted
-	/// string. Variations with and without a leading weekday, and with and
-	/// without a trailing offset, are supported. If an offset is included, the
-	/// datetime will be adjusted accordingly to make it properly UTC.
-	///
-	/// Note: missing offsets are meant to imply "localized" time, but as this
-	/// library has no timezone handling, strings without any "+HHMM" at the
-	/// end will be parsed as if they were already in UTC.
-	///
-	/// ## Examples
-	///
-	/// ```
-	/// use utc2k::Utc2k;
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0000"),
-	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
-	/// );
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("Tue, 01 Jul 2003 10:52:37 +0000"),
-	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
-	/// );
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("1 Jul 2003 10:52:37"),
-	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
-	/// );
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("01 Jul 2003 10:52:37"),
-	///     Some(Utc2k::new(2003, 7, 1, 10, 52, 37)),
-	/// );
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("Tue, 10 Jul 2003 10:52:37 -0700"),
-	///     Some(Utc2k::new(2003, 7, 10, 17, 52, 37)),
-	/// );
-	///
-	/// assert_eq!(
-	///     Utc2k::from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0430"),
-	///     Some(Utc2k::new(2003, 7, 1, 6, 22, 37)),
-	/// );
-	/// ```
-	pub fn from_rfc2822<S>(src: S) -> Option<Self>
-	where S: AsRef<str> {
-		let src: &[u8] = src.as_ref().as_bytes().trim_ascii();
-		if 19 <= src.len() {
-			// Strip off the optional weekday, if any, so we can parse the day
-			// from a predictable starting place.
-			if src[0].is_ascii_alphabetic() { parse::rfc2822_day(&src[5..]) }
-			else { parse::rfc2822_day(src) }
-		}
-		else { None }
-	}
+	pub const fn formatted(self) -> FmtUtc2k { FmtUtc2k::from_utc2k(self) }
 
 	#[must_use]
 	/// # To Midnight.
@@ -1828,6 +1778,79 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # To RFC2822.
+	///
+	/// Return a string formatted according to [RFC2822](https://datatracker.ietf.org/doc/html/rfc2822).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2003, 7, 1, 10, 52, 37);
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Tue, 01 Jul 2003 10:52:37 +0000",
+	/// //        ^ This implementation zero-pads short day
+	/// //          numbers rather than truncating them…
+	/// );
+	///
+	/// let date = Utc2k::new(2036, 12, 15, 16, 30, 55);
+	/// assert_eq!(
+	///     date.to_rfc2822(),
+	///     "Mon, 15 Dec 2036 16:30:55 +0000",
+	/// //   ^-----------------------------^ …to keep the output
+	/// //                                   length consistent.
+	/// );
+	/// ```
+	pub fn to_rfc2822(&self) -> String {
+		let mut out = String::with_capacity(31);
+
+		macro_rules! push {
+			($($expr:expr),+) => ($( out.push(((($expr) % 10) | b'0') as char); )+);
+		}
+
+		out.push_str(self.weekday().abbreviation());
+		out.push_str(", ");
+		push!(self.d / 10, self.d);
+		out.push(' ');
+		out.push_str(self.month().abbreviation());
+		out.push_str(self.y.as_str()); // Includes spaces on either side.
+		push!(self.hh / 10, self.hh);
+		out.push(':');
+		push!(self.mm / 10, self.mm);
+		out.push(':');
+		push!(self.ss / 10, self.ss);
+		out.push_str(" +0000");
+
+		out
+	}
+
+	#[inline]
+	#[must_use]
+	/// # To RFC3339.
+	///
+	/// Return a string formatted according to [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2021, 12, 13, 11, 56, 1);
+	/// assert_eq!(date.to_rfc3339(), "2021-12-13T11:56:01Z");
+	///
+	/// // The reverse operation — parsing an RFC3339 datetime string into
+	/// // a Utc2k — can be done using `Utc2k::from_ascii`.
+	/// assert_eq!(
+	///     Utc2k::from_ascii(date.to_rfc3339().as_bytes()).unwrap(),
+	///     date,
+	/// );
+	/// ```
+	pub fn to_rfc3339(&self) -> String { FmtUtc2k::from_utc2k(*self).to_rfc3339() }
+
+	#[inline]
+	#[must_use]
 	/// # Unix Timestamp.
 	///
 	/// Return the unix timestamp for this object.
@@ -1841,25 +1864,19 @@ impl Utc2k {
 	/// assert_eq!(date.unixtime(), Utc2k::MIN_UNIXTIME);
 	/// ```
 	pub const fn unixtime(self) -> u32 {
-		/// # Seconds from the new year up to the start of the month.
-		const MONTH_SECONDS: [u32; 12] = [0, 2_678_400, 5_097_600, 7_776_000, 10_368_000, 13_046_400, 15_638_400, 18_316_800, 20_995_200, 23_587_200, 26_265_600, 28_857_600];
-
-		/// # Seconds *before* the new year.
-		const YEAR_SECONDS: [u32; 100] = [946_684_800, 978_307_200, 1_009_843_200, 1_041_379_200, 1_072_915_200, 1_104_537_600, 1_136_073_600, 1_167_609_600, 1_199_145_600, 1_230_768_000, 1_262_304_000, 1_293_840_000, 1_325_376_000, 1_356_998_400, 1_388_534_400, 1_420_070_400, 1_451_606_400, 1_483_228_800, 1_514_764_800, 1_546_300_800, 1_577_836_800, 1_609_459_200, 1_640_995_200, 1_672_531_200, 1_704_067_200, 1_735_689_600, 1_767_225_600, 1_798_761_600, 1_830_297_600, 1_861_920_000, 1_893_456_000, 1_924_992_000, 1_956_528_000, 1_988_150_400, 2_019_686_400, 2_051_222_400, 2_082_758_400, 2_114_380_800, 2_145_916_800, 2_177_452_800, 2_208_988_800, 2_240_611_200, 2_272_147_200, 2_303_683_200, 2_335_219_200, 2_366_841_600, 2_398_377_600, 2_429_913_600, 2_461_449_600, 2_493_072_000, 2_524_608_000, 2_556_144_000, 2_587_680_000, 2_619_302_400, 2_650_838_400, 2_682_374_400, 2_713_910_400, 2_745_532_800, 2_777_068_800, 2_808_604_800, 2_840_140_800, 2_871_763_200, 2_903_299_200, 2_934_835_200, 2_966_371_200, 2_997_993_600, 3_029_529_600, 3_061_065_600, 3_092_601_600, 3_124_224_000, 3_155_760_000, 3_187_296_000, 3_218_832_000, 3_250_454_400, 3_281_990_400, 3_313_526_400, 3_345_062_400, 3_376_684_800, 3_408_220_800, 3_439_756_800, 3_471_292_800, 3_502_915_200, 3_534_451_200, 3_565_987_200, 3_597_523_200, 3_629_145_600, 3_660_681_600, 3_692_217_600, 3_723_753_600, 3_755_376_000, 3_786_912_000, 3_818_448_000, 3_849_984_000, 3_881_606_400, 3_913_142_400, 3_944_678_400, 3_976_214_400, 4_007_836_800, 4_039_372_800, 4_070_908_800];
-
 		// Add up everything as it would be in a non-leap year.
-		let time = YEAR_SECONDS[self.y as usize] +
-			MONTH_SECONDS[self.m as usize - 1] +
+		let time = self.y.unixtime() +
+			self.m.ordinal_seconds() +
 			self.seconds_from_midnight() +
 			DAY_IN_SECONDS * (self.d as u32 - 1);
 
 		// Add a day's worth of seconds if we need to.
-		if 2 < self.m && self.leap_year() { time + DAY_IN_SECONDS }
+		if 2 < (self.m as u8) && self.y.leap() { time + DAY_IN_SECONDS }
 		else { time }
 	}
 
 	#[must_use]
-	/// # Change Time.
+	/// # With a New Time.
 	///
 	/// Return a new [`Utc2k`] instance with the original date — unless there
 	/// is carry-over needed — and a new time.
@@ -1876,7 +1893,7 @@ impl Utc2k {
 	/// assert_eq!(date.with_time(13, 14, 15).to_string(), "2000-01-01 13:14:15");
 	/// ```
 	pub const fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
-		Self::from_abacus(Abacus::new(self.year(), self.month(), self.day(), hh, mm, ss))
+		Self::from_abacus(Abacus::new(self.year(), self.m as u8, self.d, hh, mm, ss))
 	}
 }
 
@@ -1903,13 +1920,55 @@ impl Utc2k {
 	/// assert_eq!(added.to_string(), "2010-01-02 00:00:13");
 	/// ```
 	pub const fn checked_add(self, secs: u32) -> Option<Self> {
-		if let Some(s) = self.unixtime().checked_add(secs) {
-			if s <= Self::MAX_UNIXTIME {
-				return Some(Self::from_unixtime(s));
+		if
+			let Some(s) = self.unixtime().checked_add(secs) &&
+			s <= Self::MAX_UNIXTIME
+		{
+			Some(Self::from_unixtime(s))
+		}
+		else { None }
+	}
+
+	/// # From ASCII Date/Time Slice (Checked).
+	///
+	/// Same as [`Utc2k::from_ascii`], but will return an error if the
+	/// resulting date is too old or new to be represented faithfully
+	/// (rather than clamping it to [`Utc2k::MIN`]/[`Utc2k::MAX`]).
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Utc2k, Utc2kError};
+	///
+	/// assert_eq!(
+	///     Utc2k::checked_from_ascii(b"1990-01-15 10:20:00"),
+	///     Err(Utc2kError::Underflow), // Too old.
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::checked_from_ascii(b"3000-12-01 13:00:00"),
+	///     Err(Utc2kError::Overflow), // Too new.
+	/// );
+	///
+	/// assert_eq!(
+	///     Utc2k::checked_from_ascii(b"2025-06-17 00:00:00")
+	///         .map(Utc2k::parts),
+	///     Ok((2025, 6, 17, 0, 0, 0)), // Just right!
+	/// );
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// This method will return an error if the slice cannot be parsed, or the
+	/// parsed value is too big or small to fit within our century.
+	pub const fn checked_from_ascii(src: &[u8]) -> Result<Self, Utc2kError> {
+		if let Some(parts) = Abacus::from_ascii(src) {
+			match parts.parts_checked() {
+				Ok((y, m, d, hh, mm, ss)) => Ok(Self { y, m, d, hh, mm, ss }),
+				Err(e) => Err(e),
 			}
 		}
-
-		None
+		else { Err(Utc2kError::Invalid) }
 	}
 
 	/// # From Unixtime (Checked).
@@ -1926,16 +1985,23 @@ impl Utc2k {
 	/// ## Examples
 	///
 	/// ```
-	/// use utc2k::Utc2k;
+	/// use utc2k::{Utc2k, Utc2kError};
 	///
-	/// // Too old.
-	/// assert!(Utc2k::checked_from_unixtime(0).is_err());
+	/// assert_eq!(
+	///     Utc2k::checked_from_unixtime(u32::MIN),
+	///     Err(Utc2kError::Underflow), // Too old.
+	/// );
 	///
-	/// // Too new.
-	/// assert!(Utc2k::checked_from_unixtime(u32::MAX).is_err());
+	/// assert_eq!(
+	///     Utc2k::checked_from_unixtime(u32::MAX),
+	///     Err(Utc2kError::Overflow), // Too new.
+	/// );
 	///
-	/// // This fits.
-	/// assert!(Utc2k::checked_from_unixtime(Utc2k::MIN_UNIXTIME).is_ok());
+	/// assert_eq!(
+	///     Utc2k::checked_from_unixtime(1_750_187_543)
+	///         .map(Utc2k::parts),
+	///     Ok((2025, 6, 17, 19, 12, 23)), // Just right!
+	/// );
 	/// ```
 	pub const fn checked_from_unixtime(src: u32) -> Result<Self, Utc2kError> {
 		if src < Self::MIN_UNIXTIME { Err(Utc2kError::Underflow) }
@@ -1964,13 +2030,13 @@ impl Utc2k {
 	/// assert_eq!(subbed.to_string(), "2009-12-30 23:59:47");
 	/// ```
 	pub const fn checked_sub(self, secs: u32) -> Option<Self> {
-		if let Some(s) = self.unixtime().checked_sub(secs) {
-			if Self::MIN_UNIXTIME <= s {
-				return Some(Self::from_unixtime(s));
-			}
+		if
+			let Some(s) = self.unixtime().checked_sub(secs) &&
+			Self::MIN_UNIXTIME <= s
+		{
+			Some(Self::from_unixtime(s))
 		}
-
-		None
+		else { None }
 	}
 }
 
@@ -2026,16 +2092,16 @@ impl Utc2k {
 	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
 	/// ```
 	pub const fn cmp_date(self, other: Self) -> Ordering {
-		if self.y == other.y {
-			if self.m == other.m {
+		if (self.y as u8) == (other.y as u8) {
+			if (self.m as u8) == (other.m as u8) {
 				if self.d == other.d { Ordering::Equal }
 				else if self.d < other.d { Ordering::Less }
 				else { Ordering::Greater }
 			}
-			else if self.m < other.m { Ordering::Less }
+			else if (self.m as u8) < (other.m as u8) { Ordering::Less }
 			else { Ordering::Greater }
 		}
-		else if self.y < other.y { Ordering::Less }
+		else if (self.y as u8) < (other.y as u8) { Ordering::Less }
 		else { Ordering::Greater }
 	}
 
@@ -2079,70 +2145,23 @@ impl Utc2k {
 impl Utc2k {
 	#[must_use]
 	/// # From `Abacus`.
-	pub(crate) const fn from_abacus(src: Abacus) -> Self {
+	const fn from_abacus(src: Abacus) -> Self {
 		let (y, m, d, hh, mm, ss) = src.parts();
 		Self { y, m, d, hh, mm, ss }
 	}
 
 	#[must_use]
 	/// # From `FmtUtc2k`.
-	pub(crate) const fn from_fmtutc2k(src: FmtUtc2k) -> Self {
-		Self::new(
-			2000 + ((src.0[2] & 0x0f) * 10 + (src.0[3] & 0x0f)) as u16,
-			(src.0[5] & 0x0f) * 10 + (src.0[6] & 0x0f),
-			(src.0[8] & 0x0f) * 10 + (src.0[9] & 0x0f),
-			(src.0[11] & 0x0f) * 10 + (src.0[12] & 0x0f),
-			(src.0[14] & 0x0f) * 10 + (src.0[15] & 0x0f),
-			(src.0[17] & 0x0f) * 10 + (src.0[18] & 0x0f),
-		)
-	}
-
-	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
-	#[must_use]
-	/// # Subtract Seconds.
-	pub(crate) const fn minus_seconds(self, offset: u32) -> Self {
-		// Count up the "easy" seconds. If we're subtracting less than this
-		// amount, we can handle the subtraction without any month boundary or
-		// leap year shenanigans.
-		let mut easy: u32 =
-			(self.d - 1) as u32 * DAY_IN_SECONDS +
-			(self.hh) as u32 * HOUR_IN_SECONDS +
-			(self.mm) as u32 * MINUTE_IN_SECONDS +
-			(self.ss) as u32;
-
-		if offset <= easy {
-			easy -= offset;
-			let d: u8 =
-				if easy >= DAY_IN_SECONDS {
-					let d = easy.wrapping_div(DAY_IN_SECONDS);
-					easy -= d * DAY_IN_SECONDS;
-					d as u8 + 1
-				}
-				else { 1 };
-
-			let (hh, mm, ss) = parse::time_seconds(easy);
-			Self {
-				y: self.y,
-				m: self.m,
-				d,
-				hh,
-				mm,
-				ss,
-			}
-		}
-		// Otherwise it is best to convert to unixtime, perform the
-		// subtraction, and convert it back.
-		else {
-			Self::from_unixtime(self.unixtime().saturating_sub(offset))
+	const fn from_fmtutc2k(src: FmtUtc2k) -> Self {
+		Self {
+			y: Year::from_u8(src.0[2].as_digit() * 10 + src.0[3].as_digit()),
+			m: Month::from_u8(src.0[5].as_digit() * 10 + src.0[6].as_digit()),
+			d: src.0[8].as_digit() * 10 + src.0[9].as_digit(),
+			hh: src.0[11].as_digit() * 10 + src.0[12].as_digit(),
+			mm: src.0[14].as_digit() * 10 + src.0[15].as_digit(),
+			ss: src.0[17].as_digit() * 10 + src.0[18].as_digit(),
 		}
 	}
-}
-
-
-
-impl From<Utc2k> for u32 {
-	#[inline]
-	fn from(src: Utc2k) -> Self { src.unixtime() }
 }
 
 
@@ -2150,10 +2169,7 @@ impl From<Utc2k> for u32 {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use brunch as _;
 	use time::OffsetDateTime;
-
-
 
 	#[cfg(not(miri))]
 	const SAMPLE_SIZE: usize = 1_000_000;
@@ -2161,24 +2177,55 @@ mod tests {
 	#[cfg(miri)]
 	const SAMPLE_SIZE: usize = 1000; // Miri runs way too slow for a million tests.
 
-
-
+	/// # Helper: Test a Timestamp Many Ways.
 	macro_rules! range_test {
-		($buf:ident, $i:ident, $format:ident) => (
+		($i:ident, $buf:ident, $format:ident) => (
 			let u = Utc2k::from($i);
 			let f = FmtUtc2k::from(u);
 			let c = OffsetDateTime::from_unix_timestamp($i as i64)
 				.expect("Unable to create time::OffsetDateTime.");
-			$buf.set_datetime(u);
 
 			// Make sure the timestamp comes back the same.
 			assert_eq!($i, u.unixtime(), "Timestamp out does not match timestamp in!");
 
-			// Make sure back-and-forth froms work as expected.
-			assert_eq!(Utc2k::from(f), u);
+			// Make sure back-and-forth conversions work as expected.
+			assert_eq!(
+				FmtUtc2k::from($i),
+				f,
+				"Fmt from Utc different than from {}", $i,
+			);
+			assert_eq!(
+				Utc2k::from(f),
+				u,
+				"Fmt/Utc back-and-forth failed for {}", $i,
+			);
+			assert_eq!(
+				Some(u),
+				Utc2k::from_ascii(f.as_bytes()),
+				"Fmt/Utc back-and-forth (bytes) failed for {}", $i,
+			);
 
-			// Test RFC2822 back and forth.
-			assert_eq!(Some(u), Utc2k::from_rfc2822(u.to_rfc2822()));
+			assert_eq!(
+				Some(u),
+				Utc2k::from_rfc2822(u.to_rfc2822().as_bytes()),
+				"RFC2822 back-and-forth failed for {}", $i,
+			);
+			assert_eq!(
+				Some(u),
+				Utc2k::from_ascii(u.to_rfc3339().as_bytes()),
+				"RFC3339 back-and-forth failed for {}", $i,
+			);
+
+			assert_eq!(
+				Some(f),
+				FmtUtc2k::from_rfc2822(f.to_rfc2822().as_bytes()),
+				"Fmt RFC2822 back-and-forth failed for {}", $i,
+			);
+			assert_eq!(
+				Some(f),
+				FmtUtc2k::from_ascii(f.to_rfc3339().as_bytes()),
+				"Fmt RFC3339 back-and-forth failed for {}", $i,
+			);
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
 			assert_eq!(u.month(), u8::from(c.month()), "Month mismatch for unixtime {}", $i);
@@ -2189,54 +2236,26 @@ mod tests {
 			assert_eq!(u.ordinal(), c.ordinal(), "Ordinal mismatch for unixtime {}", $i);
 
 			// Make sure the weekdays match.
-			assert_eq!(u.weekday().as_ref(), c.weekday().to_string());
+			assert_eq!(u.weekday().as_str(), c.weekday().to_string());
 
-			// Test string conversion.
+			// And make sure we agree on leap years.
 			assert_eq!(
-				$buf.as_str(),
-				&c.format(&$format).expect("Unable to format datetime."),
-				"Date mismatch for unixtime {}",
-				$i
+				u.leap_year(),
+				time::util::is_leap_year(u.year() as i32),
+				"Leap year mismatch for {}", u.year(),
 			);
 
+			// We already checked the parts so they should match as a whole
+			// too, but it shouldn't hurt (too much) to be exhaustive.
+			$buf.truncate(0);
+			c.format_into(&mut $buf, &$format).expect("Unable to format datetime.");
+			assert_eq!(
+				Ok(f.as_str()),
+				std::str::from_utf8($buf.as_slice()),
+				"Date mismatch for unixtime {}", $i,
+			);
 		);
 	}
-
-	#[cfg(not(debug_assertions))]
-	/// # Generate Century Tests.
-	///
-	/// There are a lot of seconds to test. Multiple functions allows
-	/// parallelization where supported.
-	macro_rules! century_test {
-		($($fn:ident, $rem:literal),+ $(,)?) => ($(
-			#[test]
-			#[ignore = "testing a decade's worth of seconds takes a very long time"]
-			/// # 1/10 Full Range Unixtime Test.
-			fn $fn() {
-				let mut buf = FmtUtc2k::default();
-				let format = time::format_description::parse(
-					"[year]-[month]-[day] [hour]:[minute]:[second]",
-				).expect("Unable to parse datetime format.");
-				for i in Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME {
-					if $rem == i % 10 { range_test!(buf, i, format); }
-				}
-			}
-		)+);
-	}
-
-	#[cfg(not(debug_assertions))]
-	century_test!(
-		full_unixtime_0, 0,
-		full_unixtime_1, 1,
-		full_unixtime_2, 2,
-		full_unixtime_3, 3,
-		full_unixtime_4, 4,
-		full_unixtime_5, 5,
-		full_unixtime_6, 6,
-		full_unixtime_7, 7,
-		full_unixtime_8, 8,
-		full_unixtime_9, 9,
-	);
 
 	#[test]
 	/// # Limited Range Unixtime Test.
@@ -2248,14 +2267,14 @@ mod tests {
 	/// (Testing every single second takes _forever_, so is disabled by
 	/// default.)
 	fn limited_unixtime() {
-		let mut buf = FmtUtc2k::default();
 		let format = time::format_description::parse(
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
 
 		let mut rng = fastrand::Rng::new();
-		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE) {
-			range_test!(buf, i, format);
+		let mut buf = Vec::new();
+		for i in std::iter::repeat_with(|| rng.u32(Utc2k::MIN_UNIXTIME..=Utc2k::MAX_UNIXTIME)).take(SAMPLE_SIZE).chain(std::iter::once(1_583_037_365)) {
+			range_test!(i, buf, format);
 		}
 	}
 
@@ -2413,5 +2432,53 @@ mod tests {
 			assert!(c.cmp_time(b).is_lt());
 			assert!(d.cmp_time(a).is_gt());
 		}
+	}
+
+	#[cfg(not(debug_assertions))]
+	/// # Generate Century Tests.
+	///
+	/// There are a lot of seconds to test. Spreading them out across multiple
+	/// functions can at least open up the possibility of parallelization.
+	macro_rules! century_test {
+		// A neat counting trick adapted from The Little Book of Rust Macros, used
+		// here to figure out the step size.
+		(@count $odd:tt) => ( 1 );
+	    (@count $odd:tt $($a:tt $b:tt)+) => ( (century_test!(@count $($a)+) * 2) + 1 );
+	    (@count $($a:tt $b:tt)+) =>         (  century_test!(@count $($a)+) * 2      );
+
+	    // Generate the tests!
+	    (@build $step:expr; $($fn:ident $offset:literal),+) => ($(
+			#[test]
+			#[ignore = "testing every second takes a long time"]
+			fn $fn() {
+				let format = time::format_description::parse(
+					"[year]-[month]-[day] [hour]:[minute]:[second]",
+				).expect("Unable to parse datetime format.");
+				let mut buf = Vec::new();
+
+				for i in (Utc2k::MIN_UNIXTIME + $offset..=Utc2k::MAX_UNIXTIME).step_by($step) {
+					range_test!(i, buf, format);
+				}
+			}
+		)+);
+
+	    // Entrypoint.
+		($($fn:ident $offset:literal),+ $(,)?) => (
+			century_test! { @build century_test!(@count $($offset)+); $($fn $offset),+ }
+		);
+	}
+
+	#[cfg(not(debug_assertions))]
+	century_test! {
+		full_unixtime_0 0,
+		full_unixtime_1 1,
+		full_unixtime_2 2,
+		full_unixtime_3 3,
+		full_unixtime_4 4,
+		full_unixtime_5 5,
+		full_unixtime_6 6,
+		full_unixtime_7 7,
+		full_unixtime_8 8,
+		full_unixtime_9 9,
 	}
 }

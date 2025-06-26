@@ -1,9 +1,9 @@
 [package]
 name = "utc2k"
-version = "0.14.0"
+version = "0.15.0"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 description = "A fast and lean UTC date/time library concerned only with happenings in this century (2000-2099)."
 license = "WTFPL"
 repository = "https://github.com/Blobfolio/utc2k"
@@ -15,6 +15,7 @@ exclude = [
 	".righteous-sandbox.json",
 	"CREDITS.md",
 	"doc",
+	"examples",
 	"justfile",
 ]
 
@@ -28,7 +29,7 @@ default-target = "x86_64-unknown-linux-gnu"
 name = "UTC2K"
 
 [dev-dependencies]
-brunch = "0.10.*"
+brunch = "0.11.*"
 fastrand = "2"
 serde = "1.0.*"
 serde_json = "1.0.*"
@@ -49,12 +50,11 @@ optional = true
 [features]
 default = []
 
-# This enables the "LocalOffset" struct for tricking — with caveats — Utc2k
-# and FmtUtc2k into holding a local datetime rather than a UTC one. This only
-# works on unix, but shouldn't outright break non-unix builds.
+# Enable (barebones) date/time localization support.
 local = [ "tz-rs" ]
 
-# This enables (de)/serialize support for Utc2k and FmtUtc2k.
+# Enable (de)/serialize support for Utc2k, FmtUtc2k, Month, and
+# Weekday.
 serde = [ "dep:serde" ]
 
 [[bench]]

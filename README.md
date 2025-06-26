@@ -8,81 +8,56 @@
 [![license](https://img.shields.io/badge/license-wtfpl-ff1493?style=flat-square)](https://en.wikipedia.org/wiki/WTFPL)
 [![contributions welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&label=contributions)](https://github.com/Blobfolio/utc2k/issues)
 
-UTC2K is a fast and lean date/time library that only cares about UTC happenings in _this century_ (between `2000-01-01 00:00:00` and `2099-12-31 23:59:59`).
+UTC2K is a heavily-optimized — and extremely niche — date/time library that **only supports UTC happenings in _this century_**.
 
-With that very significant constraint in mind, UTC2K can:
+For the moments between `2000-01-01 00:00:00..=2099-12-31 23:59:59`, it can run circles around crates like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), while still being able to:
 
-* Convert to/from Unix timestamps (`u32`);
-* Convert to/from date strings of the `YYYY-MM-DD` and `YYYY-MM-DD hh:mm:ss` varieties;
-* Perform addition/subtraction (in seconds), checked or saturating;
-* Calculate the date's ordinal;
-* Calculate the number of seconds from midnight;
-
-That's it!
-
-Compared to more robust libraries like [`chrono`](https://crates.io/crates/chrono) and [`time`](https://crates.io/crates/time), UTC2K can be magnitudes faster, particularly in regards to string parsing and printing.
-
-This library is still a work in progress and there is certainly room to improve performance further.
-
-If you have any suggestions for improvement, feel free to open [an issue](https://github.com/Blobfolio/utc2k/issues) on Github!
+* Determine "now", at least until the final seconds of 2099;
+* Convert to/from Unix timestamps;
+* Convert to/from all sorts of different date/time strings;
+* Perform checked and saturating addition/subtraction;
+* Calculate ordinals, weekdays, leap years, etc.;
 
 
 
 ## Examples
 
-The main date object is `Utc2k`.
+The library's main export is `Utc2k`, a `Copy`-friendly struct representing a specific UTC datetime.
 
 ```rust
-use utc2k::Utc2k;
-use std::convert::TryFrom;
+use utc2k::{Utc2k, Weekday};
 
-let date = Utc2k::default(); // 2000-01-01 00:00:00
-let date = Utc2k::now(); // The current time.
-let date = Utc2k::from(4_102_444_799_u32); // 2099-12-31 23:59:59
-let date = Utc2k::new(2010, 10, 31, 15, 30, 0); // 2010-10-31 15:30:00
+// Instantiation, four ways:
+let date = Utc2k::now();                             // The current system time.
+let date = Utc2k::new(2020, 1, 2, 12, 30, 30);       // From parts.
+let date = Utc2k::from_unixtime(4_102_444_799);      // From a timestamp.
+let date = Utc2k::from_ascii(b"2024-10-31 00:00:00") // From a datetime string.
+               .unwrap();
 
-// String parsing is fallible, but flexible. So long as the numbers we
-// need are in the right place, it will be fine. (At least, it won't error
-// out; if the date string is trying to communicate a time zone, that won't
-// be listened to.)
-assert!(Utc2k::try_from("2099-12-31 23:59:59").is_ok()); // Fine.
-assert!(Utc2k::try_from("2099-12-31T23:59:59.0000Z").is_ok()); // Also fine.
-assert!(Utc2k::try_from("January 1, 2010 @ Eleven O'Clock").is_err()); // Nope!
-```
+// What day was Halloween 2024, anyway?
+assert_eq!(
+    date.weekday(),
+    Weekday::Thursday,
+);
 
-There is also `FmtUtc2k`, used for string representation.
+// Ordinals are a kind of bird, right?
+assert_eq!(
+    date.ordinal(),
+    305,
+);
 
-```rust
-use utc2k::{FmtUtc2k, Utc2k};
-use std::convert::TryFrom;
-
-// You can generate it from an existing Utc2k with either:
-assert_eq!(Utc2k::default().formatted(), FmtUtc2k::from(Utc2k::default()));
-
-// You could also skip `Utc2k` and seed directly from a timestamp or date/time
-// string.
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-let fmt = FmtUtc2k::try_from("2099-12-31 23:59:59").unwrap();
-```
-
-Once you have a `FmtUtc2k`, you can turn it into a string with:
-
-```rust
-use utc2k::{FmtUtc2k, Utc2k};
-use std::borrow::Borrow;
-
-let fmt = FmtUtc2k::from(4_102_444_799_u32);
-
-let s: &str = fmt.as_ref();
-let s: &str = fmt.as_str();
-let s: &str = fmt.borrow();
+// Boss wants an RFC2822 for some reason?
+assert_eq!(
+    date.to_rfc2822(),
+    "Thu, 31 Oct 2024 00:00:00 +0000",
+);
 ```
 
 
 
 ## Optional Crate Features
 
-* `local`: Enables the `LocalOffset` struct. Refer to the documentation for important caveats and limitations.
+* `local`: Enables the `Local2k`/`FmtLocal2k` structs. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
 
 
@@ -91,7 +66,7 @@ let s: &str = fmt.borrow();
 
 Add `utc2k` to your `dependencies` in `Cargo.toml`, like:
 
-```
+```toml
 [dependencies]
-utc2k = "0.14.*"
+utc2k = "0.15.*"
 ```

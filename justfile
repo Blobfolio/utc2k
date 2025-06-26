@@ -57,7 +57,20 @@ bench BENCH="":
 # Clippy.
 @clippy:
 	clear
-	cargo clippy \
+
+	RUSTFLAGS="-D warnings" cargo clippy --release --target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
+		--release \
+		--features local \
+		--target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
+		--release \
+		--features serde \
+		--target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
 		--release \
 		--all-features \
 		--target-dir "{{ cargo_dir }}"
@@ -86,6 +99,16 @@ bench BENCH="":
 	just _fix-chown "{{ doc_dir }}"
 
 
+@ex DEMO="local":
+	clear
+	cargo run \
+		-q \
+		--all-features \
+		--release \
+		--example "{{ DEMO }}" \
+		--target-dir "{{ cargo_dir }}"
+
+
 # Miri tests!
 @miri:
 	# Pre-clean.
@@ -93,6 +116,9 @@ bench BENCH="":
 
 	fyi task "Testing native/default target."
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
+
+	fyi task "Testing i686-unknown-linux-gnu (32-bit) target."
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --target i686-unknown-linux-gnu
 
 	fyi task "Testing mps64 (big endian) target."
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --target mips64-unknown-linux-gnuabi64
