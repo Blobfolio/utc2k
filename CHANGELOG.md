@@ -2,6 +2,14 @@
 
 
 
+## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - TBD
+
+### Changed
+
+* `Weekday::first/last/nth_in_month` now takes a `Month` (instead of a `u8`)
+
+
+
 ## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - 2025-06-26
 
 Date/time string parsing has been completely refactored for this release, vastly improving the behavioral consistency — and correctness — across methods and formats.

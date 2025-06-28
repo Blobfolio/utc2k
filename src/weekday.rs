@@ -10,8 +10,10 @@
 
 use crate::{
 	macros,
+	Month,
 	Utc2k,
 	Utc2kError,
+	Year,
 };
 use std::{
 	borrow::Cow,
@@ -475,15 +477,15 @@ impl Weekday {
 	/// ## Examples
 	///
 	/// ```
-	/// use utc2k::Weekday;
+	/// use utc2k::{Month, Weekday};
 	///
 	/// // The first Friday in November 2023 was on the 3rd.
 	/// assert_eq!(
-	///     Weekday::Friday.first_in_month(2023, 11),
+	///     Weekday::Friday.first_in_month(2023, Month::November),
 	///     Some(3),
 	/// );
 	/// ```
-	pub const fn first_in_month(self, y: u16, m: u8) -> Option<u8> {
+	pub const fn first_in_month(self, y: u16, m: Month) -> Option<u8> {
 		self.nth_in_month(y, m, 1)
 	}
 
@@ -499,36 +501,36 @@ impl Weekday {
 	/// ## Examples
 	///
 	/// ```
-	/// use utc2k::Weekday;
+	/// use utc2k::{Month, Weekday};
 	///
 	/// // The last Saturday in Februrary 2020 was the 29th. LEAP!
 	/// assert_eq!(
-	///     Weekday::Saturday.last_in_month(2020, 02),
+	///     Weekday::Saturday.last_in_month(2020, Month::February),
 	///     Some(29),
 	/// );
 	/// ```
-	pub const fn last_in_month(self, y: u16, m: u8) -> Option<u8> {
-		// Load the first date of the month, and make sure it is sane.
-		let first = Utc2k::new(y, m, 1, 0, 0, 0);
-		let check = first.ymd();
-		if check.0 != y || check.1 != m || check.2 != 1 { return None; }
+	pub const fn last_in_month(self, y: u16, m: Month) -> Option<u8> {
+		// Make sure the year is valid.
+		if let Some(y) = Year::from_u16_checked(y) {
+			// Load the first of the month.
+			let first = Utc2k::from_ym(y, m);
+			let weekday = first.weekday();
 
-		// Pull that first day's weekday.
-		let weekday = first.weekday();
+			// Find the first day.
+			let w_num = weekday as u8;
+			let s_num = self as u8;
+			let d =
+				if w_num == s_num { 1 }
+				else if w_num < s_num { 1 + s_num - w_num }
+				else { 8 - (w_num - s_num) };
 
-		// Find the first day.
-		let w_num = weekday as u8;
-		let s_num = self as u8;
-		let d =
-			if w_num == s_num { 1 }
-			else if w_num < s_num { 1 + s_num - w_num }
-			else { 8 - (w_num - s_num) };
+			// Now find out how many weeks we can add to that without going over.
+			let n = (first.month_size() - d).wrapping_div(7);
 
-		// Now find out how many weeks we can add to that without going over.
-		let n = (first.month_size() - d).wrapping_div(7);
-
-		// Add them and we have our answer!
-		Some(d + n * 7)
+			// Add them and we have our answer!
+			Some(d + n * 7)
+		}
+		else { None }
 	}
 
 	#[must_use]
@@ -540,44 +542,41 @@ impl Weekday {
 	/// ## Examples
 	///
 	/// ```
-	/// use utc2k::Weekday;
+	/// use utc2k::{Month, Weekday};
 	///
 	/// let day = Weekday::Monday;
 	///
 	/// // There are five Mondays in October 2023:
-	/// assert_eq!(day.nth_in_month(2023, 10, 1), Some(2));
-	/// assert_eq!(day.nth_in_month(2023, 10, 2), Some(9));
-	/// assert_eq!(day.nth_in_month(2023, 10, 3), Some(16));
-	/// assert_eq!(day.nth_in_month(2023, 10, 4), Some(23));
-	/// assert_eq!(day.nth_in_month(2023, 10, 5), Some(30));
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 1), Some(2));
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 2), Some(9));
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 3), Some(16));
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 4), Some(23));
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 5), Some(30));
 	///
 	/// // But no more!
-	/// assert_eq!(day.nth_in_month(2023, 10, 6), None);
+	/// assert_eq!(day.nth_in_month(2023, Month::October, 6), None);
 	/// ```
-	pub const fn nth_in_month(self, y: u16, m: u8, n: u8) -> Option<u8> {
-		// Zero is meaningless, and there will never be more than five.
-		if n == 0 || 6 <= n { return None; }
+	pub const fn nth_in_month(self, y: u16, m: Month, n: u8) -> Option<u8> {
+		// Make sure the year is valid.
+		if 0 < n && n < 6 && let Some(y) = Year::from_u16_checked(y) {
+			// Load the first of the month.
+			let first = Utc2k::from_ym(y, m);
+			let weekday = first.weekday();
 
-		// Load the first date of the month, and make sure it is sane.
-		let first = Utc2k::new(y, m, 1, 0, 0, 0);
-		let check = first.ymd();
-		if check.0 != y || check.1 != m || check.2 != 1 { return None; }
+			// Calculate the day!
+			let w_num = weekday as u8;
+			let s_num = self as u8;
+			let d =
+				if w_num == s_num { 1 }
+				else if w_num < s_num { 1 + s_num - w_num }
+				else { 8 - (w_num - s_num) }
+				// Scale to the nth.
+				+ (n - 1) * 7;
 
-		// Pull that first day's weekday.
-		let weekday = first.weekday();
-
-		// Calculate the day!
-		let w_num = weekday as u8;
-		let s_num = self as u8;
-		let d =
-			if w_num == s_num { 1 }
-			else if w_num < s_num { 1 + s_num - w_num }
-			else { 8 - (w_num - s_num) }
-			// Scale to the nth.
-			+ (n - 1) * 7;
-
-		// Return it, unless we've passed into a different month.
-		if d <= first.month_size() { Some(d) }
+			// Return it, unless we've passed into a different month.
+			if d <= first.month_size() { Some(d) }
+			else { None }
+		}
 		else { None }
 	}
 }
@@ -688,7 +687,7 @@ mod tests {
 			(Weekday::Saturday,  vec![7, 14, 21, 28]),
 		] {
 			for (k, v) in dates.iter().copied().enumerate() {
-				let tmp = weekday.nth_in_month(2023, 10, k as u8 + 1);
+				let tmp = weekday.nth_in_month(2023, Month::October, k as u8 + 1);
 				assert_eq!(
 					tmp,
 					Some(v),
@@ -698,11 +697,11 @@ mod tests {
 
 				// Test first for the first. This is an alias so shouldn't
 				// ever fail, but just in case…
-				if k == 0 { assert_eq!(weekday.first_in_month(2023, 10), tmp); }
+				if k == 0 { assert_eq!(weekday.first_in_month(2023, Month::October), tmp); }
 				// And last for the last.
 				else if k + 1 == dates.len() {
 					assert_eq!(
-						weekday.last_in_month(2023, 10),
+						weekday.last_in_month(2023, Month::October),
 						Some(v),
 						"Expected {weekday} to end on {v}, not {tmp:?}.",
 					);
@@ -710,7 +709,7 @@ mod tests {
 			}
 
 			// And make sure one more is too many.
-			assert_eq!(weekday.nth_in_month(2023, 10, dates.len() as u8 + 1), None);
+			assert_eq!(weekday.nth_in_month(2023, Month::October, dates.len() as u8 + 1), None);
 		}
 	}
 

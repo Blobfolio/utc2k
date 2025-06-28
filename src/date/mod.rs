@@ -2162,6 +2162,14 @@ impl Utc2k {
 			ss: src.0[17].as_digit() * 10 + src.0[18].as_digit(),
 		}
 	}
+
+	#[must_use]
+	/// # From `Year`/`Month`.
+	///
+	/// Return a new date/time set to the first day of a specific year/month.
+	pub(crate) const fn from_ym(y: Year, m: Month) -> Self {
+		Self { y, m, d: 1, hh: 0, mm: 0, ss: 0 }
+	}
 }
 
 
