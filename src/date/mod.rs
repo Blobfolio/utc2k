@@ -40,7 +40,7 @@ use abacus::Abacus;
 
 
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 /// # Formatted UTC2K.
 ///
 /// This is the formatted companion to [`Utc2k`]. You can use it to obtain a
@@ -150,11 +150,6 @@ impl FromStr for FmtUtc2k {
 	fn from_str(src: &str) -> Result<Self, Self::Err> { Self::try_from(src) }
 }
 
-impl Ord for FmtUtc2k {
-	#[inline]
-	fn cmp(&self, other: &Self) -> Ordering { self.0.cmp(&other.0) }
-}
-
 impl PartialEq<str> for FmtUtc2k {
 	#[inline]
 	fn eq(&self, other: &str) -> bool { self.as_str() == other }
@@ -178,11 +173,6 @@ macro_rules! fmt_eq {
 	)+);
 }
 fmt_eq! { &str &String String &Cow<'_, str> Cow<'_, str> &Box<str> Box<str> }
-
-impl PartialOrd for FmtUtc2k {
-	#[inline]
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
-}
 
 /// # Helper: `TryFrom` Wrappers.
 macro_rules! fmt_try_from {
@@ -907,6 +897,7 @@ impl FromStr for Utc2k {
 }
 
 impl Ord for Utc2k {
+	#[inline]
 	/// # Compare.
 	///
 	/// Compare two date/times.
@@ -924,13 +915,7 @@ impl Ord for Utc2k {
 	/// assert!(date1 < date3);
 	/// assert!(date2 < date3);
 	/// ```
-	fn cmp(&self, other: &Self) -> Ordering {
-		let other = *other;
-		match self.cmp_date(other) {
-			Ordering::Equal => self.cmp_time(other),
-			cmp => cmp,
-		}
-	}
+	fn cmp(&self, other: &Self) -> Ordering { Self::cmp(*self, *other) }
 }
 
 impl PartialOrd for Utc2k {
@@ -2071,6 +2056,36 @@ impl Utc2k {
 	}
 
 	#[must_use]
+	/// # Compare Two Date/Times.
+	///
+	/// Same as `Ord`/`PartialOrd`, but constant.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use std::cmp::Ordering;
+	/// use utc2k::Utc2k;
+	///
+	/// let date1 = Utc2k::new(2020, 1, 2, 12, 0, 0);
+	/// let date2 = Utc2k::new(2021, 12, 31, 15, 30, 0);
+	///
+	/// assert_eq!(Utc2k::cmp(date1, date1), Ordering::Equal);
+	/// assert_eq!(Utc2k::cmp(date1, date1), date1.cmp(&date1));
+	///
+	/// assert_eq!(Utc2k::cmp(date1, date2), Ordering::Less);
+	/// assert_eq!(Utc2k::cmp(date1, date2), date1.cmp(&date2));
+	///
+	/// assert_eq!(Utc2k::cmp(date2, date1), Ordering::Greater);
+	/// assert_eq!(Utc2k::cmp(date2, date1), date2.cmp(&date1));
+	/// ```
+	pub const fn cmp(a: Self, b: Self) -> Ordering {
+		match Self::cmp_date(a, b) {
+			Ordering::Equal => Self::cmp_time(a, b),
+			cmp => cmp,
+		}
+	}
+
+	#[must_use]
 	/// # Compare (Only) Dates.
 	///
 	/// Compare `self` to another `Utc2k` instance, ignoring the time
@@ -2085,24 +2100,23 @@ impl Utc2k {
 	/// // The times are different, but the dates match.
 	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
 	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
-	/// assert_eq!(date1.cmp_date(date2), Ordering::Equal);
+	/// assert_eq!(Utc2k::cmp_date(date1, date2), Ordering::Equal);
 	///
 	/// // If the dates don't match, it's what you'd expect.
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
-	/// assert_eq!(date1.cmp_date(date3), Ordering::Less);
+	/// assert_eq!(Utc2k::cmp_date(date1, date3), Ordering::Less);
 	/// ```
-	pub const fn cmp_date(self, other: Self) -> Ordering {
-		if (self.y as u8) == (other.y as u8) {
-			if (self.m as u8) == (other.m as u8) {
-				if self.d == other.d { Ordering::Equal }
-				else if self.d < other.d { Ordering::Less }
-				else { Ordering::Greater }
-			}
-			else if (self.m as u8) < (other.m as u8) { Ordering::Less }
-			else { Ordering::Greater }
+	pub const fn cmp_date(a: Self, b: Self) -> Ordering {
+		match Year::cmp(a.y, b.y) {
+			Ordering::Equal => match Month::cmp(a.m, b.m) {
+				Ordering::Equal =>
+					if a.d == b.d { Ordering::Equal }
+					else if a.d < b.d { Ordering::Less }
+					else { Ordering::Greater },
+				cmp => cmp,
+			},
+			cmp => cmp,
 		}
-		else if (self.y as u8) < (other.y as u8) { Ordering::Less }
-		else { Ordering::Greater }
 	}
 
 	#[must_use]
@@ -2120,23 +2134,23 @@ impl Utc2k {
 	/// // The dates match, but the times are different.
 	/// let date1 = Utc2k::new(2020, 3, 15, 0, 0, 0);
 	/// let date2 = Utc2k::new(2020, 3, 15, 16, 30, 20);
-	/// assert_eq!(date1.cmp_time(date2), Ordering::Less);
+	/// assert_eq!(Utc2k::cmp_time(date1, date2), Ordering::Less);
 	///
 	/// // If the times match, it's what you'd expect.
 	/// let date3 = Utc2k::new(2022, 10, 31, 0, 0, 0);
-	/// assert_eq!(date1.cmp_time(date3), Ordering::Equal);
+	/// assert_eq!(Utc2k::cmp_time(date1, date3), Ordering::Equal);
 	/// ```
-	pub const fn cmp_time(self, other: Self) -> Ordering {
-		if self.hh == other.hh {
-			if self.mm == other.mm {
-				if self.ss == other.ss { Ordering::Equal }
-				else if self.ss < other.ss { Ordering::Less }
+	pub const fn cmp_time(a: Self, b: Self) -> Ordering {
+		if a.hh == b.hh {
+			if a.mm == b.mm {
+				if a.ss == b.ss { Ordering::Equal }
+				else if a.ss < b.ss { Ordering::Less }
 				else { Ordering::Greater }
 			}
-			else if self.mm < other.mm { Ordering::Less }
+			else if a.mm < b.mm { Ordering::Less }
 			else { Ordering::Greater }
 		}
-		else if self.hh < other.hh { Ordering::Less }
+		else if a.hh < b.hh { Ordering::Less }
 		else { Ordering::Greater }
 	}
 }
@@ -2375,24 +2389,24 @@ mod tests {
 			let &[a, b] = pair else { panic!("Windows is broken?!"); };
 
 			// Each should be equal to itself.
-			assert!(a.cmp_date(a).is_eq());
-			assert!(b.cmp_date(b).is_eq());
+			assert!(Utc2k::cmp_date(a, a).is_eq());
+			assert!(Utc2k::cmp_date(b, b).is_eq());
 
 			// And times shouldn't matter.
-			assert!(a.cmp_date(a.with_time(1, 2, 3)).is_eq());
-			assert!(b.cmp_date(b.with_time(3, 2, 1)).is_eq());
-			assert!(a.with_time(1, 2, 3).cmp_date(a).is_eq());
-			assert!(b.with_time(3, 2, 1).cmp_date(b).is_eq());
+			assert!(Utc2k::cmp_date(a, a.with_time(1, 2, 3)).is_eq());
+			assert!(Utc2k::cmp_date(b, b.with_time(3, 2, 1)).is_eq());
+			assert!(Utc2k::cmp_date(a.with_time(1, 2, 3), a).is_eq());
+			assert!(Utc2k::cmp_date(b.with_time(3, 2, 1), b).is_eq());
 
 			// A < B, B > A.
-			assert!(a.cmp_date(b).is_lt());
-			assert!(b.cmp_date(a).is_gt());
+			assert!(Utc2k::cmp_date(a, b).is_lt());
+			assert!(Utc2k::cmp_date(b, a).is_gt());
 
 			// Again, times shouldn't matter.
-			assert!(a.cmp_date(b.with_time(5, 6, 7)).is_lt());
-			assert!(b.cmp_date(a.with_time(8, 9, 3)).is_gt());
-			assert!(a.with_time(5, 6, 7).cmp_date(b).is_lt());
-			assert!(b.with_time(8, 9, 3).cmp_date(a).is_gt());
+			assert!(Utc2k::cmp_date(a, b.with_time(5, 6, 7)).is_lt());
+			assert!(Utc2k::cmp_date(b, a.with_time(8, 9, 3)).is_gt());
+			assert!(Utc2k::cmp_date(a.with_time(5, 6, 7), b).is_lt());
+			assert!(Utc2k::cmp_date(b.with_time(8, 9, 3), a).is_gt());
 		}
 	}
 
@@ -2419,26 +2433,26 @@ mod tests {
 			let &[a, b] = pair else { panic!("Windows is broken?!"); };
 
 			// Each should be equal to itself.
-			assert!(a.cmp_time(a).is_eq());
-			assert!(b.cmp_time(b).is_eq());
+			assert!(Utc2k::cmp_time(a, a).is_eq());
+			assert!(Utc2k::cmp_time(b, b).is_eq());
 
 			// The date shouldn't matter.
 			let c = a + crate::YEAR_IN_SECONDS;
-			assert!(a.cmp_time(c).is_eq());
-			assert!(c.cmp_time(a).is_eq());
+			assert!(Utc2k::cmp_time(a, c).is_eq());
+			assert!(Utc2k::cmp_time(c, a).is_eq());
 			let d = b + crate::YEAR_IN_SECONDS;
-			assert!(b.cmp_time(d).is_eq());
-			assert!(d.cmp_time(b).is_eq());
+			assert!(Utc2k::cmp_time(b, d).is_eq());
+			assert!(Utc2k::cmp_time(d, b).is_eq());
 
 			// A < B, B > A.
-			assert!(a.cmp_time(b).is_lt());
-			assert!(b.cmp_time(a).is_gt());
+			assert!(Utc2k::cmp_time(a, b).is_lt());
+			assert!(Utc2k::cmp_time(b, a).is_gt());
 
 			// Again, the date shouldn't matter.
-			assert!(a.cmp_time(d).is_lt());
-			assert!(b.cmp_time(c).is_gt());
-			assert!(c.cmp_time(b).is_lt());
-			assert!(d.cmp_time(a).is_gt());
+			assert!(Utc2k::cmp_time(a, d).is_lt());
+			assert!(Utc2k::cmp_time(b, c).is_gt());
+			assert!(Utc2k::cmp_time(c, b).is_lt());
+			assert!(Utc2k::cmp_time(d, a).is_gt());
 		}
 	}
 

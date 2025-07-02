@@ -744,6 +744,39 @@ macro_rules! weekmonth {
 			pub const fn next(self) -> Self {
 				$crate::macros::pair!(@next weekmonth { @pairs self } $($k)+)
 			}
+
+			#[inline]
+			#[must_use]
+			#[doc = concat!(
+				"# Compare Two `", stringify!($ty), "`s.\n\n",
+
+				"Same as `Ord`/`PartialOrd`, but constant.\n\n",
+
+				"## Examples\n\n",
+
+				"```\n",
+				"use utc2k::", stringify!($ty), ";\n\n",
+				"assert_eq!(\n",
+				"    ", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), ".cmp(&", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), "),\n",
+				"    ", stringify!($ty), "::cmp(", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), ", ", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), "), // Ordering::Equal\n",
+				");\n",
+				"assert_eq!(\n",
+				"    ", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), ".cmp(&", stringify!($ty), "::", $crate::macros::last!(@stringify $($k)+), "),\n",
+				"    ", stringify!($ty), "::cmp(", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), ", ", stringify!($ty), "::", $crate::macros::last!(@stringify $($k)+), "), // Ordering::Less\n",
+				");\n",
+				"assert_eq!(\n",
+				"    ", stringify!($ty), "::", $crate::macros::last!(@stringify $($k)+), ".cmp(&", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), "),\n",
+				"    ", stringify!($ty), "::cmp(", stringify!($ty), "::", $crate::macros::last!(@stringify $($k)+), ", ", stringify!($ty), "::", $crate::macros::first!(@stringify $($k)+), "), // Ordering::Greater\n",
+				");\n",
+				"```",
+			)]
+			pub const fn cmp(a: Self, b: Self) -> ::std::cmp::Ordering {
+				let a = a as u8;
+				let b = b as u8;
+				if a == b { ::std::cmp::Ordering::Equal }
+				else if a < b { ::std::cmp::Ordering::Less }
+				else { ::std::cmp::Ordering::Greater }
+			}
 		}
 
 		$crate::macros::weekmonth!(@from_u8 $ty $($k $v)+);

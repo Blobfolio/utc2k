@@ -4,9 +4,16 @@
 
 ## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - TBD
 
-### Changed
+### New
 
-* `Weekday::first/last/nth_in_month` now takes a `Month` (instead of a `u8`)
+* `Utc2k::cmp` (const comparison)
+* `Month::cmp` (const comparison)
+* `Weekday::cmp` (const comparison)
+
+### Breaking
+
+* `Utc2k::cmp_date`/`cmp_time` now take `(a: Self, b: Self)` (instead of `(&self, b: Self)`)
+* `Weekday::first/last/nth_in_month` now take a `Month` (instead of a `u8`)
 
 
 

@@ -5,6 +5,7 @@
 #![expect(clippy::inline_always, reason = "Foundational.")]
 
 use crate::Weekday;
+use std::cmp::Ordering;
 
 
 
@@ -185,6 +186,17 @@ year!{
 }
 
 impl Year {
+	#[inline]
+	#[must_use]
+	/// # Constant Compare.
+	pub(crate) const fn cmp(a: Self, b: Self) -> Ordering {
+		let a = a as u8;
+		let b = b as u8;
+		if a == b { Ordering::Equal }
+		else if a < b { Ordering::Less }
+		else { Ordering::Greater }
+	}
+
 	#[inline(always)]
 	/// # Full Year.
 	///
