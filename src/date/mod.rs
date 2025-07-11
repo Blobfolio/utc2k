@@ -288,7 +288,7 @@ impl FmtUtc2k {
 	/// }
 	///
 	/// // Same for datetimes.
-	/// let datetimes: [&[u8]; 8] = [
+	/// let datetimes: [&[u8]; 10] = [
 	///     b"20250615123001",
 	///     b"2025-06-15 12:30:01",
 	///     b"2025-06-15T12:30:01Z",
@@ -297,6 +297,8 @@ impl FmtUtc2k {
 	///     b"2025/06/15:12:30:01 UTC",
 	///     b"2025/06/15 12:30:01.000 +0000",
 	///     b"2025/06/15 12:30:01+0000",
+	///     b"2025/06/15T16:30:01+04:00",
+	///     b"2025/06/15T05:30:01-07:00",
 	/// ];
 	/// for raw in datetimes {
 	///     assert_eq!(
@@ -1142,9 +1144,9 @@ impl Utc2k {
 	///
 	/// Complete datetimes can optionally end with "Z", " UT", " UTC", or
 	/// " GMT" — all of which are ignored — or a fixed UTC offset of the
-	/// `±hhmm` variety which, if present, will be parsed and factored into
-	/// the result. (Fixed offsets can also be written like "GMT±hhmm" or
-	/// "UTC±hhmm".)
+	/// `±hhmm`/`±hh:mm` varieties which, if present, will be parsed and
+	/// factored into the result. (Fixed offsets can also be written like
+	/// "GMT±hhmm" or "UTC±hhmm".)
 	///
 	/// Parsing will fail for sources containing any _other_ random trailing
 	/// data, including things like "CST"-style time zone abbreviations.
@@ -1171,7 +1173,7 @@ impl Utc2k {
 	/// }
 	///
 	/// // Same for datetimes.
-	/// let datetimes: [&[u8]; 11] = [
+	/// let datetimes: [&[u8]; 14] = [
 	///     b"20250615123001",
 	///     b"2025-06-15 12:30:01",
 	///     b"2025-06-15T12:30:01Z",
@@ -1183,6 +1185,9 @@ impl Utc2k {
 	///     b"2025/06/15:12:30:01 UTC+0000", // Redundant.
 	///     b"2025/06/15 12:30:01.000 +0000",
 	///     b"2025/06/15 12:30:01+0000",
+	///     b"2025/06/15T16:30:01+04:00", // Colon in offset
+	///     b"2025/06/15T16:30:01UTC+04:00",
+	///     b"2025/06/15T05:30:01-07:00",
 	/// ];
 	/// for raw in datetimes {
 	///     assert_eq!(

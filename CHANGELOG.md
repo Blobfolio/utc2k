@@ -2,13 +2,14 @@
 
 
 
-## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - TBD
+## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - 2025-07-13
 
 ### New
 
 * `Utc2k::cmp` (const comparison)
 * `Month::cmp` (const comparison)
 * `Weekday::cmp` (const comparison)
+* `Utc2k::from_ascii` now supports `±hh:mm`-style (with colon) fixed offsets
 
 ### Breaking
 

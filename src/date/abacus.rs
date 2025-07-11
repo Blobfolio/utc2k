@@ -550,7 +550,9 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 		// Three is fine if it's GMT or UTC.
 		3 if is_gmt_utc(src[0], src[1], src[2]) => Some(0),
 		5 => parse_offset_fixed(src[0], [src[1], src[2], src[3], src[4]]),
+		6 if src[3] == b':' => parse_offset_fixed(src[0], [src[1], src[2], src[4], src[5]]),
 		8 if is_gmt_utc(src[0], src[1], src[2]) => parse_offset_fixed(src[3], [src[4], src[5], src[6], src[7]]),
+		9 if is_gmt_utc(src[0], src[1], src[2]) && src[6] == b':' => parse_offset_fixed(src[3], [src[4], src[5], src[7], src[8]]),
 		_ => None,
 	}
 }
@@ -804,6 +806,36 @@ mod tests {
 				28_u16 + u16::from(leap),
 				days,
 				"Disagreement over February {i}: {days} ({leap})",
+			);
+		}
+	}
+
+	#[test]
+	/// # Test w/ `hh:mm` Offset.
+	///
+	/// The colon-separated offset flavor wasn't initially supported, so let's
+	/// add some explicit tests to augment what is already covered in the docs.
+	fn t_hh_mm_offset() {
+		for (raw, expected) in [
+			// No colon.
+			(
+				"2025-01-01T11:44:25.838394-0800",
+				(Year::Y2k25, Month::January, 1, 19, 44, 25)
+			),
+			// Yes colon.
+			(
+				"2025-01-01T11:44:25.838394-08:00",
+				(Year::Y2k25, Month::January, 1, 19, 44, 25)
+			),
+			// Yes colon, plus offset.
+			(
+				"2025-01-01T11:44:25.838394+04:00",
+				(Year::Y2k25, Month::January, 1, 7, 44, 25)
+			),
+		] {
+			assert_eq!(
+				Abacus::from_ascii(raw.as_bytes()).unwrap().parts(),
+				expected,
 			);
 		}
 	}
