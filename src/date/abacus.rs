@@ -136,11 +136,9 @@ impl Abacus {
 	/// Return the individual parts, nice and balanced, ready for consumption
 	/// by [`Utc2k`]. (Only the last two digits of the year are returned.)
 	pub(super) const fn parts(&self) -> (Year, Month, u8, u8, u8, u8) {
-		if self.y < 2000 { (Year::Y2k00, Month::January, 1, 0, 0, 0) }
-		else if 2099 < self.y { (Year::Y2k99, Month::December, 31, 23, 59, 59) }
-		else {
+		if let Some(y) = Year::from_u16_checked(self.y) {
 			(
-				Year::from_u8((self.y - 2000) as u8),
+				y,
 				Month::from_u8(self.m as u8),
 				self.d as u8,
 				self.hh as u8,
@@ -148,6 +146,8 @@ impl Abacus {
 				self.ss as u8,
 			)
 		}
+		else if self.y < 2000 { (Year::Y2k00, Month::January, 1, 0, 0, 0) }
+		else { (Year::Y2k99, Month::December, 31, 23, 59, 59) }
 	}
 
 	#[expect(clippy::cast_possible_truncation, reason = "False positive.")]
@@ -157,11 +157,9 @@ impl Abacus {
 	/// by [`Utc2k`], unless out of range.
 	pub(super) const fn parts_checked(&self)
 	-> Result<(Year, Month, u8, u8, u8, u8), Utc2kError> {
-		if self.y < 2000 { Err(Utc2kError::Underflow) }
-		else if 2099 < self.y { Err(Utc2kError::Overflow) }
-		else {
+		if let Some(y) = Year::from_u16_checked(self.y) {
 			Ok((
-				Year::from_u8((self.y - 2000) as u8),
+				y,
 				Month::from_u8(self.m as u8),
 				self.d as u8,
 				self.hh as u8,
@@ -169,6 +167,8 @@ impl Abacus {
 				self.ss as u8,
 			))
 		}
+		else if self.y < 2000 { Err(Utc2kError::Underflow) }
+		else { Err(Utc2kError::Overflow) }
 	}
 }
 
@@ -550,7 +550,9 @@ const fn parse_offset(src: &[u8]) -> Option<i32> {
 		// Three is fine if it's GMT or UTC.
 		3 if is_gmt_utc(src[0], src[1], src[2]) => Some(0),
 		5 => parse_offset_fixed(src[0], [src[1], src[2], src[3], src[4]]),
+		6 if src[3] == b':' => parse_offset_fixed(src[0], [src[1], src[2], src[4], src[5]]),
 		8 if is_gmt_utc(src[0], src[1], src[2]) => parse_offset_fixed(src[3], [src[4], src[5], src[6], src[7]]),
+		9 if is_gmt_utc(src[0], src[1], src[2]) && src[6] == b':' => parse_offset_fixed(src[3], [src[4], src[5], src[7], src[8]]),
 		_ => None,
 	}
 }
@@ -804,6 +806,36 @@ mod tests {
 				28_u16 + u16::from(leap),
 				days,
 				"Disagreement over February {i}: {days} ({leap})",
+			);
+		}
+	}
+
+	#[test]
+	/// # Test w/ `hh:mm` Offset.
+	///
+	/// The colon-separated offset flavor wasn't initially supported, so let's
+	/// add some explicit tests to augment what is already covered in the docs.
+	fn t_hh_mm_offset() {
+		for (raw, expected) in [
+			// No colon.
+			(
+				"2025-01-01T11:44:25.838394-0800",
+				(Year::Y2k25, Month::January, 1, 19, 44, 25)
+			),
+			// Yes colon.
+			(
+				"2025-01-01T11:44:25.838394-08:00",
+				(Year::Y2k25, Month::January, 1, 19, 44, 25)
+			),
+			// Yes colon, plus offset.
+			(
+				"2025-01-01T11:44:25.838394+04:00",
+				(Year::Y2k25, Month::January, 1, 7, 44, 25)
+			),
+		] {
+			assert_eq!(
+				Abacus::from_ascii(raw.as_bytes()).unwrap().parts(),
+				expected,
 			);
 		}
 	}

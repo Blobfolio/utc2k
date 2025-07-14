@@ -1344,5 +1344,14 @@ mod tests {
 			assert_eq!(utc, local);
 			assert_eq!(utc, local.to_utc2k());
 		}
+
+		// Lastly, let's check the first 15 days of March, since there'll be
+		// a Daylight Saving boundary in there for some time zones.
+		for i in Utc2k::new(2025, 3, 1, 0, 0, 0).unixtime()..=Utc2k::new(2025, 3, 15, 0, 0, 0).unixtime() {
+			let utc = Utc2k::from_unixtime(i);
+			let local = Local2k::from_utc2k(utc);
+			assert_eq!(utc, local);
+			assert_eq!(utc, local.to_utc2k());
+		}
 	}
 }

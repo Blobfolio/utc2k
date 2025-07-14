@@ -36,6 +36,14 @@ benches!(
 
 	Bench::spacer(),
 
+	Bench::new("utc2k::Weekday::Monday.nth_in_month(2023, Month::October, 3)")
+		.run(|| Weekday::Monday.nth_in_month(2023, Month::October, 3)),
+
+	Bench::new("utc2k::Weekday::Monday.last_in_month(2023, Month::October)")
+		.run(|| Weekday::Monday.last_in_month(2023, Month::October)),
+
+	Bench::spacer(),
+
 	Bench::new("utc2k::Month::try_from(jun)")
 		.run(|| Month::try_from("jun")),
 

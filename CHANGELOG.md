@@ -2,6 +2,22 @@
 
 
 
+## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - 2025-07-13
+
+### New
+
+* `Utc2k::cmp` (const comparison)
+* `Month::cmp` (const comparison)
+* `Weekday::cmp` (const comparison)
+* `Utc2k::from_ascii` now supports `±hh:mm`-style (with colon) fixed offsets
+
+### Breaking
+
+* `Utc2k::cmp_date`/`cmp_time` now take `(a: Self, b: Self)` (instead of `(&self, b: Self)`)
+* `Weekday::first/last/nth_in_month` now take a `Month` (instead of a `u8`)
+
+
+
 ## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - 2025-06-26
 
 Date/time string parsing has been completely refactored for this release, vastly improving the behavioral consistency — and correctness — across methods and formats.
