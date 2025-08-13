@@ -48,7 +48,7 @@ impl Decode<'_, MySql> for Utc2k {
 	/// query!(
 	///     "
 	///     SELECT
-	///         UNIX_TIMESTAMP(date_last) AS `date_last: Utc2k`,
+	///         UNIX_TIMESTAMP(date_last) AS `date_last!: Utc2k`,
 	///         first_name,
 	///         last_name
 	///     FROM mailing_list
@@ -91,7 +91,7 @@ impl<'q> Encode<'q, MySql> for Utc2k {
 	/// query!(
 	///     "
 	///     SELECT
-	///         UNIX_TIMESTAMP(date_last) AS `date_last: Utc2k`,
+	///         UNIX_TIMESTAMP(date_last) AS `date_last!: Utc2k`,
 	///         first_name,
 	///         last_name
 	///     FROM mailing_list
