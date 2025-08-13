@@ -60,6 +60,7 @@ assert_eq!(
 
 * `local`: Enables the [`Local2k`]/[`FmtLocal2k`] structs. Refer to the documentation for important caveats and limitations.
 * `serde`: Enables serialization/deserialization support.
+* `sqlx-mysql`: Enables [`sqlx`](https://crates.io/crates/sqlx) (mysql) support for [`Utc2k`].
 */
 
 #![deny(
@@ -128,6 +129,10 @@ mod macros;
 #[cfg(any(test, feature = "serde"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 mod serde;
+
+#[cfg(feature = "sqlx-mysql")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sqlx-mysql")))]
+mod sqlx;
 
 
 
