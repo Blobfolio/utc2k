@@ -126,6 +126,7 @@ mod year;
 mod macros;
 
 #[cfg(any(test, feature = "serde"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 mod serde;
 
 
