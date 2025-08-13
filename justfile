@@ -72,6 +72,11 @@ bench BENCH="":
 
 	RUSTFLAGS="-D warnings" cargo clippy \
 		--release \
+		--features sqlx-mysql \
+		--target-dir "{{ cargo_dir }}"
+
+	RUSTFLAGS="-D warnings" cargo clippy \
+		--release \
 		--all-features \
 		--target-dir "{{ cargo_dir }}"
 

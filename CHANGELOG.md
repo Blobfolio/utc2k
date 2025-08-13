@@ -2,6 +2,18 @@
 
 
 
+## [0.17.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.0) - 2025-08-12
+
+### New
+
+* Optional crate feature `sqlx-mysql`
+
+### Changed
+
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - 2025-07-13
 
 ### New

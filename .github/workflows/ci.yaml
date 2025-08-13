@@ -21,12 +21,12 @@ jobs:
       matrix:
         target:
         - x86_64-unknown-linux-gnu
-        - x86_64-apple-darwin
+        - aarch64-apple-darwin
         - x86_64-pc-windows-msvc
         include:
         - target: x86_64-unknown-linux-gnu
           os:     ubuntu-latest
-        - target: x86_64-apple-darwin
+        - target: aarch64-apple-darwin
           os:     macos-latest
         - target: x86_64-pc-windows-msvc
           os:     windows-latest
@@ -59,6 +59,7 @@ jobs:
         cargo clippy --release --target ${{ matrix.target }}
         cargo clippy --release --features "local" --target ${{ matrix.target }}
         cargo clippy --release --features "serde" --target ${{ matrix.target }}
+        cargo clippy --release --features "sqlx-mysql" --target ${{ matrix.target }}
         cargo clippy --release --all-features --target ${{ matrix.target }}
 
     - name: Tests (Debug)
@@ -66,6 +67,7 @@ jobs:
         cargo test --target ${{ matrix.target }}
         cargo test --features "local" --target ${{ matrix.target }}
         cargo test --features "serde" --target ${{ matrix.target }}
+        cargo test --features "sqlx-mysql" --target ${{ matrix.target }}
         cargo test --all-features --target ${{ matrix.target }}
 
     - name: Tests (Release)
@@ -73,4 +75,5 @@ jobs:
         cargo test --release --target ${{ matrix.target }}
         cargo test --release --features "local" --target ${{ matrix.target }}
         cargo test --release --features "serde" --target ${{ matrix.target }}
+        cargo test --release --features "sqlx-mysql" --target ${{ matrix.target }}
         cargo test --release --all-features --target ${{ matrix.target }}
