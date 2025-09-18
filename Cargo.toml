@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -31,16 +31,20 @@ name = "UTC2K"
 [dev-dependencies]
 brunch = "0.11.*"
 fastrand = "2"
-serde = "1.0.*"
 serde_json = "1.0.*"
+
+[dev-dependencies.serde_core]
+version = "1.0.*"
+default-features = false
 
 [dev-dependencies.time]
 version = "0.3.*"
 default-features = false
 features = [ "std", "formatting" ]
 
-[dependencies.serde]
+[dependencies.serde_core]
 version = "1.0.*"
+default-features = false
 optional = true
 
 [dependencies.sqlx]
@@ -60,7 +64,7 @@ local = [ "tz-rs" ]
 
 # Enable (de)/serialize support for Utc2k, FmtUtc2k, Month, and
 # Weekday.
-serde = [ "dep:serde" ]
+serde = [ "dep:serde_core" ]
 
 # Add sqlx type/decode/encode support for Utc2k (only).
 sqlx-mysql = [ "sqlx", "sqlx/mysql" ]

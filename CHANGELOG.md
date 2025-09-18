@@ -2,6 +2,15 @@
 
 
 
+## [0.17.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.1) - 2025-09-18
+
+### Changed
+
+* Replace `serde` w/ `serde_core`
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.17.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.0) - 2025-08-12
 
 ### New

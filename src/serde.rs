@@ -8,7 +8,7 @@ use crate::{
 	Utc2k,
 	Weekday,
 };
-use serde::{
+use serde_core::{
 	de,
 	Deserialize,
 	ser,
@@ -149,7 +149,7 @@ impl<'de> Deserialize<'de> for Month {
 
 			#[inline]
 			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
-			where S: serde::de::Error {
+			where S: serde_core::de::Error {
 				Month::try_from(src).map_err(|_| de::Error::custom("invalid month string"))
 			}
 		}
@@ -194,7 +194,7 @@ impl<'de> Deserialize<'de> for Weekday {
 
 			#[inline]
 			fn visit_bytes<S>(self, src: &[u8]) -> Result<Self::Value, S>
-			where S: serde::de::Error {
+			where S: serde_core::de::Error {
 				Weekday::try_from(src).map_err(|_| de::Error::custom("invalid weekday string"))
 			}
 		}

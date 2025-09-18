@@ -7,34 +7,39 @@ use std::error::Error;
 
 
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-/// # Errors.
-pub enum Utc2kError {
-	/// # Invalid date/time format.
-	Invalid,
+/// # Helper: Errors.
+macro_rules! err {
+	( $( $k:ident $v:literal ),+ $(,)? ) => (
+		#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+		/// # Errors.
+		pub enum Utc2kError {
+			$(
+				#[doc = concat!("# ", $v)]
+				$k,
+			)+
+		}
 
-	/// # Value is too big/late.
-	Overflow,
+		impl Utc2kError {
+			#[must_use]
+			/// # As Str.
+			///
+			/// Return the error as a string slice.
+			pub const fn as_str(self) -> &'static str {
+				match self {
+					$( Self::$k => $v, )+
+				}
+			}
+		}
+	);
+}
 
-	/// # Value is too small/early.
-	Underflow,
+err! {
+	Invalid   "Invalid date/time format.",
+	Overflow  "Date/time is post-2099.",
+	Underflow "Date/time is pre-2000.",
 }
 
 impl Error for Utc2kError {}
 
 macros::as_ref_borrow_cast!(Utc2kError: as_str str);
 macros::display_str!(as_str Utc2kError);
-
-impl Utc2kError {
-	#[must_use]
-	/// # As Str.
-	///
-	/// Return the error as a string slice.
-	pub const fn as_str(self) -> &'static str {
-		match self {
-			Self::Invalid => "Invalid date/time format.",
-			Self::Overflow => "Date/time is post-2099.",
-			Self::Underflow => "Date/time is pre-2000.",
-		}
-	}
-}
