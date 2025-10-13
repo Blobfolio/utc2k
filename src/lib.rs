@@ -121,6 +121,7 @@ mod chr;
 mod date;
 mod error;
 mod month;
+mod period;
 mod weekday;
 mod year;
 
@@ -141,8 +142,12 @@ pub use date::{
 	FmtUtc2k,
 	Utc2k,
 };
-pub use error::Utc2kError;
+pub use error::{
+	Utc2kError,
+	Utc2kFormatError,
+};
 pub use month::Month;
+pub use period::Period;
 pub use weekday::Weekday;
 use year::Year;
 

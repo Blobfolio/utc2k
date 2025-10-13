@@ -4,6 +4,12 @@
 
 ## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - TBD
 
+### New
+
+* `Utc2k::formatted_custom`
+* `Utc2k::hour_12`
+* `Utc2k::hour_period`
+
 ### Changed
 
 * Bump `tz-rs` to `0.7.1`
