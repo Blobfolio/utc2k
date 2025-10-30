@@ -2,7 +2,7 @@
 
 
 
-## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - TBD
+## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - 2025-10-30
 
 ### New
 
@@ -13,6 +13,7 @@
 ### Changed
 
 * Bump `tz-rs` to `0.7.1`
+* Miscellaneous code cleanup and lints
 
 
 
