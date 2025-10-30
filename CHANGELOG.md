@@ -2,6 +2,21 @@
 
 
 
+## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - 2025-10-30
+
+### New
+
+* `Utc2k::formatted_custom`
+* `Utc2k::hour_12`
+* `Utc2k::hour_period`
+
+### Changed
+
+* Bump `tz-rs` to `0.7.1`
+* Miscellaneous code cleanup and lints
+
+
+
 ## [0.17.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.1) - 2025-09-18
 
 ### Changed

@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 /// # Helper: Define Enum.
 macro_rules! year {
 	(
-		$($k:ident $v:tt $v16:tt $d1:ident $d2:ident $sec:literal),+,
+		$($k:ident $v:tt $v16:tt $d1:ident $d2:ident $sec:literal,)+
 		@last $last_k:ident $last_v:tt $last_v16:tt $last_d1:ident $last_d2:ident $last_sec:literal
 		$(,)?
 	) => (
@@ -23,8 +23,8 @@ macro_rules! year {
 		/// This enum holds the years between `2000..=2099`, mainly to ensure
 		/// we can't possibly accidentally operate on a 1990 or whatever.
 		pub(crate) enum Year {
-			$($k = $v),+,
-			$last_k = $last_v
+			$( $k = $v, )+
+			$last_k = $last_v,
 		}
 
 		impl Year {
@@ -35,8 +35,18 @@ macro_rules! year {
 			/// methods.
 			pub(crate) const fn as_str(self) -> &'static str {
 				match self {
-					$( Self::$k => concat!(" ", stringify!($v16), " ") ),+,
+					$( Self::$k => concat!(" ", stringify!($v16), " "), )+
 					Self::$last_k => concat!(" ", stringify!($last_v16), " "),
+				}
+			}
+
+			/// # As String (4).
+			///
+			/// Return the year as a string slice.
+			pub(crate) const fn as_str_full(self) -> &'static str {
+				match self {
+					$( Self::$k => stringify!($v16), )+
+					Self::$last_k => stringify!($last_v16),
 				}
 			}
 
@@ -46,7 +56,7 @@ macro_rules! year {
 			/// out of range.
 			pub(crate) const fn from_u8(src: u8) -> Self {
 				match src {
-					$($v => Self::$k),+,
+					$( $v => Self::$k, )+
 					_ => Self::$last_k,
 				}
 			}
@@ -57,7 +67,7 @@ macro_rules! year {
 			/// out of range.
 			pub(crate) const fn from_u16_checked(src: u16) -> Option<Self> {
 				match src {
-					$($v16 => Some(Self::$k)),+,
+					$( $v16 => Some(Self::$k), )+
 					$last_v16 => Some(Self::$last_k),
 					_ => None,
 				}
@@ -73,7 +83,7 @@ macro_rules! year {
 			/// parsed date/time back to unixtime.)
 			pub(crate) const fn unixtime(self) -> u32 {
 				match self {
-					$(Self::$k => $sec),+,
+					$( Self::$k => $sec, )+
 					Self::$last_k => $last_sec,
 				}
 			}

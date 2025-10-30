@@ -3,6 +3,7 @@
 */
 
 mod abacus;
+mod fancy_fmt;
 
 #[cfg(feature = "local")]
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
@@ -16,8 +17,10 @@ use crate::{
 	macros,
 	MINUTE_IN_SECONDS,
 	Month,
+	Period,
 	unixtime,
 	Utc2kError,
+	Utc2kFormatError,
 	Weekday,
 	Year,
 	YEAR_IN_DAYS_P2,
@@ -1574,6 +1577,53 @@ impl Utc2k {
 
 	#[inline]
 	#[must_use]
+	/// # 12-Hour Hour.
+	///
+	/// Return the hour in unholy 12-hour format.
+	///
+	/// [`Utc2k::hour_period`] can be used to disambiguate the result.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::Utc2k;
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 4, 30, 1);
+	/// assert_eq!(date.hour_12(), 4); // AM.
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.hour_12(), 4); // PM.
+	/// ```
+	pub const fn hour_12(self) -> u8 {
+		if self.hh == 0 { 12 }
+		else if 12 < self.hh { self.hh - 12 }
+		else { self.hh }
+	}
+
+	#[inline]
+	#[must_use]
+	/// # Period (AM or PM).
+	///
+	/// If the hour is less than `12`, returns AM; otherwise PM.
+	///
+	/// ## Examples
+	///
+	/// ```
+	/// use utc2k::{Period, Utc2k};
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 4, 30, 1);
+	/// assert_eq!(date.hour_period(), Period::Am);
+	///
+	/// let date = Utc2k::new(2010, 5, 15, 16, 30, 1);
+	/// assert_eq!(date.hour_period(), Period::Pm);
+	/// ```
+	pub const fn hour_period(self) -> Period {
+		if self.hh < 12 { Period::Am }
+		else { Period::Pm }
+	}
+
+	#[inline]
+	#[must_use]
 	/// # Minute.
 	///
 	/// This returns the minute value.
@@ -1884,6 +1934,173 @@ impl Utc2k {
 	/// ```
 	pub const fn with_time(self, hh: u8, mm: u8, ss: u8) -> Self {
 		Self::from_abacus(Abacus::new(self.year(), self.m as u8, self.d, hh, mm, ss))
+	}
+}
+
+/// # Helper: Fancy Docs.
+///
+/// This is used to present the components and modifiers in a neat table,
+/// and generate unit tests corresponding to each example value.
+macro_rules! fancy_docs {
+	(
+		$(
+			(
+				$comp:literal
+				$desc1:literal $expected1:literal,
+				$( $prop:literal $desc:literal $expected:literal, )*
+			),
+		)+
+	) => (
+		concat!(
+			"| Component | Modifier | Description | Example |\n",
+			"| --------- | -------- | ----------- | ------- |\n",
+			$(
+				concat!(
+					"| `", $comp, "` | | ", $desc1, " | `\"", $expected1, "\"` |\n",
+					$(
+						concat!(
+							"| | `", $prop, "` | ", $desc, " | `\"", $expected, "\"` |\n",
+						),
+					)*
+				),
+			)+
+			"\n\n## Examples\n\n",
+			"```\n",
+			"use utc2k::Utc2k;\n\n",
+			$(
+				concat!(
+					"# assert_eq!(Utc2k::MIN.formatted_custom(\"[", $comp, "]\").unwrap(), \"", $expected1, "\");\n",
+					$(
+						concat!(
+							"# assert_eq!(Utc2k::MIN.formatted_custom(\"[", $comp, " ", $prop, "]\").unwrap(), \"", $expected, "\");\n",
+						),
+					)*
+				),
+			)+
+		)
+	)
+}
+
+/// ## Fancy Formatting.
+impl Utc2k {
+	/// # Arbitrarily-Formatted Date/Time.
+	///
+	/// This method can be used to format a `Utc2k` date/time value just
+	/// about any which way.
+	///
+	/// ## Syntax
+	///
+	/// The formatting syntax is similar to [the one used by the `time` crate](https://time-rs.github.io/book/api/format-description.html),
+	/// but a bit more compact and consistent.
+	///
+	/// Date/time "components" are specified as `[]`-enclosed tags with
+	/// optional space-separated "modifiers". Everything else is treated as
+	/// a literal and passed through as-is.
+	///
+	/// To include a literal `"["`, escape it with another, i.e. `"[["`.
+	///
+	/// Note: format strings must be valid ASCII.
+	///
+	/// ## Components
+	///
+	#[doc = fancy_docs!(
+		(
+			"year"
+			            "Four-digit year."                    "2000",
+			"@2"        "Two-digit year."                     "00",
+			"@2 @space" "Two-digit year, space-padded."       " 0",
+			"@2 @trim"  "Two-digit year, unpadded."           "0",
+		),
+		(
+			"month"
+			            "Two-digit month."                    "01",
+			"@space"    "Two-digit month, space-padded."      " 1",
+			"@trim"     "Two-digit month, unpadded."          "1",
+			"@name"     "Month name."                         "January",
+			"@abbr"     "Month abbreviation."                 "Jan",
+		),
+		(
+			"day"
+			            "Two-digit day."                      "01",
+			"@space"    "Two-digit day, space-padded."        " 1",
+			"@trim"     "Two-digit day, unpadded."            "1",
+			"@name"     "Weekday."                            "Saturday",
+			"@abbr"     "Weekday abbreviation."               "Sat",
+		),
+		(
+			"hour"
+			             "Two-digit hour (24)."               "00",
+			"@space"     "Two-digit hour (24), space-padded." " 0",
+			"@trim"      "Two-digit hour (24), unpadded."     "0",
+			"@12"        "Two-digit hour (12)."               "12",
+			"@12 @space" "Two-digit hour (12), space-padded." "12",
+			"@12 @trim"  "Two-digit hour (12), unpadded."     "12",
+		),
+		(
+			"minute"
+			             "Two-digit minute."                  "00",
+			"@space"     "Two-digit minute, space-padded."    " 0",
+			"@trim"      "Two-digit minute, unpadded."        "0",
+		),
+		(
+			"second"
+			             "Two-digit second."                  "00",
+			"@space"     "Two-digit second, space-padded."    " 0",
+			"@trim"      "Two-digit second, unpadded."        "0",
+		),
+		(
+			"ordinal"
+			             "Ordinal."                           "001",
+			"@space"     "Ordinal, space-padded."             "  1",
+			"@trim"      "Ordinal, unpadded."                 "1",
+		),
+		(
+			"period"
+			             "Lowercase."                         "am",
+			"@ap"        "AP Style (punctuated)."             "a.m.",
+			"@upper"     "UPPERCASE."                         "AM",
+		),
+		(
+			"unixtime"
+			             "Unix timestamp."                    "946684800",
+		),
+	)]
+	/// // Same as `Utc2k::to_rfc2822`, but slower and fallible. Haha.
+	/// assert_eq!(
+	///     Utc2k::MAX.formatted_custom(
+	///         "[day @abbr], [day] [month @abbr] [year] [hour]:[minute]:[second] +0000"
+	///     ).unwrap(),
+	///     Utc2k::MAX.to_rfc2822(),
+	/// );
+	///
+	/// // Literal '[' require escape.
+	/// assert_eq!(
+	///     Utc2k::MAX.formatted_custom("[[[year]]").unwrap(),
+	///     "[2099]",
+	/// );
+	///
+	/// // Whitespace between the '[]' doesn't matter, but outside it's literal.
+	/// assert_eq!(
+	///     Utc2k::MAX.formatted_custom("  +[  period  @upper  ]+  ").unwrap(),
+	///     "  +PM+  ",
+	/// );
+	///
+	/// // Arbitrary to the extreme…
+	/// assert_eq!(
+	///     Utc2k::MAX.formatted_custom("Hello World").unwrap(),
+	///     "Hello World",
+	/// );
+	///
+	/// // Format strings must be ASCII, however.
+	/// assert!(Utc2k::MAX.formatted_custom("Björk like it's [year]!").is_err());
+	/// ```
+	///
+	/// ## Errors
+	///
+	/// This method will return an error if the format string contains non-ASCII
+	/// characters or is otherwise malformed.
+	pub fn formatted_custom(self, fmt: &str) -> Result<String, Utc2kFormatError> {
+		fancy_fmt::Component::format_date(self, fmt)
 	}
 }
 

@@ -84,6 +84,7 @@ assert_eq!(
 	clippy::format_push_string,
 	clippy::get_unwrap,
 	clippy::impl_trait_in_params,
+	clippy::implicit_clone,
 	clippy::lossy_float_literal,
 	clippy::missing_assert_message,
 	clippy::missing_docs_in_private_items,
@@ -93,7 +94,6 @@ assert_eq!(
 	clippy::rest_pat_in_fully_bound_structs,
 	clippy::semicolon_inside_block,
 	clippy::str_to_string,
-	clippy::string_to_string,
 	clippy::todo,
 	clippy::undocumented_unsafe_blocks,
 	clippy::unneeded_field_pattern,
@@ -121,6 +121,7 @@ mod chr;
 mod date;
 mod error;
 mod month;
+mod period;
 mod weekday;
 mod year;
 
@@ -141,8 +142,12 @@ pub use date::{
 	FmtUtc2k,
 	Utc2k,
 };
-pub use error::Utc2kError;
+pub use error::{
+	Utc2kError,
+	Utc2kFormatError,
+};
 pub use month::Month;
+pub use period::Period;
 pub use weekday::Weekday;
 use year::Year;
 

@@ -377,7 +377,7 @@ macro_rules! weekmonth {
 			)]
 			fn from(src: $uint) -> Self {
 				match src % $v_last {
-					$( $v => Self::$k ),+,
+					$( $v => Self::$k, )+
 					_ => Self::$k_last,
 				}
 			}
@@ -406,7 +406,7 @@ macro_rules! weekmonth {
 			)]
 			fn from(src: $ty) -> Self {
 				match src {
-					$( <$ty>::$k => $v ),+,
+					$( <$ty>::$k => $v, )+
 					<$ty>::$k_last => $v_last,
 				}
 			}
@@ -443,7 +443,7 @@ macro_rules! weekmonth {
 			/// # From `u8`.
 			pub(crate) const fn from_u8(src: u8) -> Self {
 				match src % $v_last {
-					$( $v => Self::$k ),+,
+					$( $v => Self::$k, )+
 					_ => Self::$k_last,
 				}
 			}
@@ -493,7 +493,7 @@ macro_rules! weekmonth {
 			fn sub(self, other: $uint) -> Self {
 				match (self as u8 - 1).wrapping_sub((other % $crate::macros::last!($($v)+)) as u8) {
 					0 => Self::$k_first,
-					$( $sub1 | $sub2 => Self::$k ),+,
+					$( $sub1 | $sub2 => Self::$k, )+
 					_ => unreachable!(),
 				}
 			}

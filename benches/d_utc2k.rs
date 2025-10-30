@@ -53,6 +53,11 @@ benches!(
 
 	Bench::spacer(),
 
+	Bench::new("utc2k::Utc2k::formatted_custom()")
+		.run_seeded(Utc2k::MAX, |u| u.formatted_custom(
+			"[day @abbr], [day] [month @abbr] [year] [hour]:[minute]:[second] +0000"
+		)),
+
 	Bench::new("utc2k::Utc2k::to_rfc2822()")
 		.run_seeded(Utc2k::MAX, |u| u.to_rfc2822()),
 
