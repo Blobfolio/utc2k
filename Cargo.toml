@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.18.1"
+version = "0.18.2"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -22,7 +22,7 @@ exclude = [
 [package.metadata.docs.rs]
 rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
-features = [ "local", "serde", "sqlx-mysql" ]
+features = [ "local", "serde" ]
 default-target = "x86_64-unknown-linux-gnu"
 
 [package.metadata.bashman]
