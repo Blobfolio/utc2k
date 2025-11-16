@@ -2,6 +2,14 @@
 
 
 
+## [0.18.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.2) - 2025-11-16
+
+### Workaround
+
+* Disable `sqlx-mysql` feature for docs.rs so it can build. Haha.
+
+
+
 ## [0.18.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.1) - 2025-11-16
 
 ### Changed

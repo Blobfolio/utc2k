@@ -1,7 +1,7 @@
 # Project Dependencies
     Package:   utc2k
-    Version:   0.18.1
-    Generated: 2025-11-16 21:57:35 UTC
+    Version:   0.18.2
+    Generated: 2025-11-16 22:11:59 UTC
 
 | Package | Version | Author(s) | License |
 | ---- | ---- | ---- | ---- |
