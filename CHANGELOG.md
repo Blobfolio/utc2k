@@ -2,6 +2,14 @@
 
 
 
+## [0.18.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.1) - 2025-11-16
+
+### Changed
+
+* Make `sqlx-mysql` feature traits generic over `sqlx::Database`
+
+
+
 ## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - 2025-10-30
 
 ### New

@@ -1,6 +1,6 @@
 [package]
 name = "utc2k"
-version = "0.18.0"
+version = "0.18.1"
 authors = ["Josh Stoik <josh@blobfolio.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -67,7 +67,7 @@ local = [ "tz-rs" ]
 serde = [ "dep:serde_core" ]
 
 # Add sqlx type/decode/encode support for Utc2k (only).
-sqlx-mysql = [ "sqlx", "sqlx/mysql" ]
+sqlx-mysql = [ "sqlx" ]
 
 [[bench]]
 name = "d_utc2k"
