@@ -22,7 +22,7 @@ where DB: Database, i64: Type<DB> {
 	#[inline]
 	/// # Database Type For `Utc2k`.
 	///
-	/// Use the optional `sqlx-mysql` crate feature to enable Mysql database
+	/// Use the optional `sqlx` crate feature to enable Mysql database
 	/// support for [`Utc2k`]s.
 	///
 	/// To keep things simple, `Utc2k` values are mapped to Mysql's (signed)
@@ -44,7 +44,7 @@ impl<'r, DB> Decode<'r, DB> for Utc2k
 where DB: Database, i64: Decode<'r, DB> {
 	/// # Decode `Utc2k`.
 	///
-	/// Use the optional `sqlx-mysql` crate feature to decode Mysql (signed)
+	/// Use the optional `sqlx` crate feature to decode Mysql (signed)
 	/// `BIGINT` unix timestamps as [`Utc2k`] objects.
 	///
 	/// For schemas with proper `TIMESTAMP` column types, you'll need to
@@ -88,7 +88,7 @@ where DB: Database, i64: Encode<'q, DB> {
 	#[inline]
 	/// # Encode `Utc2k`.
 	///
-	/// Use the optional `sqlx-mysql` crate feature to encode [`Utc2k`]
+	/// Use the optional `sqlx` crate feature to encode [`Utc2k`]
 	/// objects as unix timestamps mapped to Mysql's (signed) `BIGINT` type.
 	///
 	/// For schemas with proper `TIMESTAMP` column types, you'll need to
