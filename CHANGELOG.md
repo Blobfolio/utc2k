@@ -2,7 +2,7 @@
 
 
 
-## [0.19.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.0) - TBD
+## [0.19.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.0) - 2026-01-22
 
 ### Breaking
 
