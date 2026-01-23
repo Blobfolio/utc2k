@@ -2,6 +2,14 @@
 
 
 
+## [0.19.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.0) - 2026-01-22
+
+### Breaking
+
+* Rename `sqlx-mysql` feature to `sqlx`
+
+
+
 ## [0.18.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.2) - 2025-11-16
 
 ### Workaround

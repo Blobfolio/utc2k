@@ -37,7 +37,7 @@ jobs:
       RUSTFLAGS: "-D warnings"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: dtolnay/rust-toolchain@stable
       with:
         targets: ${{ matrix.target }}
@@ -59,7 +59,7 @@ jobs:
         cargo clippy --release --target ${{ matrix.target }}
         cargo clippy --release --features "local" --target ${{ matrix.target }}
         cargo clippy --release --features "serde" --target ${{ matrix.target }}
-        cargo clippy --release --features "sqlx-mysql" --target ${{ matrix.target }}
+        cargo clippy --release --features "sqlx" --target ${{ matrix.target }}
         cargo clippy --release --all-features --target ${{ matrix.target }}
 
     - name: Tests (Debug)
@@ -67,7 +67,7 @@ jobs:
         cargo test --target ${{ matrix.target }}
         cargo test --features "local" --target ${{ matrix.target }}
         cargo test --features "serde" --target ${{ matrix.target }}
-        cargo test --features "sqlx-mysql" --target ${{ matrix.target }}
+        cargo test --features "sqlx" --target ${{ matrix.target }}
         cargo test --all-features --target ${{ matrix.target }}
 
     - name: Tests (Release)
@@ -75,5 +75,5 @@ jobs:
         cargo test --release --target ${{ matrix.target }}
         cargo test --release --features "local" --target ${{ matrix.target }}
         cargo test --release --features "serde" --target ${{ matrix.target }}
-        cargo test --release --features "sqlx-mysql" --target ${{ matrix.target }}
+        cargo test --release --features "sqlx" --target ${{ matrix.target }}
         cargo test --release --all-features --target ${{ matrix.target }}
