@@ -2,6 +2,14 @@
 
 
 
+## [0.19.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.1) - 2026-03-05
+
+### Changed
+
+* Bump `tz-rs` to `0.7.3`
+
+
+
 ## [0.19.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.0) - 2026-01-22
 
 ### Breaking
