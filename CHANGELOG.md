@@ -2,6 +2,15 @@
 
 
 
+## [0.20.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.20.0) - 2026-05-21
+
+### Changed
+
+* Bump `sqlx` to `0.9`
+* Bump MSRV to `1.95`
+
+
+
 ## [0.19.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.1) - 2026-03-05
 
 ### Changed

@@ -112,8 +112,8 @@ where DB: Database, i64: Encode<'q, DB> {
 	/// ```
 	fn encode_by_ref(
 		&self,
-		buf: &mut <DB as Database>::ArgumentBuffer<'q>,
+		buf: &mut <DB as Database>::ArgumentBuffer,
 	) -> Result<IsNull, BoxDynError> {
-		<i64 as Encode::<'q, DB>>::encode_by_ref(&i64::from(self.unixtime()), buf)
+		<i64 as Encode::<DB>>::encode_by_ref(&i64::from(self.unixtime()), buf)
 	}
 }
