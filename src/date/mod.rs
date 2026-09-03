@@ -38,6 +38,10 @@ use std::{
 		SubAssign,
 	},
 	str::FromStr,
+	time::{
+		Duration,
+		SystemTime,
+	},
 };
 use abacus::Abacus;
 
@@ -1025,6 +1029,52 @@ impl TryFrom<&str> for Utc2k {
 	/// ```
 	fn try_from(src: &str) -> Result<Self, Self::Error> {
 		Self::try_from(src.as_bytes())
+	}
+}
+
+impl TryFrom<SystemTime> for Utc2k {
+	type Error = Utc2kError;
+
+	#[inline]
+	/// # From `SystemTime`.
+	///
+	///```
+	/// use std::time::SystemTime;
+	/// use utc2k::Utc2k;
+	///
+	/// // Current time, two ways.
+	/// let utc = Utc2k::now();
+	/// let utc = Utc2k::try_from(SystemTime::now()).unwrap();
+	///
+	/// // Out of range values will error.
+	/// assert_eq!(
+	///     Utc2k::try_from(SystemTime::UNIX_EPOCH),
+	///     Err(utc2k::Utc2kError::Underflow),
+	/// );
+	///```
+	fn try_from(src: SystemTime) -> Result<Self, Self::Error> {
+		let unixtime = src.duration_since(SystemTime::UNIX_EPOCH)
+			.map_err(|_| Utc2kError::Invalid)
+			.and_then(|d|
+				u32::try_from(d.as_secs()).map_err(|_| Utc2kError::Overflow)
+			)?;
+
+		if unixtime < Self::MIN_UNIXTIME {
+			Err(Utc2kError::Underflow)
+		}
+		else if Self::MAX_UNIXTIME < unixtime {
+			Err(Utc2kError::Overflow)
+		}
+		else {
+			Ok(Self::from_unixtime(unixtime))
+		}
+	}
+}
+
+impl From<Utc2k> for SystemTime {
+	#[inline]
+	fn from(src: Utc2k) -> Self {
+		Self::UNIX_EPOCH + Duration::from_secs(u64::from(src.unixtime()))
 	}
 }
 
@@ -2470,6 +2520,11 @@ mod tests {
 				FmtUtc2k::from_ascii(f.to_rfc3339().as_bytes()),
 				"Fmt RFC3339 back-and-forth failed for {}", $i,
 			);
+			assert_eq!(
+				Some(u),
+				Utc2k::try_from(SystemTime::from(u)).ok(),
+				"SystemTime mismatch for {}", $i,
+			);
 
 			assert_eq!(u.year(), c.year() as u16, "Year mismatch for unixtime {}", $i);
 			assert_eq!(u.month(), u8::from(c.month()), "Month mismatch for unixtime {}", $i);
@@ -2511,7 +2566,7 @@ mod tests {
 	/// (Testing every single second takes _forever_, so is disabled by
 	/// default.)
 	fn limited_unixtime() {
-		let format = time::format_description::parse(
+		let format = time::format_description::parse_borrowed::<1>(
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
 
@@ -2695,11 +2750,10 @@ mod tests {
 			#[test]
 			#[ignore = "testing every second takes a long time"]
 			fn $fn() {
-				let format = time::format_description::parse(
+				let format = time::format_description::parse_borrowed::<1>(
 					"[year]-[month]-[day] [hour]:[minute]:[second]",
 				).expect("Unable to parse datetime format.");
 				let mut buf = Vec::new();
-
 				for i in (Utc2k::MIN_UNIXTIME + $offset..=Utc2k::MAX_UNIXTIME).step_by($step) {
 					range_test!(i, buf, format);
 				}
