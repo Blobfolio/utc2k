@@ -2,6 +2,15 @@
 
 
 
+## [0.21.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.21.0) - 2026-09-02
+
+### New
+
+* Impl `From<Utc2k>` for `SystemTime`
+* Impl `TryFrom<SystemTime>` for `Utc2k`
+
+
+
 ## [0.20.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.20.0) - 2026-05-21
 
 ### Changed
