@@ -2511,7 +2511,7 @@ mod tests {
 	/// (Testing every single second takes _forever_, so is disabled by
 	/// default.)
 	fn limited_unixtime() {
-		let format = time::format_description::parse(
+		let format = time::format_description::parse_borrowed::<1>(
 			"[year]-[month]-[day] [hour]:[minute]:[second]",
 		).expect("Unable to parse datetime format.");
 
@@ -2695,11 +2695,10 @@ mod tests {
 			#[test]
 			#[ignore = "testing every second takes a long time"]
 			fn $fn() {
-				let format = time::format_description::parse(
+				let format = time::format_description::parse_borrowed::<1>(
 					"[year]-[month]-[day] [hour]:[minute]:[second]",
 				).expect("Unable to parse datetime format.");
 				let mut buf = Vec::new();
-
 				for i in (Utc2k::MIN_UNIXTIME + $offset..=Utc2k::MAX_UNIXTIME).step_by($step) {
 					range_test!(i, buf, format);
 				}
