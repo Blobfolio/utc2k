@@ -1,21 +1,21 @@
 # Project Dependencies
     Package:   utc2k
-    Version:   0.21.0
-    Generated: 2026-09-03 05:56:21 UTC
+    Version:   0.21.1
+    Generated: 2026-10-01 21:48:12 UTC
 
 | Package | Version | Author(s) | License |
 | ---- | ---- | ---- | ---- |
 | [_allocator-api2_](https://github.com/zakarumych/allocator-api2) | 0.2.21 | [Zakarum](mailto:zaq.dev@icloud.com) | MIT OR Apache-2.0 |
 | [_base64_](https://github.com/marshallpierce/rust-base64) | 0.22.1 | [Marshall Pierce](mailto:marshall@mpierce.org) | MIT OR Apache-2.0 |
-| [_bitflags_](https://github.com/bitflags/bitflags) | 2.13.1 | The Rust Project Developers | MIT OR Apache-2.0 |
+| [_bitflags_](https://github.com/bitflags/bitflags) | 2.13.2 | The Rust Project Developers | MIT OR Apache-2.0 |
 | [_block-buffer_](https://github.com/RustCrypto/utils) | 0.10.4 | RustCrypto Developers | MIT OR Apache-2.0 |
 | [_bytes_](https://github.com/tokio-rs/bytes) | 1.12.1 | [Carl Lerche](mailto:me@carllerche.com) and [Sean McArthur](mailto:sean@seanmonstar.com) | MIT |
-| [_cfg-if_](https://github.com/rust-lang/cfg-if) | 1.0.4 | [Alex Crichton](mailto:alex@alexcrichton.com) | MIT OR Apache-2.0 |
+| [_cfg-if_](https://github.com/rust-lang/cfg-if) | 1.0.5 | [Alex Crichton](mailto:alex@alexcrichton.com) | MIT OR Apache-2.0 |
 | [_cpufeatures_](https://github.com/RustCrypto/utils) | 0.2.17 | RustCrypto Developers | MIT OR Apache-2.0 |
 | [_crc_](https://github.com/mrhooray/crc-rs.git) | 3.4.0 | [Rui Hu](mailto:code@mrhooray.com) and [Akhil Velagapudi](mailto:4@4khil.com) | MIT OR Apache-2.0 |
 | [_crc-catalog_](https://github.com/akhilles/crc-catalog.git) | 2.5.0 | [Akhil Velagapudi](mailto:akhilvelagapudi@gmail.com) | MIT OR Apache-2.0 |
-| [_crossbeam-queue_](https://github.com/crossbeam-rs/crossbeam) | 0.3.13 |  | MIT OR Apache-2.0 |
-| [_crossbeam-utils_](https://github.com/crossbeam-rs/crossbeam) | 0.8.22 |  | MIT OR Apache-2.0 |
+| [_crossbeam-queue_](https://github.com/crossbeam-rs/crossbeam) | 0.3.14 |  | MIT OR Apache-2.0 |
+| [_crossbeam-utils_](https://github.com/crossbeam-rs/crossbeam) | 0.8.23 |  | MIT OR Apache-2.0 |
 | [_crypto-common_](https://github.com/RustCrypto/traits) | 0.1.7 | RustCrypto Developers | MIT OR Apache-2.0 |
 | [_digest_](https://github.com/RustCrypto/traits) | 0.10.7 | RustCrypto Developers | MIT OR Apache-2.0 |
 | [_displaydoc_](https://github.com/yaahc/displaydoc) | 0.2.7 | [Jane Lusby](mailto:jlusby@yaah.dev) | MIT OR Apache-2.0 |
@@ -43,7 +43,7 @@
 | [_icu_provider_](https://github.com/unicode-org/icu4x) | 2.3.1 | The ICU4X Project Developers | Unicode-3.0 |
 | [_idna_](https://github.com/servo/rust-url/) | 1.1.0 | The rust-url developers | MIT OR Apache-2.0 |
 | [_idna_adapter_](https://github.com/hsivonen/idna_adapter) | 1.2.2 | The rust-url developers | Apache-2.0 OR MIT |
-| [_indexmap_](https://github.com/indexmap-rs/indexmap) | 2.14.1 |  | Apache-2.0 OR MIT |
+| [_indexmap_](https://github.com/indexmap-rs/indexmap) | 2.14.2 |  | Apache-2.0 OR MIT |
 | [_libc_](https://github.com/rust-lang/libc) | 0.2.189 |  | MIT OR Apache-2.0 |
 | [_litemap_](https://github.com/unicode-org/icu4x) | 0.8.3 | The ICU4X Project Developers | Unicode-3.0 |
 | [_lock_api_](https://github.com/Amanieu/parking_lot) | 0.4.14 | [Amanieu d'Antras](mailto:amanieu@gmail.com) | MIT OR Apache-2.0 |
@@ -64,31 +64,31 @@
 | [_serde_derive_](https://github.com/serde-rs/serde) | 1.0.229 | [Erick Tryzelaar](mailto:erick.tryzelaar@gmail.com) and [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
 | [_sha2_](https://github.com/RustCrypto/hashes) | 0.10.9 | RustCrypto Developers | MIT OR Apache-2.0 |
 | [_slab_](https://github.com/tokio-rs/slab) | 0.4.12 | [Carl Lerche](mailto:me@carllerche.com) | MIT |
-| [_smallvec_](https://github.com/servo/rust-smallvec) | 1.16.0 | The Servo Project Developers | MIT OR Apache-2.0 |
+| [_smallvec_](https://github.com/servo/rust-smallvec) | 1.16.2 | The Servo Project Developers | MIT OR Apache-2.0 |
 | [**_sqlx_**](https://github.com/launchbadge/sqlx) | 0.9.0 | [Ryan Leckey](mailto:leckey.ryan@gmail.com), [Austin Bonander](mailto:austin.bonander@gmail.com), [Chloe Ross](mailto:orangesnowfox@gmail.com), and [Daniel Akhterov](mailto:akhterovd@gmail.com) | MIT OR Apache-2.0 |
 | [_sqlx-core_](https://github.com/launchbadge/sqlx) | 0.9.0 | [Ryan Leckey](mailto:leckey.ryan@gmail.com), [Austin Bonander](mailto:austin.bonander@gmail.com), [Chloe Ross](mailto:orangesnowfox@gmail.com), and [Daniel Akhterov](mailto:akhterovd@gmail.com) | MIT OR Apache-2.0 |
 | [_stable_deref_trait_](https://github.com/storyyeller/stable_deref_trait) | 1.2.1 | [Robert Grosse](mailto:n210241048576@gmail.com) | MIT OR Apache-2.0 |
 | [_syn_](https://github.com/dtolnay/syn) | 2.0.119 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
-| [_syn_](https://github.com/dtolnay/syn) | 3.0.4 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
-| [_synstructure_](https://github.com/mystor/synstructure) | 0.13.2 | [Nika Layzell](mailto:nika@thelayzells.com) | MIT |
-| [_thiserror_](https://github.com/dtolnay/thiserror) | 2.0.20 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
-| [_thiserror-impl_](https://github.com/dtolnay/thiserror) | 2.0.20 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
+| [_syn_](https://github.com/dtolnay/syn) | 3.0.6 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
+| [_synstructure_](https://github.com/mystor/synstructure) | 0.14.0 | [Nika Layzell](mailto:nika@thelayzells.com) | MIT |
+| [_thiserror_](https://github.com/dtolnay/thiserror) | 2.0.21 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
+| [_thiserror-impl_](https://github.com/dtolnay/thiserror) | 2.0.21 | [David Tolnay](mailto:dtolnay@gmail.com) | MIT OR Apache-2.0 |
 | [_tinystr_](https://github.com/unicode-org/icu4x) | 0.8.4 | The ICU4X Project Developers | Unicode-3.0 |
 | [_tracing_](https://github.com/tokio-rs/tracing) | 0.1.44 | [Eliza Weisman](mailto:eliza@buoyant.io) and [Tokio Contributors](mailto:team@tokio.rs) | MIT |
 | [_tracing-attributes_](https://github.com/tokio-rs/tracing) | 0.1.31 | [Tokio Contributors](mailto:team@tokio.rs), [Eliza Weisman](mailto:eliza@buoyant.io), and [David Barsky](mailto:dbarsky@amazon.com) | MIT |
 | [_tracing-core_](https://github.com/tokio-rs/tracing) | 0.1.36 | [Tokio Contributors](mailto:team@tokio.rs) | MIT |
 | [_typenum_](https://github.com/paholg/typenum) | 1.20.1 |  | MIT OR Apache-2.0 |
 | [**_tz-rs_**](https://github.com/x-hgg-x/tz-rs) | 0.7.3 | x-hgg-x | MIT OR Apache-2.0 |
-| [_unicode-ident_](https://github.com/dtolnay/unicode-ident) | 1.0.24 | [David Tolnay](mailto:dtolnay@gmail.com) | (MIT OR Apache-2.0) AND Unicode-3.0 |
+| [_unicode-ident_](https://github.com/dtolnay/unicode-ident) | 1.0.26 | [David Tolnay](mailto:dtolnay@gmail.com) | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | [_url_](https://github.com/servo/rust-url) | 2.5.8 | The rust-url developers | MIT OR Apache-2.0 |
 | [_utf8_iter_](https://github.com/hsivonen/utf8_iter) | 1.0.4 | [Henri Sivonen](mailto:hsivonen@hsivonen.fi) | Apache-2.0 OR MIT |
 | [_version_check_](https://github.com/SergioBenitez/version_check) ⚒️ | 0.9.5 | [Sergio Benitez](mailto:sb@sergio.bz) | MIT OR Apache-2.0 |
 | [_windows-link_](https://github.com/microsoft/windows-rs) | 0.2.1 |  | MIT OR Apache-2.0 |
 | [_writeable_](https://github.com/unicode-org/icu4x) | 0.6.4 | The ICU4X Project Developers | Unicode-3.0 |
 | [_yoke_](https://github.com/unicode-org/icu4x) | 0.8.3 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |
-| [_yoke-derive_](https://github.com/unicode-org/icu4x) | 0.8.2 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |
+| [_yoke-derive_](https://github.com/unicode-org/icu4x) | 0.8.4 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |
 | [_zerofrom_](https://github.com/unicode-org/icu4x) | 0.1.8 | The ICU4X Project Developers | Unicode-3.0 |
-| [_zerofrom-derive_](https://github.com/unicode-org/icu4x) | 0.1.7 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |
+| [_zerofrom-derive_](https://github.com/unicode-org/icu4x) | 0.1.8 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |
 | [_zerotrie_](https://github.com/unicode-org/icu4x) | 0.2.5 | The ICU4X Project Developers | Unicode-3.0 |
 | [_zerovec_](https://github.com/unicode-org/icu4x) | 0.11.8 | The ICU4X Project Developers | Unicode-3.0 |
 | [_zerovec-derive_](https://github.com/unicode-org/icu4x) | 0.11.6 | [Manish Goregaokar](mailto:manishsmail@gmail.com) | Unicode-3.0 |

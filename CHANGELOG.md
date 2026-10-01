@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.21.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.21.1) - 2026-10-01
+
+### Changed
+
+* Bump `brunch` to `0.12` (dev)
+
 
 ## [0.21.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.21.0) - 2026-09-02
 
@@ -8,7 +14,6 @@
 
 * Impl `From<Utc2k>` for `SystemTime`
 * Impl `TryFrom<SystemTime>` for `Utc2k`
-
 
 
 ## [0.20.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.20.0) - 2026-05-21
@@ -19,13 +24,11 @@
 * Bump MSRV to `1.95`
 
 
-
 ## [0.19.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.1) - 2026-03-05
 
 ### Changed
 
 * Bump `tz-rs` to `0.7.3`
-
 
 
 ## [0.19.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.19.0) - 2026-01-22
@@ -35,7 +38,6 @@
 * Rename `sqlx-mysql` feature to `sqlx`
 
 
-
 ## [0.18.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.2) - 2025-11-16
 
 ### Workaround
@@ -43,13 +45,11 @@
 * Disable `sqlx-mysql` feature for docs.rs so it can build. Haha.
 
 
-
 ## [0.18.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.1) - 2025-11-16
 
 ### Changed
 
 * Make `sqlx-mysql` feature traits generic over `sqlx::Database`
-
 
 
 ## [0.18.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.18.0) - 2025-10-30
@@ -66,14 +66,12 @@
 * Miscellaneous code cleanup and lints
 
 
-
 ## [0.17.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.1) - 2025-09-18
 
 ### Changed
 
 * Replace `serde` w/ `serde_core`
 * Miscellaneous code cleanup and lints
-
 
 
 ## [0.17.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.17.0) - 2025-08-12
@@ -85,7 +83,6 @@
 ### Changed
 
 * Miscellaneous code cleanup and lints
-
 
 
 ## [0.16.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.16.0) - 2025-07-13
@@ -101,7 +98,6 @@
 
 * `Utc2k::cmp_date`/`cmp_time` now take `(a: Self, b: Self)` (instead of `(&self, b: Self)`)
 * `Weekday::first/last/nth_in_month` now take a `Month` (instead of a `u8`)
-
 
 
 ## [0.15.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.15.0) - 2025-06-26
@@ -164,7 +160,6 @@ The rest of the changes are more straightforward:
 * Removed `Utc2k::try_from<i32, i64, isize, u64, usize>` (use `From<u32>` instead)
 
 
-
 ## [0.14.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.14.0) - 2025-05-31
 
 ### New
@@ -192,7 +187,6 @@ The rest of the changes are more straightforward:
 * Removed `Deref` impl for `Weekday`
 
 
-
 ## [0.13.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.13.0) - 2025-05-15
 
 ### Changed
@@ -202,13 +196,11 @@ The rest of the changes are more straightforward:
 * Miscellaneous code cleanup and lints
 
 
-
 ## [0.12.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.1) - 2025-04-03
 
 ### Changed
 
 * Miscellaneous code cleanup and lints
-
 
 
 ## [0.12.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.12.0) - 2025-02-25
@@ -221,14 +213,12 @@ The rest of the changes are more straightforward:
 * Miscellaneous code cleanup and lints
 
 
-
 ## [0.11.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.2) - 2025-01-09
 
 ### Changed
 
 * Bump `brunch` to `0.8` (dev)
 * Miscellaneous code cleanup and lints
-
 
 
 ## [0.11.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.1) - 2024-11-28
@@ -240,7 +230,6 @@ The rest of the changes are more straightforward:
 * `FmtUtf2k::time` is now const
 * `FmtUtf2k::year` is now const
 * Miscellaneous code cleanup and lints
-
 
 
 ## [0.11.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.11.0) - 2024-10-25
@@ -269,7 +258,6 @@ The rest of the changes are more straightforward:
 * `Utc2k::max` (use `Utc2k::MAX` instead)
 
 
-
 ## [0.10.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.10.0) - 2024-09-14
 
 ### Changed
@@ -279,7 +267,6 @@ The rest of the changes are more straightforward:
 * Miscellaneous code lints
 
 
-
 ## [0.9.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.1) - 2024-09-05
 
 ### Changed
@@ -287,7 +274,6 @@ The rest of the changes are more straightforward:
 * Miscellaneous code cleanup and lints
 * Add `visit_bytes` to `Month`/`Weekday` deserializers
 * Bump `brunch` to `0.6`
-
 
 
 ## [0.9.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.9.0) - 2024-08-03
@@ -315,13 +301,11 @@ The rest of the changes are more straightforward:
 * `Utc2k::abs_diff` is now const
 
 
-
 ## [0.8.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.1) - 2024-07-25
 
 ### Changed
 
 * Miscellaneous code lints
-
 
 
 ## [0.8.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.8.0) - 2024-02-08
@@ -335,7 +319,6 @@ The rest of the changes are more straightforward:
 * Miscellaneous doc/script cleanup
 
 
-
 ## [0.7.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.7.0) - 2023-10-05
 
 ### New
@@ -345,13 +328,11 @@ The rest of the changes are more straightforward:
 * `Weekday::nth_in_month`
 
 
-
 ## [0.6.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.1) - 2023-07-13
 
 ### Changed
 
 * Update dev dependencies
-
 
 
 ## [0.6.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.6.0) - 2023-06-01
@@ -366,7 +347,6 @@ The rest of the changes are more straightforward:
 * CI: test MSRV
 
 
-
 ## [0.5.15](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.15) - 2023-02-15
 
 ### Changed
@@ -379,14 +359,12 @@ The rest of the changes are more straightforward:
 * impl `FromStr` for `FmtUtc2k` (same as `TryFrom<&str>`)
 
 
-
 ## [0.5.14](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.14) - 2023-02-04
 
 ### Changed
 
 * Improve docs.rs environment detection
 * Declare "serde" feature explicitly
-
 
 
 ## [0.5.13](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.13) - 2023-01-26
@@ -396,13 +374,11 @@ The rest of the changes are more straightforward:
 * Bump brunch `0.4`
 
 
-
 ## [0.5.12](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.12) - 2023-01-01
 
 ### Fixed
 
 * `utc2k::year` sometimes off by one!
-
 
 
 ## [0.5.11](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.11) - 2022-12-29
@@ -413,13 +389,11 @@ The rest of the changes are more straightforward:
 * Update ci badge syntax (docs)
 
 
-
 ## [0.5.10](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.10) - 2022-11-03
 
 ### Changed
 
 * Bump once_cell
-
 
 
 ## [0.5.9](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.9) - 2022-09-22
@@ -430,13 +404,11 @@ The rest of the changes are more straightforward:
 * Improve docs
 
 
-
 ## [0.5.8](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.8) - 2022-09-02
 
 ### Changed
 
 * Update dependencies
-
 
 
 ## [0.5.7](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.7) - 2022-08-19
@@ -446,13 +418,11 @@ The rest of the changes are more straightforward:
 * Lower once_cell version specificity
 
 
-
 ## [0.5.6](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.6) - 2022-08-14
 
 ### Changed
 
 * Bump tz-rs `=0.6.14`
-
 
 
 ## [0.5.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.5) - 2022-08-11
@@ -462,7 +432,6 @@ The rest of the changes are more straightforward:
 * Bump tz-rs `=0.6.12`
 * Bump fastrand `1.8.0`
 * Remove `serde_yaml` dev dependency
-
 
 
 ## [0.5.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.4) - 2022-07-22
@@ -477,13 +446,11 @@ The rest of the changes are more straightforward:
 * `Utc2k::to_midnight`
 
 
-
 ## [0.5.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.3) - 2022-07-14
 
 ### Changed
 
 * Bump once_cell `=1.13.0`
-
 
 
 ## [0.5.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.2) - 2022-07-04
@@ -495,13 +462,11 @@ The rest of the changes are more straightforward:
 * Bump once_cell `=1.12.1`
 
 
-
 ## [0.5.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.5.1) - 2022-06-27
 
 ### Changed
 
 * Bump tz-rs `=0.6.10`.
-
 
 
 
@@ -513,13 +478,11 @@ The rest of the changes are more straightforward:
 * Minor localization cache performance improvements.
 
 
-
 ## [0.4.5](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.5) - 2022-05-19
 
 ### Changed
 
 * Lock third-party dependency versions
-
 
 
 ## [0.4.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.4) - 2022-05-02
@@ -532,7 +495,6 @@ The rest of the changes are more straightforward:
 ### Changed
 
 * Timezone details are now statically cached after parsing, improving performance when multiple `LocalOffset` objects are created
-
 
 
 ## [0.4.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.3) - 2022-04-30
@@ -548,7 +510,6 @@ The rest of the changes are more straightforward:
 * Various doc and lint tweaks
 
 
-
 ## [0.4.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.2) - 2022-03-27
 
 ### Added
@@ -561,7 +522,6 @@ The rest of the changes are more straightforward:
 * `Utc2k::from_datetime_str` now accepts any `AsRef<[u8]>`
 * `Utc2k::from_date_str` now accepts any `AsRef<[u8]>`
 * impl `TryFrom<&[u8]>` for `Utc2k` and `FmtUtc2k`
-
 
 
 ## [0.4.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.1) - 2022-03-20
@@ -580,7 +540,6 @@ The rest of the changes are more straightforward:
 * Improve `to_rfc2822` performance;
 
 
-
 ## [0.4.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.4.0) - 2022-03-03
 
 ### Fixed
@@ -592,13 +551,11 @@ The rest of the changes are more straightforward:
 * `Weekday::as_u8`
 
 
-
 ## [0.3.4](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.4) - 2022-02-15
 
 ### Fixed
 
 * `FmtUtc2k::to_rfc2822` and `Utc2k::to_rfc2822` now zero-pads days
-
 
 
 ## [0.3.3](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.3) - 2022-01-06
@@ -634,7 +591,6 @@ The rest of the changes are more straightforward:
 * `Weekday::as_u8`
 
 
-
 ## [0.3.2](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.2) - 2021-12-13
 
 ### Added
@@ -643,13 +599,11 @@ The rest of the changes are more straightforward:
 * `FmtUtc2k::to_rfc3339`
 
 
-
 ## [0.3.1](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.1) - 2021-11-27
 
 ### Changed
 
 * Replace the dev-dependency `chrono` with `time`.
-
 
 
 ## [0.3.0](https://github.com/Blobfolio/utc2k/releases/tag/v0.3.0) - 2021-10-21
